@@ -150,9 +150,9 @@ export default function ProductNewPage() {
           )}
 
           {/* Preview frame */}
-          <div className="max-w-[660px] w-full bg-surface rounded-2xl border border-border overflow-hidden">
+          <div className="max-w-[660px] w-full bg-surface rounded-2xl border border-border flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 160px)' }}>
             {/* Browser bar */}
-            <div className="h-9 bg-[#1a1a22] flex items-center px-4 gap-2">
+            <div className="h-9 bg-[#1a1a22] flex items-center px-4 gap-2 shrink-0">
               <div className="flex gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500/40" />
                 <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/40" />
@@ -163,8 +163,8 @@ export default function ProductNewPage() {
               </div>
             </div>
 
-            {/* Content area */}
-            <div className="bg-white min-h-[400px]">
+            {/* Content area — 스크롤 가능 */}
+            <div className="bg-white min-h-[400px] overflow-auto">
               {/* Loading state */}
               {isLoading && (
                 <div className="flex flex-col items-center justify-center py-20 space-y-6">

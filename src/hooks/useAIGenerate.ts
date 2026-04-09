@@ -81,14 +81,17 @@ export function useAIGenerate() {
         }
       }
 
-      // Render PNG
+      // Render PNG — useImageStore에서 최신 이미지 목록 가져오기
       setIsRenderingPng(true)
       setLoadingMessage('상세페이지 이미지를 생성하고 있습니다...')
 
+      const latestImages = useImageStore.getState().images
       const pngBlob = await api.post<Blob>('/api/render', {
         data: result,
         price: product.price,
-        images: images.map((img) => img.dataUrl),
+        images: latestImages.map((img) => img.dataUrl),
+        storeIntroImage: useImageStore.getState().storeIntroImage || undefined,
+        termsImage: useImageStore.getState().termsImage || undefined,
       })
 
       if (pngBlob instanceof Blob) {
