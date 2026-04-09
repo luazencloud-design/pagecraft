@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
-import { api } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
 import { showToast } from '@/components/ui/Toast'
 
 export default function AiModelToggle() {
@@ -15,6 +15,7 @@ export default function AiModelToggle() {
 
   const [generating, setGenerating] = useState(false)
   const [generated, setGenerated] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
 
   const generate = useCallback(async () => {
     if (generated) {
@@ -22,11 +23,12 @@ export default function AiModelToggle() {
       return
     }
     if (!product.name && images.length === 0) {
-      showToast('상품명 또는 이미지가 필요합니다', 'error')
+      setErrorMsg('상품명을 입력하거나 이미지를 먼저 업로드해주세요.')
       return
     }
 
     setGenerating(true)
+    setErrorMsg('')
     try {
       const result = await api.post<{ image: string }>('/api/image/generate', {
         productName: product.name,
@@ -41,7 +43,16 @@ export default function AiModelToggle() {
       }
     } catch (err) {
       console.error('AI 모델 이미지 생성 실패:', err)
-      showToast('AI 모델 이미지 생성 실패', 'error')
+      if (err instanceof ApiError) {
+        try {
+          const body = JSON.parse(err.message)
+          setErrorMsg(body.error || '이미지 생성에 실패했습니다.')
+        } catch {
+          setErrorMsg(err.message || '이미지 생성에 실패했습니다.')
+        }
+      } else {
+        setErrorMsg('이미지 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
+      }
     } finally {
       setGenerating(false)
     }
@@ -102,6 +113,12 @@ export default function AiModelToggle() {
               '🧑 이미지 생성'
             )}
           </button>
+
+          {errorMsg && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-xs text-red-400">
+              {errorMsg}
+            </div>
+          )}
         </>
       )}
     </div>
