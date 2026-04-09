@@ -7,6 +7,7 @@ import ImageUploader from '@/components/image/ImageUploader'
 import ImageGrid from '@/components/image/ImageGrid'
 import SingleImageUpload from '@/components/image/SingleImageUpload'
 import BgRemovalToggle from '@/components/image/BgRemovalToggle'
+import AiModelToggle from '@/components/image/AiModelToggle'
 import ResultTabs from '@/components/editor/ResultTabs'
 import Button from '@/components/ui/Button'
 import { useProductStore } from '@/stores/productStore'
@@ -82,6 +83,9 @@ export default function ProductNewPage() {
             </div>
             <div className="mt-3">
               <BgRemovalToggle />
+            </div>
+            <div className="mt-3">
+              <AiModelToggle />
             </div>
           </section>
 
