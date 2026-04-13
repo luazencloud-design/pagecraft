@@ -15,18 +15,19 @@ export default function Input({
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
-        <label htmlFor={id} className="text-sm text-muted">
+        <label htmlFor={id} className="text-[11px] font-medium text-text2 flex items-center gap-[5px]">
+          <span className="w-1 h-1 rounded-full bg-text3 opacity-70" />
           {label}
         </label>
       )}
       <input
         id={id}
         className={`
-          w-full px-3 py-2 rounded-lg
-          bg-surface border border-border
-          text-text placeholder:text-muted/50
-          focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent
-          transition-colors duration-150
+          w-full px-[11px] py-2 rounded-lg
+          bg-surface2 border border-border
+          text-[12.5px] text-text font-sans placeholder:text-text3
+          focus:outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--color-accent-dim)]
+          transition-[border-color,box-shadow] duration-150
           ${className}
         `}
         {...props}

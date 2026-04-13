@@ -9,7 +9,7 @@ export default function ImageUploader() {
 
   return (
     <div
-      className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-accent/50 transition-colors"
+      className="border-[1.5px] border-dashed border-border2 rounded-xl py-[70px] px-[14px] text-center cursor-pointer hover:border-accent transition-all duration-200 relative"
       onClick={() => inputRef.current?.click()}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
@@ -22,11 +22,10 @@ export default function ImageUploader() {
         className="hidden"
         onChange={(e) => e.target.files && handleFiles(e.target.files)}
       />
-      <div className="text-muted">
-        <p className="text-lg font-medium mb-1">상품 이미지 업로드</p>
-        <p className="text-sm">
-          클릭하거나 드래그하여 이미지를 추가하세요 (최대 10장, 800px 자동 압축)
-        </p>
+      <div className="text-text3">
+        <p className="text-[11px]">📷</p>
+        <p className="text-[11px] font-medium mt-1">클릭 또는 드래그하여 업로드</p>
+        <p className="text-[11px] text-text3 mt-0.5">최대 10장 · 자동 압축</p>
       </div>
     </div>
   )

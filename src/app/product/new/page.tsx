@@ -70,76 +70,90 @@ export default function ProductNewPage() {
       <Header />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Panel */}
-        <aside className="w-[450px] border-r border-border overflow-auto p-4 space-y-5 shrink-0">
-          <section>
-            <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-              상품 사진
-            </h2>
-            <ImageUploader />
-            <div className="mt-3">
-              <ImageGrid />
-            </div>
-            <div className="mt-3">
+        {/* Left Panel — 450px, 원본 일치 */}
+        <aside className="w-[450px] border-r border-border overflow-auto shrink-0 flex flex-col">
+          <div className="flex-1 space-y-0">
+            {/* 상품 사진 */}
+            <section className="pt-5 pb-2 px-[18px]">
+              <h2 className="text-[9px] font-bold text-text2 uppercase tracking-[2px] mb-3 flex items-center gap-2">
+                <span className="w-1 h-1 rounded-full bg-accent" />
+                상품 사진
+              </h2>
+              <ImageUploader />
+              <div className="mt-[6px]">
+                <ImageGrid />
+              </div>
+            </section>
+
+            {/* 배경 제거 + AI 모델 */}
+            <section className="px-[18px] space-y-2 pb-2">
               <BgRemovalToggle />
-            </div>
-            <div className="mt-3">
               <AiModelToggle />
-            </div>
-          </section>
+            </section>
 
-          <section>
-            <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-              상품 정보
-            </h2>
-            <ProductForm />
-          </section>
+            {/* 구분선 */}
+            <div className="h-px bg-border mx-[18px] my-2" />
 
-          <section className="space-y-3">
-            <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-              추가 이미지
-            </h2>
-            <SingleImageUpload
-              label="매장 소개 이미지"
-              imageData={storeIntroImage}
-              onImageChange={setStoreIntroImage}
-            />
-            <SingleImageUpload
-              label="교환/반품 안내 이미지"
-              imageData={termsImage}
-              onImageChange={setTermsImage}
-            />
-          </section>
+            {/* 상품 정보 */}
+            <section className="pt-2 pb-2">
+              <h2 className="text-[9px] font-bold text-text2 uppercase tracking-[2px] mb-3 px-[18px] flex items-center gap-2">
+                <span className="w-1 h-1 rounded-full bg-accent" />
+                상품 정보
+              </h2>
+              <ProductForm />
+            </section>
 
-          <Button
-            className="w-full"
-            size="lg"
-            loading={isLoading}
-            disabled={!canGenerate}
-            onClick={generateContent}
-          >
-            {isLoading ? '생성 중...' : '✦ AI 상세페이지 생성'}
-          </Button>
+            {/* 구분선 */}
+            <div className="h-px bg-border mx-[18px] my-2" />
+
+            {/* 추가 이미지 */}
+            <section className="pt-2 pb-4 px-[18px] space-y-3">
+              <h2 className="text-[9px] font-bold text-text2 uppercase tracking-[2px] mb-3 flex items-center gap-2">
+                <span className="w-1 h-1 rounded-full bg-accent" />
+                추가 이미지
+              </h2>
+              <SingleImageUpload
+                label="매장 소개 이미지"
+                imageData={storeIntroImage}
+                onImageChange={setStoreIntroImage}
+              />
+              <SingleImageUpload
+                label="교환/반품 안내 이미지"
+                imageData={termsImage}
+                onImageChange={setTermsImage}
+              />
+            </section>
+          </div>
+
+          {/* 생성 버튼 — 하단 고정 */}
+          <div className="px-[18px] py-3 border-t border-border shrink-0">
+            <Button
+              className="w-full"
+              size="lg"
+              loading={isLoading}
+              disabled={!canGenerate}
+              onClick={generateContent}
+            >
+              {isLoading ? '생성 중...' : '✦ AI 상세페이지 생성'}
+            </Button>
+          </div>
         </aside>
 
-        {/* Center — 미리보기 */}
-        <main className="flex-1 overflow-auto p-6 flex flex-col items-center bg-bg">
+        {/* Center — 캔버스 */}
+        <main className="flex-1 overflow-auto py-7 px-5 flex flex-col items-center bg-bg">
           {/* Canvas toolbar */}
           {generatedContent && (
             <div className="w-full max-w-[660px] flex items-center justify-between mb-3">
-              <span className="text-xs text-muted font-mono">preview.html</span>
+              <span className="text-[10px] text-text3 font-mono">preview.html</span>
               <div className="flex gap-2">
                 <button
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border border-border text-muted hover:text-text hover:border-accent/50 transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-[10px] py-[5px] rounded-[5px] text-[11px] border border-border text-text3 hover:text-text2 hover:border-border2 transition-all duration-150 cursor-pointer"
                   onClick={handleCopyAll}
                 >
                   📋 전체 복사
                 </button>
                 <button
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-accent text-black font-medium hover:bg-accent/90 transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-[10px] py-[5px] rounded-[5px] text-[11px] bg-accent text-[#0c0c10] font-semibold hover:bg-accent2 transition-all duration-200 cursor-pointer"
                   onClick={handleDownload}
                   disabled={!renderedImageUrl}
                 >
@@ -150,45 +164,45 @@ export default function ProductNewPage() {
           )}
 
           {/* Preview frame */}
-          <div className="max-w-[660px] w-full bg-surface rounded-2xl border border-border flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 160px)' }}>
-            {/* Browser bar */}
-            <div className="h-9 bg-[#1a1a22] flex items-center px-4 gap-2 shrink-0">
-              <div className="flex gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-500/40" />
-                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/40" />
-                <div className="w-2.5 h-2.5 rounded-full bg-green-500/40" />
+          <div className="max-w-[660px] w-full bg-white rounded-2xl border border-border flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 160px)' }}>
+            {/* Browser bar — 원본: surface2 배경, 36px 높이 */}
+            <div className="h-9 bg-surface2 border-b border-border flex items-center px-[14px] gap-[10px] shrink-0">
+              <div className="flex gap-[5px]">
+                <div className="w-[10px] h-[10px] rounded-full bg-[rgba(255,95,87,0.4)]" />
+                <div className="w-[10px] h-[10px] rounded-full bg-[rgba(254,188,46,0.4)]" />
+                <div className="w-[10px] h-[10px] rounded-full bg-[rgba(40,200,64,0.4)]" />
               </div>
-              <div className="flex-1 text-center text-[11px] text-muted/60 font-mono">
-                pagecraft://preview · 상세페이지 미리보기
+              <div className="flex-1 bg-surface3 rounded-[5px] h-5 flex items-center px-[10px]">
+                <span className="text-[10px] text-text3 font-mono">pagecraft://preview · 상세페이지 미리보기</span>
               </div>
             </div>
 
-            {/* Content area — 스크롤 가능 */}
+            {/* Content area */}
             <div className="bg-white min-h-[400px] overflow-auto">
-              {/* Loading state */}
+              {/* Loading state — AI 링 애니메이션 */}
               {isLoading && (
                 <div className="flex flex-col items-center justify-center py-20 space-y-6">
                   <div className="relative w-16 h-16">
-                    <div className="absolute inset-0 rounded-full border-2 border-accent/30 animate-spin" style={{ animationDuration: '3s' }} />
-                    <div className="absolute inset-1 rounded-full border-2 border-transparent border-t-accent animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }} />
-                    <div className="absolute inset-3 rounded-full bg-accent/20 animate-pulse" />
+                    <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-accent animate-[spin_1s_linear_infinite]" />
+                    <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-green animate-[spin_1.5s_linear_infinite_reverse]" />
+                    <div className="absolute inset-[18px] rounded-full bg-accent-dim border border-accent animate-[pulse_2s_ease-in-out_infinite]" />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-medium text-gray-700">{loadingMessage || '처리 중...'}</p>
-                    <p className="text-xs text-gray-400 mt-1">잠시만 기다려주세요</p>
+                    <p className="text-[13px] font-medium text-text">{loadingMessage || '처리 중...'}</p>
+                    <p className="text-[11px] text-text3 mt-1">잠시만 기다려주세요</p>
                   </div>
                 </div>
               )}
 
               {/* Empty state */}
               {!isLoading && !renderedImageUrl && (
-                <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                  <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center text-3xl">
+                <div className="flex flex-col items-center justify-center py-20 px-[30px] space-y-4">
+                  <div className="w-16 h-16 rounded-2xl bg-surface2 flex items-center justify-center text-3xl">
                     🛍
                   </div>
                   <div className="text-center">
-                    <p className="text-base font-semibold text-gray-700">상품 정보를 입력해주세요</p>
-                    <p className="text-sm text-gray-400 mt-1">
+                    <p className="text-[15px] font-semibold text-text">상품 정보를 입력해주세요</p>
+                    <p className="text-[13px] text-text3 mt-2 leading-[1.7]">
                       사진을 업로드하고 상품 정보를 입력한 뒤
                       <br />
                       AI 생성 버튼을 누르면 바로 만들어집니다.
@@ -209,7 +223,7 @@ export default function ProductNewPage() {
           </div>
         </main>
 
-        {/* Right Panel */}
+        {/* Right Panel — 480px, 원본 일치 */}
         <aside className="w-[480px] border-l border-border shrink-0 flex flex-col overflow-hidden">
           <ResultTabs />
         </aside>

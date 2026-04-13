@@ -24,7 +24,7 @@ export default function SingleImageUpload({
 
   return (
     <div className="space-y-2">
-      <p className="text-sm text-muted">{label}</p>
+      <p className="text-sm text-text2">{label}</p>
       {imageData ? (
         <div className="relative">
           <img
@@ -33,7 +33,7 @@ export default function SingleImageUpload({
             className="w-full rounded-lg border border-border"
           />
           <button
-            className="absolute top-2 right-2 bg-red-500/80 text-white text-xs px-2 py-1 rounded cursor-pointer hover:bg-red-600"
+            className="absolute top-2 right-2 bg-red/80 text-white text-xs px-2 py-1 rounded cursor-pointer hover:bg-red"
             onClick={() => onImageChange(null)}
           >
             삭제
@@ -41,7 +41,7 @@ export default function SingleImageUpload({
         </div>
       ) : (
         <div
-          className="border border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-accent/50 transition-colors text-sm text-muted"
+          className="border border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-accent/50 transition-colors text-sm text-text2"
           onClick={() => inputRef.current?.click()}
         >
           클릭하여 업로드

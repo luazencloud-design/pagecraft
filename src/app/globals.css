@@ -1,24 +1,45 @@
 @import "tailwindcss";
 
 @theme {
+  /* 원본 pagecraft-pro 토큰 완전 일치 */
   --color-bg: #0c0c10;
   --color-surface: #13131a;
+  --color-surface2: #1a1a24;
+  --color-surface3: #21212e;
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border2: rgba(255, 255, 255, 0.12);
   --color-accent: #e8c97a;
+  --color-accent2: #f0dfa0;
+  --color-accent-dim: rgba(232, 201, 122, 0.12);
   --color-text: #f0ede8;
-  --color-muted: #888888;
-  --color-border: #2a2a35;
+  --color-text2: #9998a8;
+  --color-text3: #555568;
   --color-green: #3ecf8e;
+  --color-red: #f87171;
+  --color-shadow: rgba(0, 0, 0, 0.4);
+
+  --font-sans: 'Noto Sans KR', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+  --font-serif: 'Playfair Display', serif;
 }
 
 /* Light mode */
 .light {
   --color-bg: #f4f3f0;
   --color-surface: #ffffff;
+  --color-surface2: #f0eeeb;
+  --color-surface3: #e8e6e2;
+  --color-border: rgba(0, 0, 0, 0.07);
+  --color-border2: rgba(0, 0, 0, 0.14);
   --color-accent: #9b6e1a;
+  --color-accent2: #7a5210;
+  --color-accent-dim: rgba(155, 110, 26, 0.10);
   --color-text: #1a1a1a;
-  --color-muted: #666666;
-  --color-border: #e0ddd8;
-  --color-green: #2da86e;
+  --color-text2: #5a5a6a;
+  --color-text3: #aaaabc;
+  --color-green: #1a7a50;
+  --color-red: #c0392b;
+  --color-shadow: rgba(0, 0, 0, 0.12);
 }
 
 html {
@@ -27,36 +48,38 @@ html {
 }
 
 body {
-  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-sans);
 }
 
-/* Scrollbar */
+/* Scrollbar — 원본: 패널 3px, 캔버스 4px */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 3px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
+  background: var(--color-surface3);
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-muted);
+  background: var(--color-text3);
 }
 
-/* Animations */
+/* Toast 애니메이션 */
 @keyframes slide-in-from-right {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
-
 .animate-in.slide-in-from-right {
   animation: slide-in-from-right 0.3s ease-out;
+}
+
+/* AI Ring 애니메이션 */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.1); }
 }

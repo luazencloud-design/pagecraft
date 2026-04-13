@@ -50,30 +50,30 @@ export default function ExportPanel() {
   }
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-sm font-medium text-text">내보내기 옵션</h3>
+    <div className="space-y-3">
+      <h3 className="text-[13px] font-semibold text-text">내보내기 옵션</h3>
 
       <button
-        className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-accent/30 transition-colors cursor-pointer text-left"
+        className="w-full flex items-center gap-3 p-[14px] rounded-[10px] border border-border hover:border-border2 transition-all duration-150 cursor-pointer text-left"
         onClick={downloadPng}
         disabled={!renderedImageUrl}
       >
-        <span className="text-2xl">🖼</span>
+        <div className="w-10 h-10 rounded-lg bg-surface3 flex items-center justify-center text-lg">🖼</div>
         <div>
-          <p className="text-sm font-medium text-text">이미지 저장 (PNG)</p>
-          <p className="text-xs text-muted">상세페이지 이미지 다운로드</p>
+          <p className="text-[13px] font-semibold text-text">이미지 저장 (PNG)</p>
+          <p className="text-[11px] text-text3">상세페이지 이미지 다운로드</p>
         </div>
       </button>
 
       <button
-        className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-accent/30 transition-colors cursor-pointer text-left"
+        className="w-full flex items-center gap-3 p-[14px] rounded-[10px] border border-border hover:border-border2 transition-all duration-150 cursor-pointer text-left"
         onClick={copyAll}
         disabled={!generatedContent}
       >
-        <span className="text-2xl">📋</span>
+        <div className="w-10 h-10 rounded-lg bg-surface3 flex items-center justify-center text-lg">📋</div>
         <div>
-          <p className="text-sm font-medium text-text">전체 텍스트 복사</p>
-          <p className="text-xs text-muted">모든 내용 클립보드 복사</p>
+          <p className="text-[13px] font-semibold text-text">전체 텍스트 복사</p>
+          <p className="text-[11px] text-text3">모든 내용 클립보드 복사</p>
         </div>
       </button>
     </div>

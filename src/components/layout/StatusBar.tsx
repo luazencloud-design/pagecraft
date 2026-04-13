@@ -10,17 +10,12 @@ export default function StatusBar() {
   const { isGenerating, isRenderingPng, loadingMessage } = useEditorStore()
 
   const isLoading = isGenerating || isRenderingPng
-  const statusColor = isLoading
-    ? 'bg-yellow-400'
-    : images.length > 0
-      ? 'bg-green'
-      : 'bg-muted'
 
   return (
-    <footer className="h-7 bg-surface border-t border-border flex items-center justify-between px-4 text-[11px] text-muted shrink-0 z-50">
+    <footer className="h-[26px] bg-surface border-t border-border flex items-center justify-between px-[18px] text-[10px] text-text3 font-mono shrink-0 z-[100]">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-1.5">
-          <div className={`w-1.5 h-1.5 rounded-full ${statusColor}`} />
+          <div className={`w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-accent' : images.length > 0 ? 'bg-green' : 'bg-text3'}`} />
           {isLoading ? (
             <span>{loadingMessage || '처리 중...'}</span>
           ) : (

@@ -18,16 +18,17 @@ export default function ResultTabs() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex border-b border-border">
+      <div className="flex border-b border-border shrink-0">
         {TABS.map((tab) => (
           <button
             key={tab.key}
             className={`
-              flex-1 px-4 py-3 text-sm font-medium transition-colors cursor-pointer
+              flex-1 py-[13px] text-center text-[12px] font-medium cursor-pointer
+              border-b-2 transition-all duration-150
               ${
                 activeTab === tab.key
-                  ? 'text-accent border-b-2 border-accent'
-                  : 'text-muted hover:text-text'
+                  ? 'text-accent border-accent'
+                  : 'text-text3 border-transparent hover:text-text2'
               }
             `}
             onClick={() => setActiveTab(tab.key)}
@@ -37,7 +38,7 @@ export default function ResultTabs() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto p-[14px]">
         {activeTab === 'copy' && <CopyPanel />}
         {activeTab === 'title' && <TitlePanel />}
         {activeTab === 'tags' && <TagPanel />}

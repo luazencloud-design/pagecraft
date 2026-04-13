@@ -202,7 +202,7 @@ export async function renderDetailPage(req: RenderRequest): Promise<Buffer> {
   ctx.font = `bold 28px KoreanBold, sans-serif`
   ctx.textAlign = 'center'
   ctx.fillText(data.product_name || '', W / 2, y + 50)
-  ctx.fillStyle = '#cccccc'
+  ctx.fillStyle = '#9998a8'
   ctx.font = `16px KoreanRegular, sans-serif`
   ctx.fillText(data.subtitle || '', W / 2, y + 80)
   y += 110
@@ -310,7 +310,7 @@ export async function renderDetailPage(req: RenderRequest): Promise<Buffer> {
 
     let specY = y + 80
     for (const spec of specs) {
-      ctx.fillStyle = '#666666'
+      ctx.fillStyle = '#9998a8'
       ctx.font = `14px KoreanRegular, sans-serif`
       ctx.textAlign = 'right'
       ctx.fillText(spec.key, W / 2 - 20, specY)
@@ -326,7 +326,7 @@ export async function renderDetailPage(req: RenderRequest): Promise<Buffer> {
   if (data.keywords && data.keywords.length > 0) {
     ctx.fillStyle = config.colors.ivory
     ctx.fillRect(0, y, W, 120)
-    ctx.fillStyle = '#888888'
+    ctx.fillStyle = '#555568'
     ctx.font = `13px KoreanRegular, sans-serif`
     ctx.textAlign = 'center'
     const tagText = data.keywords.map((k) => `#${k}`).join('  ')
@@ -347,7 +347,7 @@ export async function renderDetailPage(req: RenderRequest): Promise<Buffer> {
     ctx.font = `bold 24px KoreanBold, sans-serif`
     ctx.textAlign = 'center'
     ctx.fillText(`₩${Number(price).toLocaleString()}`, W / 2, y + 45)
-    ctx.fillStyle = '#999999'
+    ctx.fillStyle = '#555568'
     ctx.font = `12px KoreanRegular, sans-serif`
     ctx.fillText(data.caution || '', W / 2, y + 72)
     y += 90

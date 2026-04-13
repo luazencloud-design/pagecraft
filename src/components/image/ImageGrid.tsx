@@ -75,7 +75,7 @@ export default function ImageGrid() {
 
             {/* Delete button */}
             <button
-              className="absolute top-1 right-1 bg-red-500/80 text-white text-[10px] w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-red-600"
+              className="absolute top-1 right-1 bg-red/80 text-white text-[10px] w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-red"
               onClick={(e) => {
                 e.stopPropagation()
                 removeImage(img.id)

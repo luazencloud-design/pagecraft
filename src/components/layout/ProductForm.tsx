@@ -1,7 +1,6 @@
 'use client'
 
 import { useProductStore } from '@/stores/productStore'
-import Input from '@/components/ui/Input'
 
 const CATEGORIES = [
   '패션의류', '패션잡화', '뷰티', '식품', '생활용품',
@@ -24,32 +23,48 @@ export default function ProductForm() {
   }
 
   return (
-    <div className="space-y-4">
-      <Input label="브랜드" id="brand" placeholder="예: 내셔널 지오그래픽" value={product.brand} onChange={(e) => setProduct({ brand: e.target.value })} />
-      <Input label="상품명" id="pname" placeholder="예: 슬라이드 슬리퍼 남녀공용" value={product.name} onChange={(e) => setProduct({ name: e.target.value })} />
-      <Input label="가격" id="price" placeholder="예: 39,900" value={product.price} onChange={(e) => setProduct({ price: e.target.value })} />
+    <div className="space-y-[10px] px-[18px]">
+      {/* Brand */}
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[11px] font-medium text-text2 flex items-center gap-[5px]">
+          <span className="w-1 h-1 rounded-full bg-text3 opacity-70" />브랜드
+        </label>
+        <input className="w-full bg-surface2 border border-border rounded-lg px-[11px] py-2 text-[12.5px] text-text font-sans placeholder:text-text3 focus:outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--color-accent-dim)] transition-[border-color,box-shadow] duration-150" placeholder="예: 내셔널 지오그래픽" value={product.brand} onChange={(e) => setProduct({ brand: e.target.value })} />
+      </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm text-muted">카테고리</label>
-        <select
-          className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text focus:outline-none focus:ring-2 focus:ring-accent/50"
-          value={product.category}
-          onChange={(e) => setProduct({ category: e.target.value })}
-        >
+      {/* Product Name */}
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[11px] font-medium text-text2 flex items-center gap-[5px]">
+          <span className="w-1 h-1 rounded-full bg-text3 opacity-70" />상품명
+        </label>
+        <input className="w-full bg-surface2 border border-border rounded-lg px-[11px] py-2 text-[12.5px] text-text font-sans placeholder:text-text3 focus:outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--color-accent-dim)] transition-[border-color,box-shadow] duration-150" placeholder="예: 슬라이드 슬리퍼 남녀공용" value={product.name} onChange={(e) => setProduct({ name: e.target.value })} />
+      </div>
+
+      {/* Price */}
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[11px] font-medium text-text2 flex items-center gap-[5px]">
+          <span className="w-1 h-1 rounded-full bg-text3 opacity-70" />가격
+        </label>
+        <input className="w-full bg-surface2 border border-border rounded-lg px-[11px] py-2 text-[12.5px] text-text font-sans placeholder:text-text3 focus:outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--color-accent-dim)] transition-[border-color,box-shadow] duration-150" placeholder="예: 39,900" value={product.price} onChange={(e) => setProduct({ price: e.target.value })} />
+      </div>
+
+      {/* Category */}
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[11px] font-medium text-text2 flex items-center gap-[5px]">
+          <span className="w-1 h-1 rounded-full bg-text3 opacity-70" />카테고리
+        </label>
+        <select className="w-full bg-surface2 border border-border rounded-lg px-[11px] py-2 text-[12.5px] text-text font-sans appearance-none focus:outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--color-accent-dim)] transition-[border-color,box-shadow] duration-150" value={product.category} onChange={(e) => setProduct({ category: e.target.value })}>
           <option value="">선택하세요</option>
-          {CATEGORIES.map((cat) => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
+          {CATEGORIES.map((cat) => (<option key={cat} value={cat}>{cat}</option>))}
         </select>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm text-muted">판매 플랫폼</label>
-        <select
-          className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text focus:outline-none focus:ring-2 focus:ring-accent/50"
-          value={product.platform}
-          onChange={(e) => setProduct({ platform: e.target.value })}
-        >
+      {/* Platform */}
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[11px] font-medium text-text2 flex items-center gap-[5px]">
+          <span className="w-1 h-1 rounded-full bg-text3 opacity-70" />판매 플랫폼
+        </label>
+        <select className="w-full bg-surface2 border border-border rounded-lg px-[11px] py-2 text-[12.5px] text-text font-sans appearance-none focus:outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--color-accent-dim)] transition-[border-color,box-shadow] duration-150" value={product.platform} onChange={(e) => setProduct({ platform: e.target.value })}>
           <option value="쿠팡">쿠팡</option>
           <option value="네이버 스마트스토어">네이버 스마트스토어</option>
           <option value="11번가">11번가</option>
@@ -57,16 +72,22 @@ export default function ProductForm() {
         </select>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm text-muted">특징</label>
-        <div className="flex flex-wrap gap-1.5">
+      {/* Divider */}
+      <div className="h-px bg-border my-2" />
+
+      {/* Feature chips */}
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[11px] font-medium text-text2 flex items-center gap-[5px]">
+          <span className="w-1 h-1 rounded-full bg-text3 opacity-70" />특징
+        </label>
+        <div className="flex flex-wrap gap-[5px]">
           {FEATURES.map((feat) => (
             <button
               key={feat}
-              className={`px-2.5 py-1 rounded-full text-xs cursor-pointer transition-colors ${
+              className={`px-[10px] py-1 rounded-[20px] text-[11px] cursor-pointer transition-all duration-150 border ${
                 product.features.includes(feat)
-                  ? 'bg-accent text-black'
-                  : 'bg-surface border border-border text-muted hover:border-accent/50'
+                  ? 'bg-accent-dim border-accent text-accent2'
+                  : 'bg-transparent border-border text-text3 hover:border-border2'
               }`}
               onClick={() => toggleFeature(feat)}
             >
@@ -76,11 +97,13 @@ export default function ProductForm() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="memo" className="text-sm text-muted">메모 (선택)</label>
+      {/* Memo */}
+      <div className="flex flex-col gap-[6px]">
+        <label className="text-[11px] font-medium text-text2 flex items-center gap-[5px]">
+          <span className="w-1 h-1 rounded-full bg-text3 opacity-70" />메모 (선택)
+        </label>
         <textarea
-          id="memo"
-          className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
+          className="w-full bg-surface2 border border-border rounded-lg px-[11px] py-2 text-[12.5px] text-text font-sans placeholder:text-text3 focus:outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--color-accent-dim)] transition-[border-color,box-shadow] duration-150 resize-y min-h-[68px] leading-[1.6]"
           rows={3}
           placeholder="색상, 소재, 특징 등 AI에게 전달할 추가 정보"
           value={product.memo}
