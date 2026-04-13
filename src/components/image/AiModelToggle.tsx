@@ -14,14 +14,9 @@ export default function AiModelToggle() {
   } = useImageStore()
 
   const [generating, setGenerating] = useState(false)
-  const [generated, setGenerated] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
   const generate = useCallback(async () => {
-    if (generated) {
-      setErrorMsg('이번 세션에서 이미 생성했습니다.')
-      return
-    }
     if (!product.name && images.length === 0) {
       setErrorMsg('상품명을 입력하거나 이미지를 먼저 업로드해주세요.')
       return
@@ -42,7 +37,6 @@ export default function AiModelToggle() {
       })
       if (result.image) {
         addImages([result.image])
-        setGenerated(true)
       }
     } catch (err) {
       if (err instanceof ApiError) {
@@ -58,7 +52,7 @@ export default function AiModelToggle() {
     } finally {
       setGenerating(false)
     }
-  }, [product, images, aiModelGender, generated, addImages])
+  }, [product, images, aiModelGender, addImages])
 
   return (
     <div>
@@ -164,20 +158,20 @@ export default function AiModelToggle() {
           <div style={{ padding: '4px 18px 8px' }}>
             <button
               onClick={generate}
-              disabled={generating || generated}
+              disabled={generating}
               style={{
                 width: '100%',
                 padding: '8px',
                 borderRadius: '7px',
                 fontSize: '11px',
                 fontWeight: 700,
-                background: generating || generated ? 'var(--surface3)' : 'var(--green)',
+                background: generating ? 'var(--surface3)' : 'var(--green)',
                 border: 'none',
-                color: generating || generated ? 'var(--text3)' : '#fff',
-                cursor: generating || generated ? 'not-allowed' : 'pointer',
+                color: generating ? 'var(--text3)' : '#fff',
+                cursor: generating ? 'not-allowed' : 'pointer',
               }}
             >
-              {generating ? '생성 중...' : generated ? '생성됨 ✓' : '🧑 이미지 생성'}
+              {generating ? '생성 중...' : '🧑 이미지 생성'}
             </button>
 
             {/* Error message */}
