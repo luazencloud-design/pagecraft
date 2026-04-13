@@ -41,7 +41,7 @@ export default function Modal({
             <h3 className="text-lg font-semibold text-text">{title}</h3>
             <button
               onClick={onClose}
-              className="text-muted hover:text-text transition-colors cursor-pointer"
+              className="text-text3 hover:text-text transition-colors cursor-pointer"
             >
               ✕
             </button>

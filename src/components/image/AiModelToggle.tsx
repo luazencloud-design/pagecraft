@@ -4,7 +4,6 @@ import { useState, useCallback } from 'react'
 import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
 import { api, ApiError } from '@/lib/api'
-import { showToast } from '@/components/ui/Toast'
 
 export default function AiModelToggle() {
   const { product } = useProductStore()
@@ -19,7 +18,7 @@ export default function AiModelToggle() {
 
   const generate = useCallback(async () => {
     if (generated) {
-      showToast('이번 세션에서 이미 생성했습니다', 'info')
+      setErrorMsg('이번 세션에서 이미 생성했습니다.')
       return
     }
     if (!product.name && images.length === 0) {
@@ -39,10 +38,8 @@ export default function AiModelToggle() {
       if (result.image) {
         addImages([result.image])
         setGenerated(true)
-        showToast('AI 모델 이미지가 생성되었습니다')
       }
     } catch (err) {
-      console.error('AI 모델 이미지 생성 실패:', err)
       if (err instanceof ApiError) {
         try {
           const body = JSON.parse(err.message)
@@ -59,66 +56,142 @@ export default function AiModelToggle() {
   }, [product, images, aiModelGender, generated, addImages])
 
   return (
-    <div className="border border-border rounded-lg p-3 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-text">AI 모델 이미지 생성</label>
-          <span className="text-[10px] bg-green/20 text-green px-1.5 py-0.5 rounded font-medium">AI</span>
-        </div>
+    <div>
+      {/* Row 1: [toggle] [label] [badge] */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 18px 4px' }}>
+        {/* Toggle */}
         <button
-          className={`w-8 h-[18px] rounded-full relative transition-colors cursor-pointer ${aiModelEnabled ? 'bg-accent' : 'bg-border'}`}
           onClick={() => setAiModelEnabled(!aiModelEnabled)}
+          style={{
+            width: '34px',
+            height: '18px',
+            borderRadius: '9px',
+            background: aiModelEnabled ? 'var(--accent)' : 'var(--surface3)',
+            border: `1px solid ${aiModelEnabled ? 'var(--accent)' : 'var(--border2)'}`,
+            cursor: 'pointer',
+            position: 'relative',
+            transition: 'all 0.2s',
+            flexShrink: 0,
+            padding: 0,
+          }}
         >
-          <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow transition-all ${aiModelEnabled ? 'left-[14px]' : 'left-[2px]'}`} />
+          <div
+            style={{
+              position: 'absolute',
+              top: '2px',
+              left: '2px',
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              background: aiModelEnabled ? '#0c0c10' : 'var(--text2)',
+              transition: 'all 0.2s',
+              transform: aiModelEnabled ? 'translateX(16px)' : 'translateX(0)',
+            }}
+          />
         </button>
+
+        {/* Label */}
+        <span style={{ fontSize: '11px', color: 'var(--text2)', flex: 1 }}>
+          AI 모델 이미지 생성
+        </span>
+
+        {/* Badge — green, NOT accent */}
+        <span
+          style={{
+            fontSize: '9px',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            background: 'rgba(62,207,142,0.12)',
+            color: 'var(--green)',
+            fontWeight: 600,
+          }}
+        >
+          AI
+        </span>
       </div>
 
       {aiModelEnabled && (
         <>
-          <div className="flex gap-2">
-            <button
-              className={`flex-1 px-3 py-1.5 rounded text-xs cursor-pointer transition-colors ${aiModelGender === 'female' ? 'bg-accent text-black' : 'bg-surface border border-border text-muted'}`}
-              onClick={() => setAiModelGender('female')}
+          {/* Row 2: gender row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 18px 6px' }}>
+            <div
+              style={{
+                display: 'flex',
+                border: '1px solid var(--border2)',
+                borderRadius: '6px',
+                overflow: 'hidden',
+              }}
             >
-              여성
-            </button>
-            <button
-              className={`flex-1 px-3 py-1.5 rounded text-xs cursor-pointer transition-colors ${aiModelGender === 'male' ? 'bg-accent text-black' : 'bg-surface border border-border text-muted'}`}
-              onClick={() => setAiModelGender('male')}
-            >
-              남성
-            </button>
+              <button
+                onClick={() => setAiModelGender('female')}
+                style={{
+                  padding: '4px 12px',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  background: aiModelGender === 'female' ? 'var(--accent)' : 'var(--surface2)',
+                  color: aiModelGender === 'female' ? '#0c0c10' : 'var(--text3)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                여성
+              </button>
+              <button
+                onClick={() => setAiModelGender('male')}
+                style={{
+                  padding: '4px 12px',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  background: aiModelGender === 'male' ? 'var(--accent)' : 'var(--surface2)',
+                  color: aiModelGender === 'male' ? '#0c0c10' : 'var(--text3)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                남성
+              </button>
+            </div>
           </div>
 
-          <button
-            className={`w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center justify-center gap-2 ${
-              generated
-                ? 'bg-green/20 text-green border border-green/30'
-                : 'bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20'
-            }`}
-            onClick={generate}
-            disabled={generating || generated}
-          >
-            {generating ? (
-              <>
-                <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                </svg>
-                생성 중...
-              </>
-            ) : generated ? (
-              '생성됨 ✓'
-            ) : (
-              '🧑 이미지 생성'
-            )}
-          </button>
+          {/* Row 3: generate button — GREEN */}
+          <div style={{ padding: '4px 18px 8px' }}>
+            <button
+              onClick={generate}
+              disabled={generating || generated}
+              style={{
+                width: '100%',
+                padding: '8px',
+                borderRadius: '7px',
+                fontSize: '11px',
+                fontWeight: 700,
+                background: generating || generated ? 'var(--surface3)' : 'var(--green)',
+                border: 'none',
+                color: generating || generated ? 'var(--text3)' : '#fff',
+                cursor: generating || generated ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {generating ? '생성 중...' : generated ? '생성됨 ✓' : '🧑 이미지 생성'}
+            </button>
 
-          {errorMsg && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-xs text-red-400">
-              {errorMsg}
-            </div>
-          )}
+            {/* Error message */}
+            {errorMsg && (
+              <div
+                style={{
+                  marginTop: '6px',
+                  background: 'rgba(248,113,113,0.08)',
+                  border: '1px solid rgba(248,113,113,0.2)',
+                  borderRadius: '8px',
+                  padding: '8px 13px',
+                  fontSize: '12px',
+                  color: 'var(--red)',
+                }}
+              >
+                {errorMsg}
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>

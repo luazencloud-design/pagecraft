@@ -160,7 +160,7 @@ export default function CropEditor({ imageData, imageId, onClose }: CropEditorPr
             {(['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
               <div
                 key={corner}
-                className="absolute bg-white border border-gray-400 z-10"
+                className="absolute bg-white border border-border2 z-10"
                 style={{
                   width: handleSize, height: handleSize,
                   cursor: `${corner}-resize`,

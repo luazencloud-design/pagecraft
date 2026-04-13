@@ -1,62 +1,121 @@
 @import "tailwindcss";
 
+/* 원본 pagecraft-pro CSS 변수 — 그대로 복사 */
+:root {
+  --bg: #0c0c10;
+  --surface: #13131a;
+  --surface2: #1a1a24;
+  --surface3: #21212e;
+  --border: rgba(255, 255, 255, 0.06);
+  --border2: rgba(255, 255, 255, 0.12);
+  --accent: #e8c97a;
+  --accent2: #f0dfa0;
+  --accent-dim: rgba(232, 201, 122, 0.12);
+  --text: #f0ede8;
+  --text2: #9998a8;
+  --text3: #555568;
+  --green: #3ecf8e;
+  --red: #f87171;
+  --shadow: rgba(0, 0, 0, 0.4);
+  --font: 'Noto Sans KR', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --serif: 'Playfair Display', serif;
+}
+
+:root.light {
+  --bg: #f4f3f0;
+  --surface: #ffffff;
+  --surface2: #f0eeeb;
+  --surface3: #e8e6e2;
+  --border: rgba(0, 0, 0, 0.07);
+  --border2: rgba(0, 0, 0, 0.14);
+  --accent: #9b6e1a;
+  --accent2: #7a5210;
+  --accent-dim: rgba(155, 110, 26, 0.10);
+  --text: #1a1a1a;
+  --text2: #5a5a6a;
+  --text3: #aaaabc;
+  --green: #1a7a50;
+  --red: #c0392b;
+  --shadow: rgba(0, 0, 0, 0.12);
+}
+
+/* Tailwind 테마 — @theme 블록은 Tailwind 유틸리티용 */
 @theme {
-  --color-bg: #0c0c10;
-  --color-surface: #13131a;
-  --color-accent: #e8c97a;
-  --color-text: #f0ede8;
-  --color-muted: #888888;
-  --color-border: #2a2a35;
-  --color-green: #3ecf8e;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface2: var(--surface2);
+  --color-surface3: var(--surface3);
+  --color-border: var(--border);
+  --color-border2: var(--border2);
+  --color-accent: var(--accent);
+  --color-accent2: var(--accent2);
+  --color-accent-dim: var(--accent-dim);
+  --color-text: var(--text);
+  --color-text2: var(--text2);
+  --color-text3: var(--text3);
+  --color-green: var(--green);
+  --color-red: var(--red);
+  --color-shadow: var(--shadow);
+
+  --font-sans: var(--font);
+  --font-mono: var(--mono);
+  --font-serif: var(--serif);
 }
 
-/* Light mode */
-.light {
-  --color-bg: #f4f3f0;
-  --color-surface: #ffffff;
-  --color-accent: #9b6e1a;
-  --color-text: #1a1a1a;
-  --color-muted: #666666;
-  --color-border: #e0ddd8;
-  --color-green: #2da86e;
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  overflow: hidden;
+  transition: background 0.3s, color 0.3s;
 }
 
-html {
-  background-color: var(--color-bg);
-  color: var(--color-text);
+/* Panel classes — 원본 그대로 */
+.panel-section { padding: 20px 18px 8px; }
+.panel-section-title {
+  font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text3); margin-bottom: 12px;
 }
+.field-group { padding: 0 18px 10px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 18px 10px; }
+.chip {
+  padding: 4px 10px; border-radius: 20px; font-size: 11px; cursor: pointer;
+  border: 1px solid var(--border); background: transparent; color: var(--text2);
+  transition: all 0.15s; font-family: var(--font);
+}
+.chip:hover { border-color: var(--border2); color: var(--text); }
+.chip.on { background: var(--accent-dim); border-color: var(--accent); color: var(--accent2); }
+.gen-wrap { padding: 14px 18px 20px; margin-top: auto; }
+.divider { height: 1px; background: var(--border); margin: 8px 0; }
 
-body {
-  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
-}
+/* Panel body scrollbar — 3px */
+.panel-body-scroll::-webkit-scrollbar { width: 3px; }
+.panel-body-scroll::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 2px; }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-muted);
-}
+/* Scrollbar — 원본 그대로 */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 2px; }
 
-/* Animations */
+/* 패널 스크롤바 */
+.left-panel-scroll::-webkit-scrollbar { width: 3px; }
+.left-panel-scroll::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 2px; }
+
+/* Toast 애니메이션 */
 @keyframes slide-in-from-right {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
-
 .animate-in.slide-in-from-right {
   animation: slide-in-from-right 0.3s ease-out;
+}
+
+/* AI Ring 애니메이션 */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.1); }
 }

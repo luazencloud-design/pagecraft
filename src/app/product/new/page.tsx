@@ -16,8 +16,13 @@ import { useEditorStore } from '@/stores/editorStore'
 import { useAIGenerate } from '@/hooks/useAIGenerate'
 import { showToast } from '@/components/ui/Toast'
 
+const FEATURES = [
+  '방수', '방풍', '보온', '경량', '신축성', 'UV차단', '친환경', '남녀공용',
+  '캠핑', '일상착용', '선물용', '커플',
+]
+
 export default function ProductNewPage() {
-  const { product } = useProductStore()
+  const { product, setProduct } = useProductStore()
   const { images, storeIntroImage, termsImage, setStoreIntroImage, setTermsImage } =
     useImageStore()
   const {
@@ -31,6 +36,13 @@ export default function ProductNewPage() {
 
   const canGenerate = images.length > 0 && product.name.trim() !== ''
   const isLoading = isGenerating || isRenderingPng
+
+  const toggleFeature = (feature: string) => {
+    const features = product.features.includes(feature)
+      ? product.features.filter((f) => f !== feature)
+      : [...product.features, feature]
+    setProduct({ features })
+  }
 
   const handleDownload = () => {
     if (!renderedImageUrl) return
@@ -66,151 +78,186 @@ export default function ProductNewPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <Header />
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Panel */}
-        <aside className="w-[450px] border-r border-border overflow-auto p-4 space-y-5 shrink-0">
-          <section>
-            <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-              상품 사진
-            </h2>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '450px 1fr 480px', overflow: 'hidden' }}>
+
+        {/* ── LEFT PANEL ── */}
+        <aside style={{ background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }} className="left-panel-scroll">
+
+          {/* 상품 사진 */}
+          <div className="panel-section">
+            <div className="panel-section-title">상품 사진</div>
             <ImageUploader />
-            <div className="mt-3">
-              <ImageGrid />
-            </div>
-            <div className="mt-3">
-              <BgRemovalToggle />
-            </div>
-            <div className="mt-3">
-              <AiModelToggle />
-            </div>
-          </section>
+          </div>
 
-          <section>
-            <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-              상품 정보
-            </h2>
-            <ProductForm />
-          </section>
+          {/* 배경 제거 토글 */}
+          <BgRemovalToggle />
 
-          <section className="space-y-3">
-            <h2 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-              추가 이미지
-            </h2>
+          {/* AI 모델 토글 */}
+          <AiModelToggle />
+
+          {/* 썸네일 그리드 — 토글 아래 */}
+          <ImageGrid />
+
+          <div className="divider" />
+
+          {/* 상품 정보 */}
+          <div className="panel-section">
+            <div className="panel-section-title">상품 정보</div>
+          </div>
+          <ProductForm />
+
+          <div className="divider" />
+
+          {/* 스토어 소개 */}
+          <div className="panel-section">
+            <div className="panel-section-title">스토어 소개 (헤더 위)</div>
+          </div>
+          <div style={{ padding: '0 18px 8px' }}>
             <SingleImageUpload
-              label="매장 소개 이미지"
+              label="스토어 소개 이미지"
+              icon="🏪"
+              description={'상세페이지 맨 위(헤더 위)에 표시\n이미지 파일 1장'}
               imageData={storeIntroImage}
               onImageChange={setStoreIntroImage}
             />
+          </div>
+
+          <div className="divider" />
+
+          {/* 약관 */}
+          <div className="panel-section">
+            <div className="panel-section-title">약관 (푸터 아래)</div>
+          </div>
+          <div style={{ padding: '0 18px 8px' }}>
             <SingleImageUpload
-              label="교환/반품 안내 이미지"
+              label="약관 이미지"
+              icon="📜"
+              description={'상세페이지 맨 아래(푸터 아래)에 표시\n이미지 파일 1장'}
               imageData={termsImage}
               onImageChange={setTermsImage}
             />
-          </section>
+          </div>
 
-          <Button
-            className="w-full"
-            size="lg"
-            loading={isLoading}
-            disabled={!canGenerate}
-            onClick={generateContent}
-          >
-            {isLoading ? '생성 중...' : '✦ AI 상세페이지 생성'}
-          </Button>
+          <div className="divider" />
+
+          {/* 강조 특징 */}
+          <div className="panel-section">
+            <div className="panel-section-title">강조 특징</div>
+          </div>
+          <div className="chip-row">
+            {FEATURES.map((feat) => (
+              <button
+                key={feat}
+                className={`chip${product.features.includes(feat) ? ' on' : ''}`}
+                onClick={() => toggleFeature(feat)}
+              >
+                {feat}
+              </button>
+            ))}
+          </div>
+
+          <div className="divider" />
+
+          {/* 생성 버튼 */}
+          <div className="gen-wrap">
+            <Button
+              className="w-full"
+              size="lg"
+              loading={isLoading}
+              disabled={!canGenerate}
+              onClick={generateContent}
+            >
+              {isLoading ? '생성 중...' : '✦ AI 상세페이지 생성'}
+            </Button>
+          </div>
         </aside>
 
-        {/* Center — 미리보기 */}
-        <main className="flex-1 overflow-auto p-6 flex flex-col items-center bg-bg">
-          {/* Canvas toolbar */}
-          {generatedContent && (
-            <div className="w-full max-w-[660px] flex items-center justify-between mb-3">
-              <span className="text-xs text-muted font-mono">preview.html</span>
-              <div className="flex gap-2">
+        {/* ── CENTER CANVAS ── */}
+        <main style={{ background: 'var(--bg)', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '28px 20px' }}>
+          {/* Canvas toolbar — preview.html always visible */}
+          <div style={{ width: '100%', maxWidth: 660, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+            <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginRight: 'auto' }}>preview.html</span>
+            {generatedContent && (
+              <>
                 <button
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border border-border text-muted hover:text-text hover:border-accent/50 transition-colors cursor-pointer"
+                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border2)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text)' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text2)' }}
                   onClick={handleCopyAll}
                 >
                   📋 전체 복사
                 </button>
                 <button
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-accent text-black font-medium hover:bg-accent/90 transition-colors cursor-pointer"
+                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, background: 'var(--accent)', border: '1px solid var(--accent)', color: '#0c0c10', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent2)' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)' }}
                   onClick={handleDownload}
                   disabled={!renderedImageUrl}
                 >
                   ⬇ 이미지 저장
                 </button>
-              </div>
-            </div>
-          )}
+              </>
+            )}
+          </div>
 
           {/* Preview frame */}
-          <div className="max-w-[660px] w-full bg-surface rounded-2xl border border-border flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 160px)' }}>
+          <div style={{ width: '100%', maxWidth: 660, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', overflowY: 'auto', minHeight: 500 }}>
             {/* Browser bar */}
-            <div className="h-9 bg-[#1a1a22] flex items-center px-4 gap-2 shrink-0">
-              <div className="flex gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-500/40" />
-                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/40" />
-                <div className="w-2.5 h-2.5 rounded-full bg-green-500/40" />
+            <div style={{ height: 36, background: 'var(--surface2)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 14px', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 5 }}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'rgba(255,95,87,0.4)' }} />
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'rgba(254,188,46,0.4)' }} />
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'rgba(40,200,64,0.4)' }} />
               </div>
-              <div className="flex-1 text-center text-[11px] text-muted/60 font-mono">
-                pagecraft://preview · 상세페이지 미리보기
+              <div style={{ flex: 1, background: 'var(--surface3)', borderRadius: 5, height: 20, display: 'flex', alignItems: 'center', padding: '0 10px' }}>
+                <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--text3)' }}>pagecraft://preview · 상세페이지 미리보기</span>
               </div>
             </div>
 
-            {/* Content area — 스크롤 가능 */}
-            <div className="bg-white min-h-[400px] overflow-auto">
-              {/* Loading state */}
-              {isLoading && (
-                <div className="flex flex-col items-center justify-center py-20 space-y-6">
-                  <div className="relative w-16 h-16">
-                    <div className="absolute inset-0 rounded-full border-2 border-accent/30 animate-spin" style={{ animationDuration: '3s' }} />
-                    <div className="absolute inset-1 rounded-full border-2 border-transparent border-t-accent animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }} />
-                    <div className="absolute inset-3 rounded-full bg-accent/20 animate-pulse" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-700">{loadingMessage || '처리 중...'}</p>
-                    <p className="text-xs text-gray-400 mt-1">잠시만 기다려주세요</p>
-                  </div>
+            {/* Loading state */}
+            {isLoading && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 30px', textAlign: 'center' }}>
+                <div style={{ width: 64, height: 64, position: 'relative', marginBottom: 24 }}>
+                  <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-accent animate-[spin_1s_linear_infinite]" />
+                  <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-green animate-[spin_1.5s_linear_infinite_reverse]" />
+                  <div className="absolute inset-[18px] rounded-full bg-accent-dim border border-accent animate-[pulse_2s_ease-in-out_infinite]" />
                 </div>
-              )}
+                <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', marginBottom: 5 }}>{loadingMessage || '처리 중...'}</p>
+                <p style={{ fontSize: 11, color: 'var(--text2)', fontFamily: 'var(--mono)' }}>잠시만 기다려주세요</p>
+              </div>
+            )}
 
-              {/* Empty state */}
-              {!isLoading && !renderedImageUrl && (
-                <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                  <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center text-3xl">
-                    🛍
-                  </div>
-                  <div className="text-center">
-                    <p className="text-base font-semibold text-gray-700">상품 정보를 입력해주세요</p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      사진을 업로드하고 상품 정보를 입력한 뒤
-                      <br />
-                      AI 생성 버튼을 누르면 바로 만들어집니다.
-                    </p>
-                  </div>
+            {/* Empty state */}
+            {!isLoading && !renderedImageUrl && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 30px', textAlign: 'center' }}>
+                <div style={{ width: 72, height: 72, background: 'var(--surface2)', borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, marginBottom: 20, border: '1px solid var(--border)' }}>
+                  🛍
                 </div>
-              )}
+                <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 8, color: 'var(--text)' }}>상품 정보를 입력해주세요</h3>
+                <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.7 }}>
+                  사진을 업로드하고 상품 정보를 입력한 뒤<br />AI 생성 버튼을 누르면 바로 만들어집니다.
+                </p>
+              </div>
+            )}
 
-              {/* Result preview */}
-              {!isLoading && renderedImageUrl && (
+            {/* Result preview */}
+            {!isLoading && renderedImageUrl && (
+              <div style={{ padding: 20 }}>
                 <img
                   src={renderedImageUrl}
                   alt="상세페이지 미리보기"
-                  className="w-full"
+                  style={{ width: '100%', borderRadius: 8, display: 'block' }}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </main>
 
-        {/* Right Panel */}
-        <aside className="w-[480px] border-l border-border shrink-0 flex flex-col overflow-hidden">
+        {/* ── RIGHT PANEL ── */}
+        <aside style={{ background: 'var(--surface)', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <ResultTabs />
         </aside>
       </div>

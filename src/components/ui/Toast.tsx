@@ -30,25 +30,17 @@ export default function ToastContainer() {
 
   useEffect(() => {
     addToastFn = addToast
-    return () => {
-      addToastFn = null
-    }
+    return () => { addToastFn = null }
   }, [addToast])
 
   if (toasts.length === 0) return null
 
-  const typeColors = {
-    success: 'bg-green-500',
-    error: 'bg-red-500',
-    info: 'bg-accent',
-  }
-
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+    <div className="fixed bottom-[30px] left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-2">
       {toasts.map((t) => (
         <div
           key={t.id}
-          className={`${typeColors[t.type]} text-black px-4 py-2 rounded-lg shadow-lg text-sm font-medium animate-in slide-in-from-right`}
+          className="bg-surface2 border border-border2 rounded-lg px-[18px] py-[10px] text-[13px] text-text shadow-[0_8px_32px_rgba(0,0,0,0.6)] animate-in slide-in-from-right"
         >
           {t.text}
         </div>

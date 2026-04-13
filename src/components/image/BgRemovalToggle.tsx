@@ -20,27 +20,82 @@ export default function BgRemovalToggle() {
   const isWorking = isModelLoading || isProcessing
 
   return (
-    <div className="border border-border rounded-lg p-3 space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-text">배경 자동 제거</label>
-          <span className="text-[10px] bg-green/20 text-green px-1.5 py-0.5 rounded font-medium">AI</span>
-        </div>
+    <div>
+      {/* Row: [toggle] [label] [badge] */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 18px 4px' }}>
+        {/* Toggle */}
         <button
-          className={`w-8 h-[18px] rounded-full relative transition-colors cursor-pointer ${bgRemoveEnabled ? 'bg-accent' : 'bg-border'}`}
           onClick={toggle}
           disabled={isWorking}
+          style={{
+            width: '34px',
+            height: '18px',
+            borderRadius: '9px',
+            background: bgRemoveEnabled ? 'var(--accent)' : 'var(--surface3)',
+            border: `1px solid ${bgRemoveEnabled ? 'var(--accent)' : 'var(--border2)'}`,
+            cursor: isWorking ? 'not-allowed' : 'pointer',
+            position: 'relative',
+            transition: 'all 0.2s',
+            flexShrink: 0,
+            padding: 0,
+          }}
         >
-          <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow transition-all ${bgRemoveEnabled ? 'left-[14px]' : 'left-[2px]'}`} />
+          <div
+            style={{
+              position: 'absolute',
+              top: '2px',
+              left: '2px',
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              background: bgRemoveEnabled ? '#0c0c10' : 'var(--text2)',
+              transition: 'all 0.2s',
+              transform: bgRemoveEnabled ? 'translateX(16px)' : 'translateX(0)',
+            }}
+          />
         </button>
+
+        {/* Label */}
+        <span style={{ fontSize: '11px', color: 'var(--text2)', flex: 1 }}>
+          배경 자동 제거
+        </span>
+
+        {/* Badge */}
+        <span
+          style={{
+            fontSize: '9px',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            background: 'var(--accent-dim)',
+            color: 'var(--accent)',
+            fontWeight: 600,
+          }}
+        >
+          AI
+        </span>
       </div>
 
+      {/* Progress bar row */}
       {isWorking && (
-        <div className="space-y-1">
-          <div className="h-1 bg-border rounded-full overflow-hidden">
-            <div className="h-full bg-accent rounded-full animate-pulse" style={{ width: '60%' }} />
+        <div style={{ padding: '0 18px', marginTop: '4px' }}>
+          <div
+            style={{
+              height: '3px',
+              background: 'var(--surface3)',
+              borderRadius: '2px',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                height: '100%',
+                background: 'var(--accent)',
+                borderRadius: '2px',
+                width: typeof progress === 'number' ? `${progress}%` : '60%',
+                transition: 'width 0.3s',
+              }}
+            />
           </div>
-          <p className="text-[11px] text-muted">{progress}</p>
         </div>
       )}
     </div>

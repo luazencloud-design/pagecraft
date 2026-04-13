@@ -30,13 +30,12 @@ export default function ImageGrid() {
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-1.5">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px', padding: '6px 18px 0' }}>
         {images.map((img, idx) => (
           <div
             key={img.id}
-            className={`relative aspect-square rounded-lg overflow-hidden border group cursor-grab active:cursor-grabbing transition-all ${
-              dragIdx === idx ? 'border-accent opacity-50' : 'border-border'
-            }`}
+            style={{ position: 'relative', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${dragIdx === idx ? 'var(--accent)' : 'var(--border)'}`, cursor: 'pointer', transition: 'border-color 0.15s', opacity: dragIdx === idx ? 0.4 : 1 }}
+            className="group"
             draggable
             onDragStart={() => handleDragStart(idx)}
             onDragOver={(e) => handleDragOver(e, idx)}
@@ -46,24 +45,20 @@ export default function ImageGrid() {
             <img
               src={img.dataUrl}
               alt={`상품 이미지 ${idx + 1}`}
-              className="w-full h-full object-cover"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
 
-            {/* Index badge */}
-            <div className="absolute top-1 left-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
-              {idx + 1}
-            </div>
-
-            {/* BG removed badge */}
+            {/* BG done badge */}
             {img.bgRemoved && (
-              <div className="absolute top-1 left-7 bg-green/80 text-white text-[9px] px-1 py-0.5 rounded">
+              <div style={{ position: 'absolute', top: '3px', left: '3px', width: '16px', height: '16px', borderRadius: '50%', background: 'var(--green)', color: '#fff', fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
                 ✓
               </div>
             )}
 
             {/* Crop button */}
             <button
-              className="absolute bottom-1 right-7 bg-black/60 text-white text-[10px] w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-black/80"
+              style={{ position: 'absolute', bottom: '3px', right: '3px', width: '18px', height: '18px', borderRadius: '4px', background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff', fontSize: '10px', cursor: 'pointer', zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.15s' }}
+              className="group-hover:opacity-100"
               onClick={(e) => {
                 e.stopPropagation()
                 setCropIdx(idx)
@@ -75,7 +70,8 @@ export default function ImageGrid() {
 
             {/* Delete button */}
             <button
-              className="absolute top-1 right-1 bg-red-500/80 text-white text-[10px] w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-red-600"
+              style={{ position: 'absolute', top: '3px', right: '3px', width: '18px', height: '18px', borderRadius: '50%', background: 'rgba(0,0,0,0.75)', border: 'none', color: '#fff', fontSize: '10px', cursor: 'pointer', opacity: 0, transition: 'opacity 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              className="group-hover:opacity-100"
               onClick={(e) => {
                 e.stopPropagation()
                 removeImage(img.id)
@@ -90,11 +86,11 @@ export default function ImageGrid() {
       {/* Preview modal */}
       {previewIdx !== null && images[previewIdx] && (
         <div
-          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70"
+          style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
           onClick={() => setPreviewIdx(null)}
         >
           <button
-            className="absolute top-4 right-4 text-white/70 hover:text-white text-2xl cursor-pointer"
+            style={{ position: 'fixed', top: '20px', right: '24px', width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: '18px', cursor: 'pointer', zIndex: 10001 }}
             onClick={() => setPreviewIdx(null)}
           >
             ✕
@@ -102,7 +98,7 @@ export default function ImageGrid() {
           <img
             src={images[previewIdx].dataUrl}
             alt="미리보기"
-            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
+            style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: '12px', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}
           />
         </div>
       )}
