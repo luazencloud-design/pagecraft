@@ -5,7 +5,7 @@ import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
 import { useEditorStore } from '@/stores/editorStore'
 import { api } from '@/lib/api'
-import { compressForAI, compressForRender } from '@/lib/image'
+import { compressForAI } from '@/lib/image'
 import type {
   GeneratedContent,
   GeneratedTitle,
@@ -73,23 +73,14 @@ export function useAIGenerate() {
       setIsRenderingPng(true)
       setLoadingMessage('상세페이지 이미지를 생성하고 있습니다...')
 
-      // 렌더용 — 600px, 0.7 품질로 압축 (화질 유지 + Vercel 제한 대응)
+      // 렌더용 — 이미 800px/0.8로 저장돼 있으므로 원본 그대로 전송
       const latestImages = useImageStore.getState().images
-      const renderImages = await Promise.all(
-        latestImages.map((img) => compressForRender(img.dataUrl))
-      )
-      const storeIntroRaw = useImageStore.getState().storeIntroImage
-      const termsRaw = useImageStore.getState().termsImage
-      const [storeIntroCompressed, termsCompressed] = await Promise.all([
-        storeIntroRaw ? compressForRender(storeIntroRaw) : Promise.resolve(undefined),
-        termsRaw ? compressForRender(termsRaw) : Promise.resolve(undefined),
-      ])
       const pngBlob = await api.post<Blob>('/api/render', {
         data: result,
         price: product.price,
-        images: renderImages,
-        storeIntroImage: storeIntroCompressed,
-        termsImage: termsCompressed,
+        images: latestImages.map((img) => img.dataUrl),
+        storeIntroImage: useImageStore.getState().storeIntroImage || undefined,
+        termsImage: useImageStore.getState().termsImage || undefined,
       })
 
       if (pngBlob instanceof Blob) {
