@@ -72,6 +72,28 @@ html, body {
   transition: background 0.3s, color 0.3s;
 }
 
+/* Panel classes — 원본 그대로 */
+.panel-section { padding: 20px 18px 8px; }
+.panel-section-title {
+  font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text3); margin-bottom: 12px;
+}
+.field-group { padding: 0 18px 10px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 18px 10px; }
+.chip {
+  padding: 4px 10px; border-radius: 20px; font-size: 11px; cursor: pointer;
+  border: 1px solid var(--border); background: transparent; color: var(--text2);
+  transition: all 0.15s; font-family: var(--font);
+}
+.chip:hover { border-color: var(--border2); color: var(--text); }
+.chip.on { background: var(--accent-dim); border-color: var(--accent); color: var(--accent2); }
+.gen-wrap { padding: 14px 18px 20px; margin-top: auto; }
+.divider { height: 1px; background: var(--border); margin: 8px 0; }
+
+/* Panel body scrollbar — 3px */
+.panel-body-scroll::-webkit-scrollbar { width: 3px; }
+.panel-body-scroll::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 2px; }
+
 /* Scrollbar — 원본 그대로 */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 2px; }

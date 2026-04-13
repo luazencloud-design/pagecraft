@@ -21,6 +21,7 @@ interface ImageState {
   setAiModelEnabled: (enabled: boolean) => void
   setAiModelGender: (gender: 'male' | 'female') => void
   clearImages: () => void
+  resetAll: () => void
 }
 
 export const useImageStore = create<ImageState>()(
@@ -75,6 +76,15 @@ export const useImageStore = create<ImageState>()(
       setAiModelGender: (gender) => set({ aiModelGender: gender }),
       clearImages: () =>
         set({ images: [], storeIntroImage: null, termsImage: null }),
+      resetAll: () =>
+        set({
+          images: [],
+          storeIntroImage: null,
+          termsImage: null,
+          bgRemoveEnabled: false,
+          aiModelEnabled: false,
+          aiModelGender: 'female',
+        }),
     }),
     {
       name: 'pagecraft-images',

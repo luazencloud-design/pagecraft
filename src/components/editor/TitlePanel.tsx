@@ -50,7 +50,7 @@ export default function TitlePanel() {
             className={`absolute top-[11px] right-[11px] px-[9px] py-[3px] bg-surface3 border rounded-[5px] text-[10px] cursor-pointer transition-all duration-150 ${
               copiedRank === title.rank
                 ? 'border-green text-green'
-                : 'border-border text-text2'
+                : 'border-border text-text2 hover:border-border2 hover:text-text'
             }`}
             onClick={() => copyTitle(title.title, title.rank)}
           >

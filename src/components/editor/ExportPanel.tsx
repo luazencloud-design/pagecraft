@@ -50,30 +50,30 @@ export default function ExportPanel() {
   }
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-[13px] font-semibold text-text">내보내기 옵션</h3>
+    <div className="space-y-2">
+      <p className="text-[10px] font-bold text-text3 uppercase tracking-[2px] mb-[14px]">내보내기 옵션</p>
 
       <button
-        className="w-full flex items-center gap-3 p-[14px] rounded-[10px] border border-border hover:border-border2 transition-all duration-150 cursor-pointer text-left"
+        className="w-full flex items-center gap-3 p-[14px] bg-surface2 rounded-[10px] border border-border hover:border-border2 transition-all duration-150 cursor-pointer text-left mb-2"
         onClick={downloadPng}
         disabled={!renderedImageUrl}
       >
-        <div className="w-9 h-9 rounded-lg bg-surface3 flex items-center justify-center text-lg">🖼</div>
+        <div className="w-9 h-9 rounded-[8px] bg-surface3 flex items-center justify-center text-[18px] shrink-0">🖼</div>
         <div>
-          <p className="text-[13px] font-semibold text-text">이미지 저장 (PNG)</p>
-          <p className="text-[11px] text-text3">상세페이지 이미지 다운로드</p>
+          <p className="text-[13px] font-semibold text-text mb-[2px]">이미지 저장 (PNG)</p>
+          <p className="text-[11px] text-text2">상세페이지 이미지 다운로드</p>
         </div>
       </button>
 
       <button
-        className="w-full flex items-center gap-3 p-[14px] rounded-[10px] border border-border hover:border-border2 transition-all duration-150 cursor-pointer text-left"
+        className="w-full flex items-center gap-3 p-[14px] bg-surface2 rounded-[10px] border border-border hover:border-border2 transition-all duration-150 cursor-pointer text-left mb-2"
         onClick={copyAll}
         disabled={!generatedContent}
       >
-        <div className="w-9 h-9 rounded-lg bg-surface3 flex items-center justify-center text-lg">📋</div>
+        <div className="w-9 h-9 rounded-[8px] bg-surface3 flex items-center justify-center text-[18px] shrink-0">📋</div>
         <div>
-          <p className="text-[13px] font-semibold text-text">전체 텍스트 복사</p>
-          <p className="text-[11px] text-text3">모든 내용 클립보드 복사</p>
+          <p className="text-[13px] font-semibold text-text mb-[2px]">전체 텍스트 복사</p>
+          <p className="text-[11px] text-text2">모든 내용 클립보드 복사</p>
         </div>
       </button>
     </div>

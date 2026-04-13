@@ -16,7 +16,7 @@ export default function Input({
     <div className="flex flex-col gap-1.5">
       {label && (
         <label htmlFor={id} className="text-[11px] font-medium text-text2 flex items-center gap-[5px]">
-          <span className="w-1 h-1 rounded-full bg-text3 opacity-70" />
+          <span className="w-[5px] h-[5px] rounded-full bg-accent opacity-70" />
           {label}
         </label>
       )}

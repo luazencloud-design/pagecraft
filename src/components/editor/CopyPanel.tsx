@@ -17,7 +17,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
       className={`px-[10px] py-[3px] rounded-[5px] text-[11px] cursor-pointer transition-all duration-150 border ${
         copied
           ? 'border-green text-green'
-          : 'bg-surface3 border-border text-text3 hover:border-border2 hover:text-text2'
+          : 'bg-surface3 border-border text-text2 hover:border-border2 hover:text-text'
       }`}
       onClick={copy}
       title={`${label} 복사`}
@@ -46,7 +46,7 @@ export default function CopyPanel() {
 
   if (!generatedContent) {
     return (
-      <div className="text-center text-text3" style={{ padding: '60px 16px', fontSize: 13, lineHeight: 1.8 }}>
+      <div style={{ textAlign: 'center', padding: '60px 16px', color: 'var(--text3)', fontSize: 13, lineHeight: 1.8 }}>
         생성 후 각 항목을<br />바로 복사할 수 있습니다
       </div>
     )

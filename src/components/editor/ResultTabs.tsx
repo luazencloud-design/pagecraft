@@ -38,7 +38,7 @@ export default function ResultTabs() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-auto p-[14px]">
+      <div className="flex-1 overflow-auto p-[14px] panel-body-scroll">
         {activeTab === 'copy' && <CopyPanel />}
         {activeTab === 'title' && <TitlePanel />}
         {activeTab === 'tags' && <TagPanel />}
