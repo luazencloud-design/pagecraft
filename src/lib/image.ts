@@ -69,6 +69,41 @@ export function cropImage(
   })
 }
 
+/**
+ * AI API 전송용 — 작은 사이즈로 압축 (400px, 품질 0.5)
+ * 원본 보존 필요 없이 AI가 내용만 파악하면 되는 용도
+ */
+export function compressForAI(dataUrl: string): Promise<string> {
+  const AI_MAX = 400
+  const AI_QUALITY = 0.5
+
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      let { width, height } = img
+
+      if (width > AI_MAX || height > AI_MAX) {
+        if (width > height) {
+          height = Math.round((height * AI_MAX) / width)
+          width = AI_MAX
+        } else {
+          width = Math.round((width * AI_MAX) / height)
+          height = AI_MAX
+        }
+      }
+
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, width, height)
+      resolve(canvas.toDataURL('image/jpeg', AI_QUALITY))
+    }
+    img.onerror = reject
+    img.src = dataUrl
+  })
+}
+
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 9)
 }
