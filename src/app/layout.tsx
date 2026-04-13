@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import './globals.css'
 import ToastContainer from '@/components/ui/Toast'
 
@@ -14,17 +15,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: `
+      <body className="bg-bg text-text antialiased">
+        <Script id="theme-init" strategy="beforeInteractive">{`
           (function() {
             var saved = localStorage.getItem('pagecraft-theme');
             if (saved === 'light' || (!saved && !window.matchMedia('(prefers-color-scheme: dark)').matches)) {
               document.documentElement.classList.add('light');
             }
           })();
-        `}} />
-      </head>
-      <body className="bg-bg text-text antialiased">
+        `}</Script>
         {children}
         <ToastContainer />
       </body>
