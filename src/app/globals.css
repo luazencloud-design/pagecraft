@@ -1,70 +1,84 @@
 @import "tailwindcss";
 
+/* 원본 pagecraft-pro CSS 변수 — 그대로 복사 */
+:root {
+  --bg: #0c0c10;
+  --surface: #13131a;
+  --surface2: #1a1a24;
+  --surface3: #21212e;
+  --border: rgba(255, 255, 255, 0.06);
+  --border2: rgba(255, 255, 255, 0.12);
+  --accent: #e8c97a;
+  --accent2: #f0dfa0;
+  --accent-dim: rgba(232, 201, 122, 0.12);
+  --text: #f0ede8;
+  --text2: #9998a8;
+  --text3: #555568;
+  --green: #3ecf8e;
+  --red: #f87171;
+  --shadow: rgba(0, 0, 0, 0.4);
+  --font: 'Noto Sans KR', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --serif: 'Playfair Display', serif;
+}
+
+:root.light {
+  --bg: #f4f3f0;
+  --surface: #ffffff;
+  --surface2: #f0eeeb;
+  --surface3: #e8e6e2;
+  --border: rgba(0, 0, 0, 0.07);
+  --border2: rgba(0, 0, 0, 0.14);
+  --accent: #9b6e1a;
+  --accent2: #7a5210;
+  --accent-dim: rgba(155, 110, 26, 0.10);
+  --text: #1a1a1a;
+  --text2: #5a5a6a;
+  --text3: #aaaabc;
+  --green: #1a7a50;
+  --red: #c0392b;
+  --shadow: rgba(0, 0, 0, 0.12);
+}
+
+/* Tailwind 테마 — @theme 블록은 Tailwind 유틸리티용 */
 @theme {
-  /* 원본 pagecraft-pro 토큰 완전 일치 */
-  --color-bg: #0c0c10;
-  --color-surface: #13131a;
-  --color-surface2: #1a1a24;
-  --color-surface3: #21212e;
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-border2: rgba(255, 255, 255, 0.12);
-  --color-accent: #e8c97a;
-  --color-accent2: #f0dfa0;
-  --color-accent-dim: rgba(232, 201, 122, 0.12);
-  --color-text: #f0ede8;
-  --color-text2: #9998a8;
-  --color-text3: #555568;
-  --color-green: #3ecf8e;
-  --color-red: #f87171;
-  --color-shadow: rgba(0, 0, 0, 0.4);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface2: var(--surface2);
+  --color-surface3: var(--surface3);
+  --color-border: var(--border);
+  --color-border2: var(--border2);
+  --color-accent: var(--accent);
+  --color-accent2: var(--accent2);
+  --color-accent-dim: var(--accent-dim);
+  --color-text: var(--text);
+  --color-text2: var(--text2);
+  --color-text3: var(--text3);
+  --color-green: var(--green);
+  --color-red: var(--red);
+  --color-shadow: var(--shadow);
 
-  --font-sans: 'Noto Sans KR', sans-serif;
-  --font-mono: 'DM Mono', monospace;
-  --font-serif: 'Playfair Display', serif;
-}
-
-/* Light mode */
-.light {
-  --color-bg: #f4f3f0;
-  --color-surface: #ffffff;
-  --color-surface2: #f0eeeb;
-  --color-surface3: #e8e6e2;
-  --color-border: rgba(0, 0, 0, 0.07);
-  --color-border2: rgba(0, 0, 0, 0.14);
-  --color-accent: #9b6e1a;
-  --color-accent2: #7a5210;
-  --color-accent-dim: rgba(155, 110, 26, 0.10);
-  --color-text: #1a1a1a;
-  --color-text2: #5a5a6a;
-  --color-text3: #aaaabc;
-  --color-green: #1a7a50;
-  --color-red: #c0392b;
-  --color-shadow: rgba(0, 0, 0, 0.12);
+  --font-sans: var(--font);
+  --font-mono: var(--mono);
+  --font-serif: var(--serif);
 }
 
-html {
-  background-color: var(--color-bg);
-  color: var(--color-text);
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  overflow: hidden;
+  transition: background 0.3s, color 0.3s;
 }
 
-body {
-  font-family: var(--font-sans);
-}
+/* Scrollbar — 원본 그대로 */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 2px; }
 
-/* Scrollbar — 원본: 패널 3px, 캔버스 4px */
-::-webkit-scrollbar {
-  width: 3px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-surface3);
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text3);
-}
+/* 패널 스크롤바 */
+.left-panel-scroll::-webkit-scrollbar { width: 3px; }
+.left-panel-scroll::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 2px; }
 
 /* Toast 애니메이션 */
 @keyframes slide-in-from-right {

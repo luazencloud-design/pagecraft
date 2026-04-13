@@ -26,7 +26,7 @@ export default function Input({
           w-full px-[11px] py-2 rounded-lg
           bg-surface2 border border-border
           text-[12.5px] text-text font-sans placeholder:text-text3
-          focus:outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--color-accent-dim)]
+          focus:outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-dim)]
           transition-[border-color,box-shadow] duration-150
           ${className}
         `}
