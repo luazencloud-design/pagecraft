@@ -30,9 +30,9 @@ export default function AiModelToggle() {
     setGenerating(true)
     setErrorMsg('')
     try {
-      // AI에는 최대 2장, 400px/0.5 품질로 압축해서 전송 (payload 절약)
+      // AI에는 최대 5장, 400px/0.5 품질로 압축해서 전송 (payload 절약)
       const smallImages = await Promise.all(
-        images.slice(0, 2).map((img) => compressForAI(img.dataUrl))
+        images.slice(0, 5).map((img) => compressForAI(img.dataUrl))
       )
       const result = await api.post<{ image: string }>('/api/image/generate', {
         productName: product.name,
