@@ -30,11 +30,11 @@ export default function TagPanel() {
     <div className="space-y-4">
       <div>
         <h3 className="text-[13px] font-semibold text-text">🏷 쿠팡 태그 20개</h3>
-        <p className="text-[11px] text-text3 mt-1">검색량과 연관성 기반으로 생성됩니다</p>
+        <p className="text-[11px] text-text2 mt-1">검색량과 연관성 기반의 쿠팡 최적화 태그를 생성합니다.</p>
       </div>
 
       <Button
-        className="w-full"
+        className="w-full !py-[10px] !rounded-[8px] !text-[12.5px] !font-bold"
         loading={isGeneratingTags}
         onClick={generateTags}
       >
@@ -42,8 +42,8 @@ export default function TagPanel() {
       </Button>
 
       {generatedTags.length === 0 && !isGeneratingTags && (
-        <p className="text-center text-text3 text-[11px] py-8">
-          태그 클릭 시 개별 복사, 하단 버튼으로 전체 복사
+        <p className="text-center text-text3 text-[12px] py-[30px] px-[16px]">
+          생성 전입니다
         </p>
       )}
 
@@ -58,7 +58,7 @@ export default function TagPanel() {
                     ? 'bg-green/20 border-green text-green'
                     : tag.isTrending
                       ? 'bg-accent-dim border-accent text-accent2'
-                      : 'bg-transparent border-border text-text2 hover:border-border2'
+                      : 'bg-surface2 border-border text-text2 hover:border-accent hover:text-accent'
                 }`}
                 onClick={() => copyTag(tag.text, i)}
               >
@@ -68,10 +68,10 @@ export default function TagPanel() {
           </div>
 
           <button
-            className={`w-full px-3 py-2 rounded-[10px] text-[12px] font-semibold cursor-pointer transition-all duration-150 border ${
+            className={`w-full px-3 py-[9px] rounded-[8px] text-[12px] cursor-pointer transition-all duration-150 border ${
               allCopied
                 ? 'bg-green/20 border-green text-green'
-                : 'bg-surface2 border-border text-text2 hover:border-border2'
+                : 'bg-surface2 border-border text-text2 hover:border-border2 hover:text-text'
             }`}
             onClick={copyAllTags}
           >

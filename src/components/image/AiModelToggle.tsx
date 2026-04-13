@@ -56,63 +56,142 @@ export default function AiModelToggle() {
   }, [product, images, aiModelGender, generated, addImages])
 
   return (
-    <div className="border border-border rounded-[10px] p-3 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <label className="text-[12px] text-text">AI 모델 이미지 생성</label>
-          <span className="text-[10px] bg-green/20 text-green px-[6px] py-[2px] rounded font-medium">AI</span>
-        </div>
+    <div>
+      {/* Row 1: [toggle] [label] [badge] */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 18px 4px' }}>
+        {/* Toggle */}
         <button
-          className={`w-9 h-5 rounded-[10px] relative border transition-colors duration-200 cursor-pointer ${aiModelEnabled ? 'bg-accent border-accent' : 'bg-surface3 border-border2'}`}
           onClick={() => setAiModelEnabled(!aiModelEnabled)}
+          style={{
+            width: '34px',
+            height: '18px',
+            borderRadius: '9px',
+            background: aiModelEnabled ? 'var(--accent)' : 'var(--surface3)',
+            border: `1px solid ${aiModelEnabled ? 'var(--accent)' : 'var(--border2)'}`,
+            cursor: 'pointer',
+            position: 'relative',
+            transition: 'all 0.2s',
+            flexShrink: 0,
+            padding: 0,
+          }}
         >
-          <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow transition-transform duration-200 ${aiModelEnabled ? 'translate-x-4' : 'left-[2px]'}`} />
+          <div
+            style={{
+              position: 'absolute',
+              top: '2px',
+              left: '2px',
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              background: aiModelEnabled ? '#0c0c10' : 'var(--text2)',
+              transition: 'all 0.2s',
+              transform: aiModelEnabled ? 'translateX(16px)' : 'translateX(0)',
+            }}
+          />
         </button>
+
+        {/* Label */}
+        <span style={{ fontSize: '11px', color: 'var(--text2)', flex: 1 }}>
+          AI 모델 이미지 생성
+        </span>
+
+        {/* Badge — green, NOT accent */}
+        <span
+          style={{
+            fontSize: '9px',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            background: 'rgba(62,207,142,0.12)',
+            color: 'var(--green)',
+            fontWeight: 600,
+          }}
+        >
+          AI
+        </span>
       </div>
 
       {aiModelEnabled && (
         <>
-          <div className="flex gap-2">
-            <button
-              className={`flex-1 px-3 py-1 rounded-[6px] text-[11px] font-semibold cursor-pointer transition-all duration-150 ${aiModelGender === 'female' ? 'bg-accent text-[#0c0c10]' : 'bg-surface2 border border-border text-text3'}`}
-              onClick={() => setAiModelGender('female')}
+          {/* Row 2: gender row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 18px 6px' }}>
+            <div
+              style={{
+                display: 'flex',
+                border: '1px solid var(--border2)',
+                borderRadius: '6px',
+                overflow: 'hidden',
+              }}
             >
-              여성
-            </button>
-            <button
-              className={`flex-1 px-3 py-1 rounded-[6px] text-[11px] font-semibold cursor-pointer transition-all duration-150 ${aiModelGender === 'male' ? 'bg-accent text-[#0c0c10]' : 'bg-surface2 border border-border text-text3'}`}
-              onClick={() => setAiModelGender('male')}
-            >
-              남성
-            </button>
+              <button
+                onClick={() => setAiModelGender('female')}
+                style={{
+                  padding: '4px 12px',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  background: aiModelGender === 'female' ? 'var(--accent)' : 'var(--surface2)',
+                  color: aiModelGender === 'female' ? '#0c0c10' : 'var(--text3)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                여성
+              </button>
+              <button
+                onClick={() => setAiModelGender('male')}
+                style={{
+                  padding: '4px 12px',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  background: aiModelGender === 'male' ? 'var(--accent)' : 'var(--surface2)',
+                  color: aiModelGender === 'male' ? '#0c0c10' : 'var(--text3)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                남성
+              </button>
+            </div>
           </div>
 
-          <button
-            className={`w-full px-3 py-2 rounded-[10px] text-[12px] font-semibold transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 ${
-              generated
-                ? 'bg-green/20 text-green border border-green/30'
-                : 'bg-accent-dim text-accent border border-accent/30 hover:bg-accent/20'
-            }`}
-            onClick={generate}
-            disabled={generating || generated}
-          >
-            {generating ? (
-              <>
-                <div className="w-[15px] h-[15px] border-2 border-[rgba(232,201,122,0.3)] border-t-accent rounded-full animate-[spin_0.7s_linear_infinite]" />
-                생성 중...
-              </>
-            ) : generated ? (
-              '생성됨 ✓'
-            ) : (
-              '🧑 이미지 생성'
-            )}
-          </button>
+          {/* Row 3: generate button — GREEN */}
+          <div style={{ padding: '4px 18px 8px' }}>
+            <button
+              onClick={generate}
+              disabled={generating || generated}
+              style={{
+                width: '100%',
+                padding: '8px',
+                borderRadius: '7px',
+                fontSize: '11px',
+                fontWeight: 700,
+                background: generating || generated ? 'var(--surface3)' : 'var(--green)',
+                border: 'none',
+                color: generating || generated ? 'var(--text3)' : '#fff',
+                cursor: generating || generated ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {generating ? '생성 중...' : generated ? '생성됨 ✓' : '🧑 이미지 생성'}
+            </button>
 
-          {errorMsg && (
-            <div className="bg-[rgba(248,113,113,0.08)] border border-[rgba(248,113,113,0.2)] rounded-lg px-[13px] py-2 text-[12px] text-red">
-              {errorMsg}
-            </div>
-          )}
+            {/* Error message */}
+            {errorMsg && (
+              <div
+                style={{
+                  marginTop: '6px',
+                  background: 'rgba(248,113,113,0.08)',
+                  border: '1px solid rgba(248,113,113,0.2)',
+                  borderRadius: '8px',
+                  padding: '8px 13px',
+                  fontSize: '12px',
+                  color: 'var(--red)',
+                }}
+              >
+                {errorMsg}
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>
