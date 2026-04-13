@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
 import { api, ApiError } from '@/lib/api'
+import { compressForAI } from '@/lib/image'
 
 export default function AiModelToggle() {
   const { product } = useProductStore()
@@ -13,14 +14,9 @@ export default function AiModelToggle() {
   } = useImageStore()
 
   const [generating, setGenerating] = useState(false)
-  const [generated, setGenerated] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
   const generate = useCallback(async () => {
-    if (generated) {
-      setErrorMsg('이번 세션에서 이미 생성했습니다.')
-      return
-    }
     if (!product.name && images.length === 0) {
       setErrorMsg('상품명을 입력하거나 이미지를 먼저 업로드해주세요.')
       return
@@ -29,15 +25,18 @@ export default function AiModelToggle() {
     setGenerating(true)
     setErrorMsg('')
     try {
+      // AI에는 최대 5장, 400px/0.5 품질로 압축해서 전송 (payload 절약)
+      const smallImages = await Promise.all(
+        images.slice(0, 5).map((img) => compressForAI(img.dataUrl))
+      )
       const result = await api.post<{ image: string }>('/api/image/generate', {
         productName: product.name,
         category: product.category,
         gender: aiModelGender,
-        images: images.map((img) => img.dataUrl),
+        images: smallImages,
       })
       if (result.image) {
         addImages([result.image])
-        setGenerated(true)
       }
     } catch (err) {
       if (err instanceof ApiError) {
@@ -53,7 +52,7 @@ export default function AiModelToggle() {
     } finally {
       setGenerating(false)
     }
-  }, [product, images, aiModelGender, generated, addImages])
+  }, [product, images, aiModelGender, addImages])
 
   return (
     <div>
@@ -159,20 +158,20 @@ export default function AiModelToggle() {
           <div style={{ padding: '4px 18px 8px' }}>
             <button
               onClick={generate}
-              disabled={generating || generated}
+              disabled={generating}
               style={{
                 width: '100%',
                 padding: '8px',
                 borderRadius: '7px',
                 fontSize: '11px',
                 fontWeight: 700,
-                background: generating || generated ? 'var(--surface3)' : 'var(--green)',
+                background: generating ? 'var(--surface3)' : 'var(--green)',
                 border: 'none',
-                color: generating || generated ? 'var(--text3)' : '#fff',
-                cursor: generating || generated ? 'not-allowed' : 'pointer',
+                color: generating ? 'var(--text3)' : '#fff',
+                cursor: generating ? 'not-allowed' : 'pointer',
               }}
             >
-              {generating ? '생성 중...' : generated ? '생성됨 ✓' : '🧑 이미지 생성'}
+              {generating ? '생성 중...' : '🧑 이미지 생성'}
             </button>
 
             {/* Error message */}
