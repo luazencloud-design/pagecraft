@@ -55,6 +55,7 @@ export default function ProductNewPage() {
       scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
+      foreignObjectRendering: true,
     })
     const blob = await new Promise<Blob>((resolve) =>
       canvas.toBlob((b) => resolve(b!), 'image/png')
