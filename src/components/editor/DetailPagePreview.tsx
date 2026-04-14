@@ -23,8 +23,8 @@ const DetailPagePreview = forwardRef<HTMLDivElement, DetailPagePreviewProps>(
       <div
         ref={ref}
         style={{
-          width: 800,
-          fontFamily: "'Pretendard', 'Noto Sans KR', sans-serif",
+          width: '100%',
+          fontFamily: "'Noto Sans KR', sans-serif",
           lineHeight: 1.4,
           overflow: 'hidden',
           background: '#ffffff',
@@ -70,9 +70,9 @@ const DetailPagePreview = forwardRef<HTMLDivElement, DetailPagePreviewProps>(
           </p>
         </div>
 
-        {/* 메인 이미지 — 800x800 cover */}
+        {/* 메인 이미지 — 1:1 cover */}
         {images[0] && (
-          <div style={{ width: 800, height: 800, overflow: 'hidden' }}>
+          <div style={{ width: '100%', aspectRatio: '1', overflow: 'hidden' }}>
             <img
               src={images[0]}
               alt="메인 상품 이미지"

@@ -49,6 +49,8 @@ export default function ProductNewPage() {
   const handleDownload = useCallback(async () => {
     if (!previewRef.current || !generatedContent) return
     showToast('이미지 생성 중...')
+    // 폰트 로딩 대기
+    await document.fonts.ready
     const html2canvas = (await import('html2canvas')).default
     const canvas = await html2canvas(previewRef.current, {
       scale: 2,
@@ -280,17 +282,15 @@ export default function ProductNewPage() {
 
             {/* 실시간 HTML 미리보기 — generatedContent 변경 시 자동 리렌더링 */}
             {!isGenerating && generatedContent && (
-              <div style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{ transform: 'scale(0.825)', transformOrigin: 'top left', width: 800 }}>
-                  <DetailPagePreview
-                    ref={previewRef}
-                    content={generatedContent}
-                    price={product.price}
-                    images={images.map((img) => img.dataUrl)}
-                    storeIntroImage={storeIntroImage}
-                    termsImage={termsImage}
-                  />
-                </div>
+              <div style={{ overflow: 'hidden' }}>
+                <DetailPagePreview
+                  ref={previewRef}
+                  content={generatedContent}
+                  price={product.price}
+                  images={images.map((img) => img.dataUrl)}
+                  storeIntroImage={storeIntroImage}
+                  termsImage={termsImage}
+                />
               </div>
             )}
           </div>
