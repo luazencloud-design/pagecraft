@@ -1,5 +1,5 @@
-const MAX_SIZE = 800
-const QUALITY = 0.8
+const MAX_SIZE = 4096
+const QUALITY = 0.92
 
 export async function compressImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -105,11 +105,6 @@ export function resizeForUpload(dataUrl: string, maxSize: number, quality: numbe
 /** AI 분석용 — 400px, 품질 0.5 */
 export function compressForAI(dataUrl: string) {
   return resizeForUpload(dataUrl, 400, 0.5)
-}
-
-/** 상세페이지 렌더용 — 780px, 품질 0.75 (원본 800px과 거의 동일 화질, Vercel 4.5MB 대응) */
-export function compressForRender(dataUrl: string) {
-  return resizeForUpload(dataUrl, 780, 0.75)
 }
 
 export function generateId(): string {

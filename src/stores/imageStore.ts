@@ -27,7 +27,7 @@ interface ImageState {
   aiModelGender: 'male' | 'female'
   _hydrated: boolean
 
-  addImages: (dataUrls: string[]) => void
+  addImages: (dataUrls: string[], prepend?: boolean) => void
   removeImage: (id: string) => void
   reorderImages: (fromIndex: number, toIndex: number) => void
   updateImage: (id: string, partial: Partial<ProductImage>) => void
@@ -48,24 +48,25 @@ function persistImages(images: ProductImage[]) {
 
 export const useImageStore = create<ImageState>()((set, get) => ({
   images: [],
-  storeIntroImage: loadFromLocal(LS_STORE_INTRO),
-  termsImage: loadFromLocal(LS_TERMS),
+  storeIntroImage: null,
+  termsImage: null,
   bgRemoveEnabled: false,
   aiModelEnabled: false,
   aiModelGender: 'female',
   _hydrated: false,
 
-  addImages: (dataUrls) => {
+  addImages: (dataUrls, prepend) => {
     set((state) => {
-      const newImages = [
-        ...state.images,
-        ...dataUrls.map((dataUrl, i) => ({
-          id: generateId(),
-          dataUrl,
-          bgRemoved: false,
-          order: state.images.length + i,
-        })),
-      ]
+      const incoming = dataUrls.map((dataUrl) => ({
+        id: generateId(),
+        dataUrl,
+        bgRemoved: false,
+        order: 0,
+      }))
+      const merged = prepend
+        ? [...incoming, ...state.images]
+        : [...state.images, ...incoming]
+      const newImages = merged.map((img, i) => ({ ...img, order: i }))
       persistImages(newImages)
       return { images: newImages }
     })
@@ -133,16 +134,19 @@ export const useImageStore = create<ImageState>()((set, get) => ({
     clearImagesFromDB().catch(() => {})
   },
 
-  // IndexedDB에서 이미지 복원
+  // IndexedDB + localStorage에서 복원
   _hydrate: async () => {
     if (get()._hydrated) return
     try {
       const images = await loadImagesFromDB()
-      if (images.length > 0) {
-        set({ images, _hydrated: true })
-      } else {
-        set({ _hydrated: true })
-      }
+      const storeIntro = loadFromLocal(LS_STORE_INTRO)
+      const terms = loadFromLocal(LS_TERMS)
+      set({
+        images: images.length > 0 ? images : [],
+        storeIntroImage: storeIntro,
+        termsImage: terms,
+        _hydrated: true,
+      })
     } catch {
       set({ _hydrated: true })
     }
