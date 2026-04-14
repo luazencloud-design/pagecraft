@@ -131,55 +131,71 @@ function InlineCopy({ text }: { text: string }) {
 }
 
 function SpecBlock({ specs, onUpdate }: { specs: { key: string; value: string }[]; onUpdate: (specs: { key: string; value: string }[]) => void }) {
-  const [editIdx, setEditIdx] = useState<number | null>(null)
-  const [draft, setDraft] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [drafts, setDrafts] = useState<string[]>([])
 
-  const startEdit = (idx: number) => {
-    setDraft(specs[idx].value)
-    setEditIdx(idx)
+  const startEdit = () => {
+    setDrafts(specs.map(s => s.value))
+    setEditing(true)
   }
 
   const save = () => {
-    if (editIdx === null) return
-    const updated = specs.map((s, i) => i === editIdx ? { ...s, value: draft } : s)
-    onUpdate(updated)
-    setEditIdx(null)
+    onUpdate(specs.map((s, i) => ({ ...s, value: drafts[i] })))
+    setEditing(false)
   }
 
   return (
     <div className="bg-surface2 border border-border rounded-[10px] mb-2 overflow-hidden">
       <div className="flex items-center justify-between px-[13px] py-[9px] border-b border-border">
         <span className="text-[11px] font-semibold text-text2">고시정보</span>
-        <CopyButton text={specs.map(s => `${s.key}: ${s.value}`).join('\n')} label="고시정보 전체" />
+        <div className="flex items-center gap-1">
+          {editing ? (
+            <>
+              <button
+                className="px-[8px] py-[2px] rounded-[4px] text-[10px] cursor-pointer border border-green text-green hover:bg-green/10"
+                onClick={save}
+              >
+                ✓ 저장
+              </button>
+              <button
+                className="px-[8px] py-[2px] rounded-[4px] text-[10px] cursor-pointer border border-border text-text3 hover:text-text2"
+                onClick={() => setEditing(false)}
+              >
+                취소
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="px-[8px] py-[2px] rounded-[4px] text-[10px] cursor-pointer border border-border text-text3 hover:border-border2 hover:text-text2"
+                onClick={startEdit}
+              >
+                ✎ 수정
+              </button>
+              <CopyButton text={specs.map(s => `${s.key}: ${s.value}`).join('\n')} label="고시정보 전체" />
+            </>
+          )}
+        </div>
       </div>
       <div className="px-[13px] py-[8px]">
         {specs.map((spec, i) => (
           <div key={i} className="flex items-start gap-2 py-[5px] border-b border-border last:border-b-0" style={{ minHeight: 28 }}>
             <span style={{ fontSize: 11, color: 'var(--text3)', width: 100, flexShrink: 0, paddingTop: 2 }}>{spec.key}</span>
-            {editIdx === i ? (
-              <div className="flex-1 flex items-center gap-1">
-                <input
-                  className="flex-1 bg-transparent border-b border-accent text-[12px] text-text outline-none py-0.5"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && save()}
-                  autoFocus
-                />
-                <button onClick={save} style={{ fontSize: 10, color: 'var(--green)', cursor: 'pointer', background: 'none', border: 'none' }}>✓</button>
-                <button onClick={() => setEditIdx(null)} style={{ fontSize: 10, color: 'var(--text3)', cursor: 'pointer', background: 'none', border: 'none' }}>✕</button>
-              </div>
+            {editing ? (
+              <input
+                className="flex-1 bg-transparent border-b border-accent text-[12px] text-text outline-none py-0.5"
+                value={drafts[i]}
+                onChange={(e) => {
+                  const next = [...drafts]
+                  next[i] = e.target.value
+                  setDrafts(next)
+                }}
+              />
             ) : (
               <div className="flex-1 flex items-start">
                 <span style={{ fontSize: 12, color: 'var(--text2)', flex: 1, paddingTop: 1 }}>
                   {spec.value}
                 </span>
-                <button
-                  onClick={() => startEdit(i)}
-                  title="수정"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, padding: '0 4px', color: 'var(--text3)', flexShrink: 0 }}
-                >
-                  ✎
-                </button>
                 <InlineCopy text={spec.value} />
               </div>
             )}
