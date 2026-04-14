@@ -52,9 +52,6 @@ export default function ProductNewPage() {
     await document.fonts.ready
     const domtoimage = (await import('dom-to-image-more')).default
     const blob = await domtoimage.toBlob(previewRef.current, {
-      width: previewRef.current.scrollWidth * 2,
-      height: previewRef.current.scrollHeight * 2,
-      style: { transform: 'scale(2)', transformOrigin: 'top left' },
       bgcolor: '#ffffff',
     })
     const url = URL.createObjectURL(blob)
