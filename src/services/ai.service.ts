@@ -16,22 +16,36 @@ function safeParseJSON<T>(text: string): T {
   let cleaned = text.trim()
   // ```json ... ``` 코드블록 제거
   cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '')
-  // 제어 문자 제거 (탭/줄바꿈 제외)
-  cleaned = cleaned.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '')
-  // trailing comma 제거 (,] 또는 ,})
+  // JSON 시작/끝 추출
+  const startIdx = cleaned.search(/[\[{]/)
+  const endIdx = Math.max(cleaned.lastIndexOf(']'), cleaned.lastIndexOf('}'))
+  if (startIdx >= 0 && endIdx > startIdx) {
+    cleaned = cleaned.substring(startIdx, endIdx + 1)
+  }
+  // trailing comma 제거
   cleaned = cleaned.replace(/,\s*([}\]])/g, '$1')
 
   try {
     return JSON.parse(cleaned) as T
   } catch {
-    // JSON 시작/끝 위치를 찾아서 재시도
-    const startIdx = cleaned.search(/[\[{]/)
-    const endIdx = Math.max(cleaned.lastIndexOf(']'), cleaned.lastIndexOf('}'))
-    if (startIdx >= 0 && endIdx > startIdx) {
-      const extracted = cleaned.substring(startIdx, endIdx + 1)
-      return JSON.parse(extracted) as T
+    // 문자열 내부의 이스케이프 안 된 줄바꿈/탭을 이스케이프 처리
+    cleaned = cleaned.replace(/"([^"]*?)"/g, (match, inner: string) => {
+      const escaped = inner
+        .replace(/\\/g, '\\\\')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t')
+      return `"${escaped}"`
+    })
+    // trailing comma 다시 제거
+    cleaned = cleaned.replace(/,\s*([}\]])/g, '$1')
+
+    try {
+      return JSON.parse(cleaned) as T
+    } catch (e) {
+      console.error('JSON 파싱 최종 실패. 원본:', text.substring(0, 500))
+      throw new Error(`JSON 파싱 실패: ${(e as Error).message}`)
     }
-    throw new Error(`JSON 파싱 실패: ${text.substring(0, 200)}`)
   }
 }
 
