@@ -107,6 +107,86 @@ function EditableBlock({
   )
 }
 
+function InlineCopy({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  const copy = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1200)
+  }
+  return (
+    <button
+      onClick={copy}
+      title="복사"
+      style={{
+        background: 'none', border: 'none', cursor: 'pointer',
+        fontSize: 11, padding: '0 4px', color: copied ? 'var(--green)' : 'var(--text3)',
+        transition: 'color 0.15s', flexShrink: 0,
+      }}
+    >
+      {copied ? '✓' : '📋'}
+    </button>
+  )
+}
+
+function SpecBlock({ specs, onUpdate }: { specs: { key: string; value: string }[]; onUpdate: (specs: { key: string; value: string }[]) => void }) {
+  const [editIdx, setEditIdx] = useState<number | null>(null)
+  const [draft, setDraft] = useState('')
+
+  const startEdit = (idx: number) => {
+    setDraft(specs[idx].value)
+    setEditIdx(idx)
+  }
+
+  const save = () => {
+    if (editIdx === null) return
+    const updated = specs.map((s, i) => i === editIdx ? { ...s, value: draft } : s)
+    onUpdate(updated)
+    setEditIdx(null)
+  }
+
+  return (
+    <div className="bg-surface2 border border-border rounded-[10px] mb-2 overflow-hidden">
+      <div className="flex items-center justify-between px-[13px] py-[9px] border-b border-border">
+        <span className="text-[11px] font-semibold text-text2">고시정보</span>
+        <CopyButton text={specs.map(s => `${s.key}: ${s.value}`).join('\n')} label="고시정보 전체" />
+      </div>
+      <div className="px-[13px] py-[8px]">
+        {specs.map((spec, i) => (
+          <div key={i} className="flex items-start gap-2 py-[5px] border-b border-border last:border-b-0" style={{ minHeight: 28 }}>
+            <span style={{ fontSize: 11, color: 'var(--text3)', width: 100, flexShrink: 0, paddingTop: 2 }}>{spec.key}</span>
+            {editIdx === i ? (
+              <div className="flex-1 flex items-center gap-1">
+                <input
+                  className="flex-1 bg-transparent border-b border-accent text-[12px] text-text outline-none py-0.5"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && save()}
+                  autoFocus
+                />
+                <button onClick={save} style={{ fontSize: 10, color: 'var(--green)', cursor: 'pointer', background: 'none', border: 'none' }}>✓</button>
+                <button onClick={() => setEditIdx(null)} style={{ fontSize: 10, color: 'var(--text3)', cursor: 'pointer', background: 'none', border: 'none' }}>✕</button>
+              </div>
+            ) : (
+              <div className="flex-1 flex items-start">
+                <span
+                  style={{ fontSize: 12, color: 'var(--text2)', flex: 1, cursor: 'pointer', paddingTop: 1 }}
+                  onClick={() => startEdit(i)}
+                  title="클릭하여 수정"
+                >
+                  {spec.value}
+                </span>
+                <InlineCopy text={spec.value} />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function CopyPanel() {
   const { generatedContent, setGeneratedContent } = useEditorStore()
 
@@ -146,7 +226,11 @@ export default function CopyPanel() {
       <EditableBlock title="메인 카피" text={main_copy} onSave={(v) => update('main_copy', v)} />
       <EditableBlock title="판매포인트" text={selling_points.map((sp, i) => `${i + 1}. ${sp}`).join('\n')} multiline onSave={(v) => update('selling_points', v)} />
       <EditableBlock title="상세설명" text={description} multiline onSave={(v) => update('description', v)} />
-      <EditableBlock title="스펙" text={specs.map((s) => `${s.key}: ${s.value}`).join('\n')} multiline onSave={(v) => update('specs', v)} />
+      {/* 고시정보 — 항목별 인라인 복사 */}
+      <SpecBlock specs={specs} onUpdate={(newSpecs) => {
+        const updated = { ...generatedContent, specs: newSpecs }
+        setGeneratedContent(updated)
+      }} />
       <EditableBlock title="키워드" text={keywords.join(', ')} onSave={(v) => update('keywords', v)} />
       <EditableBlock title="주의사항" text={caution} onSave={(v) => update('caution', v)} />
 
