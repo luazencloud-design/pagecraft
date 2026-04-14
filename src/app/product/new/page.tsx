@@ -50,10 +50,15 @@ export default function ProductNewPage() {
     if (!previewRef.current || !generatedContent) return
     showToast('이미지 생성 중...')
     await document.fonts.ready
-    const domtoimage = (await import('dom-to-image-more')).default
-    const blob = await domtoimage.toBlob(previewRef.current, {
-      bgcolor: '#ffffff',
+    const html2canvas = (await import('html2canvas')).default
+    const canvas = await html2canvas(previewRef.current, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
     })
+    const blob = await new Promise<Blob>((resolve) =>
+      canvas.toBlob((b) => resolve(b!), 'image/png')
+    )
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -274,7 +279,7 @@ export default function ProductNewPage() {
 
             {/* 실시간 HTML 미리보기 — generatedContent 변경 시 자동 리렌더링 */}
             {!isGenerating && generatedContent && (
-              <div style={{ overflow: 'hidden' }}>
+              <div style={{ zoom: 0.825 }}>
                 <DetailPagePreview
                   ref={previewRef}
                   content={generatedContent}
