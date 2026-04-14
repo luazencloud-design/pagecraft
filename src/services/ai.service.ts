@@ -5,9 +5,70 @@ import type {
   AIModelImageRequest,
   GeneratedContent,
   GeneratedTitle,
+  GeneratedAll,
 } from '@/types/ai'
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
+
+/**
+ * Gemini가 가끔 깨진 JSON을 반환함 — 코드블록, trailing comma, 제어문자 등 정리
+ */
+function safeParseJSON<T>(text: string): T {
+  let cleaned = text.trim()
+  // ```json ... ``` 코드블록 제거
+  cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '')
+  // JSON 시작/끝 추출
+  const startIdx = cleaned.search(/[\[{]/)
+  const endIdx = Math.max(cleaned.lastIndexOf(']'), cleaned.lastIndexOf('}'))
+  if (startIdx >= 0 && endIdx > startIdx) {
+    cleaned = cleaned.substring(startIdx, endIdx + 1)
+  }
+  // trailing comma 제거
+  cleaned = cleaned.replace(/,\s*([}\]])/g, '$1')
+
+  try {
+    return JSON.parse(cleaned) as T
+  } catch {
+    // 문자열 내부의 이스케이프 안 된 줄바꿈/탭을 이스케이프 처리
+    cleaned = cleaned.replace(/"([^"]*?)"/g, (match, inner: string) => {
+      const escaped = inner
+        .replace(/\\/g, '\\\\')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t')
+      return `"${escaped}"`
+    })
+    // trailing comma 다시 제거
+    cleaned = cleaned.replace(/,\s*([}\]])/g, '$1')
+
+    try {
+      return JSON.parse(cleaned) as T
+    } catch (e) {
+      console.error('JSON 파싱 최종 실패. 원본:', text.substring(0, 500))
+      throw new Error(`JSON 파싱 실패: ${(e as Error).message}`)
+    }
+  }
+}
+
+/**
+ * Gemini API fetch with auto-retry (503 대응)
+ * 최대 3회 재시도, 간격 2초/4초
+ */
+async function geminiRequest(url: string, body: object): Promise<Response> {
+  const MAX_RETRIES = 3
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (res.status !== 503 || attempt === MAX_RETRIES) return res
+    // 503이면 재시도 전 대기
+    await new Promise((r) => setTimeout(r, attempt * 2000))
+  }
+  // unreachable but TS needs it
+  throw new Error('Gemini API 재시도 실패')
+}
 
 function getApiKey(): string {
   const key = process.env.GEMINI_API_KEY
@@ -23,9 +84,13 @@ function getImageModel(): string {
   return process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image'
 }
 
-function buildSystemPrompt(req: AIGenerateRequest): string {
-  return `당신은 한국 이커머스(쿠팡, 네이버 스마트스토어 등) 상세페이지 전문 카피라이터입니다.
-상품 이미지와 정보를 분석하여 구매 전환율이 높은 상세페이지 콘텐츠를 JSON으로 생성하세요.
+function buildSystemPrompt(req: AIGenerateRequest, coupangSuggestions: string[] = []): string {
+  const suggestionsText = coupangSuggestions.length > 0
+    ? `\n- 쿠팡 인기 검색어: ${coupangSuggestions.join(', ')}`
+    : ''
+
+  return `당신은 한국 이커머스(쿠팡, 네이버 스마트스토어 등) 상세페이지 전문 카피라이터이자 SEO 전문가입니다.
+상품 이미지와 정보를 분석하여 상세페이지 콘텐츠, 최적화 상품명 5개, 검색 태그 20개를 한번에 JSON으로 생성하세요.
 
 상품 정보:
 - 브랜드: ${req.brand || '없음'}
@@ -33,19 +98,38 @@ function buildSystemPrompt(req: AIGenerateRequest): string {
 - 가격: ${req.price}원
 - 카테고리: ${req.category}
 - 판매 플랫폼: ${req.platform}
-- 특징: ${req.features.join(', ') || '없음'}
+- 특징: ${req.features.join(', ') || '없음'}${suggestionsText}
 ${req.memo ? `- 메모: ${req.memo}` : ''}
 
 반드시 아래 JSON 형식으로 응답:
 {
-  "product_name": "상품명 (30자 이내)",
-  "subtitle": "부제 (40자 이내)",
-  "main_copy": "메인 카피 (50자 이내, 임팩트 있게)",
-  "selling_points": ["셀링포인트1", "셀링포인트2", "셀링포인트3"],
-  "description": "상품 설명 (3-4문단, 줄바꿈으로 구분)",
-  "specs": [{"key": "소재", "value": "값"}, ...],
-  "keywords": ["키워드1", "키워드2", ...],
-  "caution": "주의사항/안내 (1-2문장)"
+  "content": {
+    "product_name": "상품명 (30자 이내)",
+    "subtitle": "부제 (40자 이내)",
+    "main_copy": "메인 카피 (50자 이내, 임팩트 있게)",
+    "selling_points": ["셀링포인트1", "셀링포인트2", "셀링포인트3"],
+    "description": "상품 설명 (3-4문단, 줄바꿈으로 구분)",
+    "specs": [
+      {"key": "제품의 주소재", "value": "라벨 및 상세이미지 참고하여 소재 기재"},
+      {"key": "색상", "value": "상품 색상"},
+      {"key": "치수", "value": "사이즈 정보"},
+      {"key": "제조자(수입자)", "value": "브랜드명 또는 수입자"},
+      {"key": "제조국", "value": "제조국가"},
+      {"key": "취급시 주의사항", "value": "세탁/보관 주의사항"},
+      {"key": "품질보증기준", "value": "제품 이상 시 공정거래위원회 고시 소비자분쟁해결기준에 의거 보상합니다."},
+      {"key": "A/S 책임자와 전화번호", "value": "고객센터 번호"}
+    ],
+    "keywords": ["키워드1", "키워드2"],
+    "caution": "주의사항/안내 (1-2문장)"
+  },
+  "titles": [
+    {"rank": 1, "strategy": "키워드 밀도 최대화", "title": "상품명", "used_keywords": ["키워드"], "char_count": 50},
+    {"rank": 2, "strategy": "브랜드 강조", "title": "상품명", "used_keywords": ["키워드"], "char_count": 50},
+    {"rank": 3, "strategy": "혜택/가성비 강조", "title": "상품명", "used_keywords": ["키워드"], "char_count": 50},
+    {"rank": 4, "strategy": "감성/라이프스타일", "title": "상품명", "used_keywords": ["키워드"], "char_count": 50},
+    {"rank": 5, "strategy": "스펙/기능 상세", "title": "상품명", "used_keywords": ["키워드"], "char_count": 50}
+  ],
+  "tags": ["태그1", "태그2", "태그3", "... 총 20개"]
 }`
 }
 
@@ -87,11 +171,15 @@ function buildTagPrompt(req: AITagRequest): string {
 반드시 JSON 문자열 배열로 응답: ["태그1", "태그2", ...]`
 }
 
-export async function generateContent(
+/**
+ * 통합 생성 — content + titles + tags를 한번의 API 호출로
+ */
+export async function generateAll(
   req: AIGenerateRequest,
-): Promise<GeneratedContent> {
+  coupangSuggestions: string[] = [],
+): Promise<GeneratedAll> {
   const apiKey = getApiKey()
-  const systemPrompt = buildSystemPrompt(req)
+  const systemPrompt = buildSystemPrompt(req, coupangSuggestions)
 
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = []
 
@@ -102,24 +190,20 @@ export async function generateContent(
     })
   }
 
-  parts.push({ text: '이 상품 이미지를 분석하고 상세페이지 콘텐츠를 생성해주세요.' })
+  parts.push({ text: '이 상품 이미지를 분석하고 상세페이지 콘텐츠, 최적화 상품명 5개, 검색 태그 20개를 한번에 생성해주세요.' })
 
   const body = {
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents: [{ role: 'user', parts }],
     generationConfig: {
       responseMimeType: 'application/json',
-      maxOutputTokens: 4096,
+      maxOutputTokens: 8192,
     },
   }
 
-  const res = await fetch(
+  const res = await geminiRequest(
     `${GEMINI_BASE}/${getTextModel()}:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    },
+    body,
   )
 
   if (!res.ok) {
@@ -131,7 +215,7 @@ export async function generateContent(
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) throw new Error('Gemini 응답에서 텍스트를 찾을 수 없습니다.')
 
-  return JSON.parse(text) as GeneratedContent
+  return safeParseJSON(text) as GeneratedAll
 }
 
 export async function generateTitles(
@@ -148,13 +232,9 @@ export async function generateTitles(
     },
   }
 
-  const res = await fetch(
+  const res = await geminiRequest(
     `${GEMINI_BASE}/${getTextModel()}:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    },
+    body,
   )
 
   if (!res.ok) {
@@ -166,7 +246,7 @@ export async function generateTitles(
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) throw new Error('Gemini 응답에서 텍스트를 찾을 수 없습니다.')
 
-  return JSON.parse(text) as GeneratedTitle[]
+  return safeParseJSON(text) as GeneratedTitle[]
 }
 
 export async function generateTags(req: AITagRequest): Promise<string[]> {
@@ -181,13 +261,9 @@ export async function generateTags(req: AITagRequest): Promise<string[]> {
     },
   }
 
-  const res = await fetch(
+  const res = await geminiRequest(
     `${GEMINI_BASE}/${getTextModel()}:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    },
+    body,
   )
 
   if (!res.ok) {
@@ -199,7 +275,7 @@ export async function generateTags(req: AITagRequest): Promise<string[]> {
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) throw new Error('Gemini 응답에서 텍스트를 찾을 수 없습니다.')
 
-  return JSON.parse(text) as string[]
+  return safeParseJSON(text) as string[]
 }
 
 function getCameraFocus(
@@ -291,13 +367,9 @@ Must look like a real photograph, not AI-generated.`
     },
   }
 
-  const res = await fetch(
+  const res = await geminiRequest(
     `${GEMINI_BASE}/${getImageModel()}:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    },
+    body,
   )
 
   if (!res.ok) {

@@ -2,13 +2,10 @@
 
 import { useState } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
-import { useAIGenerate } from '@/hooks/useAIGenerate'
 import { showToast } from '@/components/ui/Toast'
-import Button from '@/components/ui/Button'
 
 export default function TagPanel() {
-  const { generatedTags, isGeneratingTags } = useEditorStore()
-  const { generateTags } = useAIGenerate()
+  const { generatedTags } = useEditorStore()
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
   const [allCopied, setAllCopied] = useState(false)
 
@@ -30,20 +27,12 @@ export default function TagPanel() {
     <div className="space-y-4">
       <div>
         <h3 className="text-[13px] font-semibold text-text">🏷 쿠팡 태그 20개</h3>
-        <p className="text-[11px] text-text2 mt-1">검색량과 연관성 기반의 쿠팡 최적화 태그를 생성합니다.</p>
+        <p className="text-[11px] text-text2 mt-1">검색량과 연관성 기반의 쿠팡 최적화 태그입니다.</p>
       </div>
 
-      <Button
-        className="w-full !py-[10px] !rounded-[8px] !text-[12.5px] !font-bold"
-        loading={isGeneratingTags}
-        onClick={generateTags}
-      >
-        {generatedTags.length > 0 ? '🏷 태그 다시 생성' : '🏷 쿠팡 태그 20개 생성'}
-      </Button>
-
-      {generatedTags.length === 0 && !isGeneratingTags && (
+      {generatedTags.length === 0 && (
         <p className="text-center text-text3 text-[12px] py-[30px] px-[16px]">
-          생성 전입니다
+          AI 상세페이지를 생성하면<br />자동으로 태그가 만들어집니다
         </p>
       )}
 

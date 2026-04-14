@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useCallback } from 'react'
+import { useCallback } from 'react'
 import Header from '@/components/layout/Header'
 import StatusBar from '@/components/layout/StatusBar'
 import ProductForm from '@/components/layout/ProductForm'
@@ -34,8 +34,6 @@ export default function ProductNewPage() {
     generateError,
   } = useEditorStore()
   const { generateContent } = useAIGenerate()
-  const previewRef = useRef<HTMLDivElement>(null)
-
   const canGenerate = images.length > 0 && product.name.trim() !== ''
 
   const toggleFeature = (feature: string) => {
@@ -45,31 +43,93 @@ export default function ProductNewPage() {
     setProduct({ features })
   }
 
-  // html2canvas로 PNG 다운로드 — 서버 API 호출 없음
+  // PNG 다운로드 — 본문은 서버, 상하단 이미지는 클라이언트에서 원본 이어붙이기
   const handleDownload = useCallback(async () => {
-    if (!previewRef.current || !generatedContent) return
+    if (!generatedContent) return
     showToast('이미지 생성 중...')
-    const html2canvas = (await import('html2canvas')).default
-    const canvas = await html2canvas(previewRef.current, {
-      scale: 1,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      width: 800,
-      windowWidth: 800,
-    })
-    canvas.toBlob((blob) => {
-      if (!blob) return
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      const safeName = (generatedContent.product_name || product.name || '상품')
-        .replace(/[/\\?%*:|"<>]/g, '')
-      a.download = `상세페이지_${safeName}.png`
-      a.click()
-      URL.revokeObjectURL(url)
-      showToast('이미지 다운로드 완료')
-    }, 'image/png')
-  }, [generatedContent, product.name])
+    const { compressForRender } = await import('@/lib/image')
+    const { api } = await import('@/lib/api')
+    const latestImages = useImageStore.getState().images
+    const renderImages = await Promise.all(
+      latestImages.map((img) => compressForRender(img.dataUrl))
+    )
+    // 상하단 이미지는 서버에 안 보냄 — 클라이언트에서 원본으로 이어붙임
+    try {
+      const pngBlob = await api.post<Blob>('/api/render', {
+        data: generatedContent,
+        price: product.price,
+        images: renderImages,
+      })
+      if (!(pngBlob instanceof Blob)) return
+
+      const storeIntro = useImageStore.getState().storeIntroImage
+      const terms = useImageStore.getState().termsImage
+
+      // 상하단 이미지 없으면 본문 PNG 그대로 다운로드
+      if (!storeIntro && !terms) {
+        const url = URL.createObjectURL(pngBlob)
+        const a = document.createElement('a')
+        a.href = url
+        const safeName = (generatedContent.product_name || product.name || '상품').replace(/[/\\?%*:|"<>]/g, '')
+        a.download = `상세페이지_${safeName}.png`
+        a.click()
+        URL.revokeObjectURL(url)
+        showToast('이미지 다운로드 완료')
+        return
+      }
+
+      // 클라이언트 canvas에서 원본 이미지 + 본문 PNG 세로 이어붙이기
+      const loadImg = (src: string): Promise<HTMLImageElement> =>
+        new Promise((resolve, reject) => {
+          const img = new Image()
+          img.onload = () => resolve(img)
+          img.onerror = reject
+          img.src = src
+        })
+
+      const bodyUrl = URL.createObjectURL(pngBlob)
+      const bodyImg = await loadImg(bodyUrl)
+      const WIDTH = bodyImg.width
+
+      const imgs: HTMLImageElement[] = []
+      if (storeIntro) imgs.push(await loadImg(storeIntro))
+      imgs.push(bodyImg)
+      if (terms) imgs.push(await loadImg(terms))
+
+      // 각 이미지를 WIDTH 기준으로 높이 계산
+      const heights = imgs.map((img) => Math.round((WIDTH / img.width) * img.height))
+      const totalHeight = heights.reduce((a, b) => a + b, 0)
+
+      const canvas = document.createElement('canvas')
+      canvas.width = WIDTH
+      canvas.height = totalHeight
+      const ctx = canvas.getContext('2d')!
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, WIDTH, totalHeight)
+
+      let y = 0
+      imgs.forEach((img, i) => {
+        ctx.drawImage(img, 0, y, WIDTH, heights[i])
+        y += heights[i]
+      })
+
+      URL.revokeObjectURL(bodyUrl)
+
+      canvas.toBlob((blob) => {
+        if (!blob) return
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        const safeName = (generatedContent.product_name || product.name || '상품').replace(/[/\\?%*:|"<>]/g, '')
+        a.download = `상세페이지_${safeName}.png`
+        a.click()
+        URL.revokeObjectURL(url)
+        showToast('이미지 다운로드 완료')
+      }, 'image/png')
+    } catch {
+      showToast('다운로드 실패 — 다시 시도해주세요')
+    }
+  }, [generatedContent, product.price, product.name])
 
   const handleCopyAll = () => {
     if (!generatedContent) return
@@ -280,17 +340,14 @@ export default function ProductNewPage() {
 
             {/* 실시간 HTML 미리보기 — generatedContent 변경 시 자동 리렌더링 */}
             {!isGenerating && generatedContent && (
-              <div style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{ transform: 'scale(0.825)', transformOrigin: 'top left', width: 800 }}>
-                  <DetailPagePreview
-                    ref={previewRef}
-                    content={generatedContent}
-                    price={product.price}
-                    images={images.map((img) => img.dataUrl)}
-                    storeIntroImage={storeIntroImage}
-                    termsImage={termsImage}
-                  />
-                </div>
+              <div style={{ zoom: 0.825 }}>
+                <DetailPagePreview
+                  content={generatedContent}
+                  price={product.price}
+                  images={images.map((img) => img.dataUrl)}
+                  storeIntroImage={storeIntroImage}
+                  termsImage={termsImage}
+                />
               </div>
             )}
           </div>

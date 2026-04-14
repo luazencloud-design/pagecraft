@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { generateContent } from '@/services/ai.service'
+import { generateAll } from '@/services/ai.service'
 import type { AIGenerateRequest } from '@/types/ai'
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as AIGenerateRequest
+    const body = (await req.json()) as AIGenerateRequest & { coupangSuggestions?: string[] }
 
     if (!body.images || body.images.length === 0) {
       return NextResponse.json(
@@ -13,10 +13,10 @@ export async function POST(req: Request) {
       )
     }
 
-    const result = await generateContent(body)
+    const result = await generateAll(body, body.coupangSuggestions || [])
     return NextResponse.json(result)
   } catch (err) {
-    console.error('AI 카피 생성 오류:', err)
+    console.error('AI 통합 생성 오류:', err)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'AI 생성 실패' },
       { status: 500 },

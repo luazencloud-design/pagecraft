@@ -6,18 +6,15 @@ import { useImageStore } from '@/stores/imageStore'
 import { useEditorStore } from '@/stores/editorStore'
 import { api } from '@/lib/api'
 import { compressForAI } from '@/lib/image'
-import type {
-  GeneratedContent,
-  GeneratedTitle,
-  GeneratedTag,
-} from '@/types/ai'
+import type { GeneratedAll, GeneratedTag } from '@/types/ai'
 import type { CoupangSuggestResponse } from '@/types/market'
 
 const LOADING_MESSAGES = [
   'AI가 상품을 분석하고 있습니다...',
   '매력적인 카피를 작성하고 있습니다...',
   '셀링포인트를 정리하고 있습니다...',
-  '상세 스펙을 구성하고 있습니다...',
+  '최적화 상품명을 생성하고 있습니다...',
+  '검색 태그를 선정하고 있습니다...',
   '거의 완성입니다...',
 ]
 
@@ -26,17 +23,15 @@ export function useAIGenerate() {
   const { images } = useImageStore()
   const {
     setGeneratedContent,
-    setIsGenerating,
-    setIsGeneratingTitles,
-    setIsGeneratingTags,
     setGeneratedTitles,
     setGeneratedTags,
+    setIsGenerating,
     setLoadingMessage,
     setGenerateError,
     setActiveTab,
   } = useEditorStore()
 
-  // AI 텍스트 생성만 — 렌더링은 클라이언트 HTML로 즉시 표시
+  // 통합 생성 — content + titles + tags 한번에
   const generateContent = useCallback(async () => {
     if (images.length === 0) return
 
@@ -51,10 +46,25 @@ export function useAIGenerate() {
     }, 3000)
 
     try {
+      // 쿠팡 인기 검색어 가져오기 (실패해도 무시)
+      let coupangSuggestions: string[] = []
+      try {
+        if (product.name) {
+          const suggest = await api.get<CoupangSuggestResponse>(
+            `/api/market/suggest?keyword=${encodeURIComponent(product.name)}`,
+          )
+          coupangSuggestions = suggest.suggestions || []
+        }
+      } catch {
+        // 쿠팡 API 실패해도 계속 진행
+      }
+
       const aiImages = await Promise.all(
         images.slice(0, 5).map((img) => compressForAI(img.dataUrl))
       )
-      const result = await api.post<GeneratedContent>('/api/ai/copy', {
+
+      // 한번의 API 호출로 content + titles + tags 모두 생성
+      const result = await api.post<GeneratedAll>('/api/ai/copy', {
         images: aiImages,
         brand: product.brand,
         productName: product.name,
@@ -63,9 +73,29 @@ export function useAIGenerate() {
         platform: product.platform,
         memo: product.memo,
         features: product.features,
+        coupangSuggestions,
       })
 
-      setGeneratedContent(result)
+      // content 설정
+      setGeneratedContent(result.content)
+
+      // titles 설정
+      if (result.titles?.length > 0) {
+        setGeneratedTitles(result.titles)
+      }
+
+      // tags 설정
+      if (result.tags?.length > 0) {
+        const trendingSet = new Set(
+          coupangSuggestions.map((s) => s.replace(/\s/g, '').toLowerCase()),
+        )
+        const tags: GeneratedTag[] = result.tags.map((text) => ({
+          text,
+          isTrending: trendingSet.has(text.replace(/\s/g, '').toLowerCase()),
+        }))
+        setGeneratedTags(tags)
+      }
+
       setActiveTab('copy')
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'AI 생성에 실패했습니다.'
@@ -80,72 +110,13 @@ export function useAIGenerate() {
     images,
     product,
     setGeneratedContent,
+    setGeneratedTitles,
+    setGeneratedTags,
     setIsGenerating,
     setLoadingMessage,
     setGenerateError,
     setActiveTab,
   ])
 
-  const generateTitles = useCallback(async () => {
-    setIsGeneratingTitles(true)
-
-    try {
-      const suggestions = await api.get<CoupangSuggestResponse>(
-        `/api/market/suggest?keyword=${encodeURIComponent(product.name)}`,
-      )
-
-      const result = await api.post<GeneratedTitle[]>('/api/ai/titles', {
-        productName: product.name,
-        category: product.category,
-        brand: product.brand,
-        keywords: product.features,
-        coupangSuggestions: suggestions.suggestions,
-      })
-
-      setGeneratedTitles(result)
-      setActiveTab('title')
-    } catch (err) {
-      console.error('타이틀 생성 실패:', err)
-    } finally {
-      setIsGeneratingTitles(false)
-    }
-  }, [product, setGeneratedTitles, setIsGeneratingTitles, setActiveTab])
-
-  const generateTags = useCallback(async () => {
-    setIsGeneratingTags(true)
-
-    try {
-      const suggestions = await api.get<CoupangSuggestResponse>(
-        `/api/market/suggest?keyword=${encodeURIComponent(product.name)}`,
-      )
-
-      const result = await api.post<string[]>('/api/ai/tags', {
-        productName: product.name,
-        category: product.category,
-        brand: product.brand,
-        generatedContent: useEditorStore.getState().generatedContent,
-        coupangSuggestions: suggestions.suggestions,
-      })
-
-      const trendingSet = new Set(
-        suggestions.suggestions.map((s) =>
-          s.replace(/\s/g, '').toLowerCase(),
-        ),
-      )
-
-      const tags: GeneratedTag[] = result.map((text) => ({
-        text,
-        isTrending: trendingSet.has(text.replace(/\s/g, '').toLowerCase()),
-      }))
-
-      setGeneratedTags(tags)
-      setActiveTab('tags')
-    } catch (err) {
-      console.error('태그 생성 실패:', err)
-    } finally {
-      setIsGeneratingTags(false)
-    }
-  }, [product, setGeneratedTags, setIsGeneratingTags, setActiveTab])
-
-  return { generateContent, generateTitles, generateTags }
+  return { generateContent }
 }
