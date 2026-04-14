@@ -41,6 +41,25 @@ export default function SingleImageUpload({
             overflow: 'hidden',
           }}
           onClick={() => inputRef.current?.click()}
+          onDrop={(e) => {
+            e.preventDefault()
+            const file = e.dataTransfer.files?.[0]
+            if (file) handleFile(file)
+            const el = e.currentTarget as HTMLDivElement
+            el.style.borderColor = 'var(--border2)'
+            el.style.background = 'transparent'
+          }}
+          onDragOver={(e) => {
+            e.preventDefault()
+            const el = e.currentTarget as HTMLDivElement
+            el.style.borderColor = 'var(--accent)'
+            el.style.background = 'var(--accent-dim)'
+          }}
+          onDragLeave={(e) => {
+            const el = e.currentTarget as HTMLDivElement
+            el.style.borderColor = 'var(--border2)'
+            el.style.background = 'transparent'
+          }}
           onMouseEnter={(e) => {
             const el = e.currentTarget as HTMLDivElement
             el.style.borderColor = 'var(--accent)'
