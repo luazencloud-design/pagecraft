@@ -27,6 +27,13 @@ export interface GeneratedTag {
   isTrending: boolean
 }
 
+/** 통합 AI 응답 — content + titles + tags 한번에 */
+export interface GeneratedAll {
+  content: GeneratedContent
+  titles: GeneratedTitle[]
+  tags: string[]
+}
+
 export interface AIGenerateRequest {
   images: string[]
   brand: string

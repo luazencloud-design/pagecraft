@@ -15,8 +15,8 @@ interface EditorState {
   renderedImageUrl: string | null
   isGenerating: boolean
   isRenderingPng: boolean
-  isGeneratingTitles: boolean
-  isGeneratingTags: boolean
+  isGeneratingTitles: boolean  // 레거시 — 통합 생성 후 미사용
+  isGeneratingTags: boolean    // 레거시 — 통합 생성 후 미사용
   loadingMessage: string
   generateError: string
 

@@ -5,6 +5,7 @@ import type {
   AIModelImageRequest,
   GeneratedContent,
   GeneratedTitle,
+  GeneratedAll,
 } from '@/types/ai'
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
@@ -83,9 +84,13 @@ function getImageModel(): string {
   return process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image'
 }
 
-function buildSystemPrompt(req: AIGenerateRequest): string {
-  return `당신은 한국 이커머스(쿠팡, 네이버 스마트스토어 등) 상세페이지 전문 카피라이터입니다.
-상품 이미지와 정보를 분석하여 구매 전환율이 높은 상세페이지 콘텐츠를 JSON으로 생성하세요.
+function buildSystemPrompt(req: AIGenerateRequest, coupangSuggestions: string[] = []): string {
+  const suggestionsText = coupangSuggestions.length > 0
+    ? `\n- 쿠팡 인기 검색어: ${coupangSuggestions.join(', ')}`
+    : ''
+
+  return `당신은 한국 이커머스(쿠팡, 네이버 스마트스토어 등) 상세페이지 전문 카피라이터이자 SEO 전문가입니다.
+상품 이미지와 정보를 분석하여 상세페이지 콘텐츠, 최적화 상품명 5개, 검색 태그 20개를 한번에 JSON으로 생성하세요.
 
 상품 정보:
 - 브랜드: ${req.brand || '없음'}
@@ -93,19 +98,29 @@ function buildSystemPrompt(req: AIGenerateRequest): string {
 - 가격: ${req.price}원
 - 카테고리: ${req.category}
 - 판매 플랫폼: ${req.platform}
-- 특징: ${req.features.join(', ') || '없음'}
+- 특징: ${req.features.join(', ') || '없음'}${suggestionsText}
 ${req.memo ? `- 메모: ${req.memo}` : ''}
 
 반드시 아래 JSON 형식으로 응답:
 {
-  "product_name": "상품명 (30자 이내)",
-  "subtitle": "부제 (40자 이내)",
-  "main_copy": "메인 카피 (50자 이내, 임팩트 있게)",
-  "selling_points": ["셀링포인트1", "셀링포인트2", "셀링포인트3"],
-  "description": "상품 설명 (3-4문단, 줄바꿈으로 구분)",
-  "specs": [{"key": "소재", "value": "값"}, ...],
-  "keywords": ["키워드1", "키워드2", ...],
-  "caution": "주의사항/안내 (1-2문장)"
+  "content": {
+    "product_name": "상품명 (30자 이내)",
+    "subtitle": "부제 (40자 이내)",
+    "main_copy": "메인 카피 (50자 이내, 임팩트 있게)",
+    "selling_points": ["셀링포인트1", "셀링포인트2", "셀링포인트3"],
+    "description": "상품 설명 (3-4문단, 줄바꿈으로 구분)",
+    "specs": [{"key": "소재", "value": "값"}],
+    "keywords": ["키워드1", "키워드2"],
+    "caution": "주의사항/안내 (1-2문장)"
+  },
+  "titles": [
+    {"rank": 1, "strategy": "키워드 밀도 최대화", "title": "상품명", "used_keywords": ["키워드"], "char_count": 50},
+    {"rank": 2, "strategy": "브랜드 강조", "title": "상품명", "used_keywords": ["키워드"], "char_count": 50},
+    {"rank": 3, "strategy": "혜택/가성비 강조", "title": "상품명", "used_keywords": ["키워드"], "char_count": 50},
+    {"rank": 4, "strategy": "감성/라이프스타일", "title": "상품명", "used_keywords": ["키워드"], "char_count": 50},
+    {"rank": 5, "strategy": "스펙/기능 상세", "title": "상품명", "used_keywords": ["키워드"], "char_count": 50}
+  ],
+  "tags": ["태그1", "태그2", "태그3", "... 총 20개"]
 }`
 }
 
@@ -147,11 +162,15 @@ function buildTagPrompt(req: AITagRequest): string {
 반드시 JSON 문자열 배열로 응답: ["태그1", "태그2", ...]`
 }
 
-export async function generateContent(
+/**
+ * 통합 생성 — content + titles + tags를 한번의 API 호출로
+ */
+export async function generateAll(
   req: AIGenerateRequest,
-): Promise<GeneratedContent> {
+  coupangSuggestions: string[] = [],
+): Promise<GeneratedAll> {
   const apiKey = getApiKey()
-  const systemPrompt = buildSystemPrompt(req)
+  const systemPrompt = buildSystemPrompt(req, coupangSuggestions)
 
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = []
 
@@ -162,14 +181,14 @@ export async function generateContent(
     })
   }
 
-  parts.push({ text: '이 상품 이미지를 분석하고 상세페이지 콘텐츠를 생성해주세요.' })
+  parts.push({ text: '이 상품 이미지를 분석하고 상세페이지 콘텐츠, 최적화 상품명 5개, 검색 태그 20개를 한번에 생성해주세요.' })
 
   const body = {
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents: [{ role: 'user', parts }],
     generationConfig: {
       responseMimeType: 'application/json',
-      maxOutputTokens: 4096,
+      maxOutputTokens: 8192,
     },
   }
 
@@ -187,7 +206,7 @@ export async function generateContent(
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) throw new Error('Gemini 응답에서 텍스트를 찾을 수 없습니다.')
 
-  return safeParseJSON(text) as GeneratedContent
+  return safeParseJSON(text) as GeneratedAll
 }
 
 export async function generateTitles(
