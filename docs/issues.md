@@ -12,11 +12,16 @@ POST /api/ai/copy 413 (Content Too Large)
 ApiError: Request Entity Too Large — FUNCTION_PAYLOAD_TOO_LARGE
 ```
 
+**문제 상황**
+- 상품 이미지 3~4장 이상 업로드 후 상세페이지 생성 버튼 누르면 413 에러 발생
+- AI 모델 이미지 생성도 동일하게 실패
+- 로컬에서는 정상이지만 Vercel 배포 후에만 발생
+
 **원인**
 - Vercel 무료 티어 body 제한: **4.5MB**
-- 상품 이미지를 base64 원본으로 서버에 전송
-- 이미지 10장 × ~200KB = ~2MB + 스토어/약관 이미지 = 4.5MB 초과 가능
-- `next.config.ts`의 `bodySizeLimit` 설정은 Vercel 플랫폼 제한과 무관
+- 상품 이미지를 base64 원본으로 서버에 전송 (이미지 1장당 ~200KB~1MB)
+- 이미지 10장 + 스토어/약관 이미지 합치면 4.5MB 쉽게 초과
+- `next.config.ts`의 `bodySizeLimit` 설정은 Vercel 플랫폼 제한과 무관 (서버 자체 설정일 뿐)
 
 **해결 방법**
 - AI 분석용 이미지만 `compressForAI(400px, 0.5)` 압축 후 전송 (최대 5장, ~250KB)
@@ -37,9 +42,13 @@ ApiError: Request Entity Too Large — FUNCTION_PAYLOAD_TOO_LARGE
 
 ## #2. 실시간 렌더링 + 상세페이지 품질을 위한 클라이언트/서버 응답 교환 개선
 
+**문제 상황**
+- 상세페이지 생성 후 텍스트를 수정하면 "재렌더링" 버튼 → 서버 API 호출 → 2~3초 대기 필요
+- 이미지를 서버에 보내야 해서 780px/0.75로 압축 → 상세페이지 이미지 품질 저하
+- Vercel 4.5MB 제한 때문에 이미지 장수/해상도에 제약
+
 **배경**
 - 기존: 서버(`@napi-rs/canvas`)에서 PNG 렌더링 → 이미지를 base64로 서버에 보내야 함
-- 문제: Vercel 4.5MB 제한, 이미지 품질 압축 필요, 텍스트 수정마다 2~3초 API 호출
 
 **해결 방법: 렌더링을 클라이언트(HTML React)로 전환**
 
