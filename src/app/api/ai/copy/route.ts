@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
 import { generateAll } from '@/services/ai.service'
+import { requireAuth, recordUsage } from '@/lib/apiAuth'
 import type { AIGenerateRequest } from '@/types/ai'
 
 export async function POST(req: Request) {
+  const { session, error } = await requireAuth('generate')
+  if (error) return error
+
   try {
     const body = (await req.json()) as AIGenerateRequest & { coupangSuggestions?: string[] }
 
@@ -14,6 +18,7 @@ export async function POST(req: Request) {
     }
 
     const result = await generateAll(body, body.coupangSuggestions || [])
+    recordUsage(session!.user.id, 'generate')
     return NextResponse.json(result)
   } catch (err) {
     console.error('AI 통합 생성 오류:', err)

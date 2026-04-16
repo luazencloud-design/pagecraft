@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Script from 'next/script'
 import './globals.css'
 import ToastContainer from '@/components/ui/Toast'
+import AuthProvider from '@/components/auth/AuthProvider'
 
 export const metadata: Metadata = {
   title: 'PageCraft — AI 상세페이지 자동 생성',
@@ -29,8 +30,10 @@ export default function RootLayout({
             }
           })();
         `}</Script>
-        {children}
-        <ToastContainer />
+        <AuthProvider>
+          {children}
+          <ToastContainer />
+        </AuthProvider>
       </body>
     </html>
   )

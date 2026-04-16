@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
 import { generateModelImage } from '@/services/ai.service'
+import { requireAuth, recordUsage } from '@/lib/apiAuth'
 import type { AIModelImageRequest } from '@/types/ai'
 
 export async function POST(req: Request) {
+  const { session, error } = await requireAuth('image')
+  if (error) return error
+
   try {
     const body = (await req.json()) as AIModelImageRequest
 
@@ -14,6 +18,7 @@ export async function POST(req: Request) {
     }
 
     const image = await generateModelImage(body)
+    recordUsage(session!.user.id, 'image')
     return NextResponse.json({ image })
   } catch (err) {
     console.error('AI 모델 이미지 생성 오류:', err)
