@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
 import { useImageStore } from '@/stores/imageStore'
+import { useProductStore } from '@/stores/productStore'
 import { showToast } from '@/components/ui/Toast'
 
 /** 1000x1000 썸네일 크롭 편집기 */
@@ -67,9 +68,13 @@ function ThumbnailEditor() {
   const downloadThumbnail = () => {
     const src = thumbnailDataUrl
     if (!src) return
+    const { generatedContent } = useEditorStore.getState()
+    const { product } = useProductStore.getState()
+    const name = (generatedContent?.product_name || product.name || '상품')
+      .replace(/[/\\?%*:|"<>]/g, '')
     const a = document.createElement('a')
     a.href = src
-    a.download = '썸네일_1000x1000.jpg'
+    a.download = `${name}_1000x1000.jpg`
     a.click()
     showToast('썸네일 다운로드 시작')
   }
