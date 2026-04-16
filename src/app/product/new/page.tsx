@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
@@ -28,20 +28,6 @@ const FEATURES = [
 export default function ProductNewPage() {
   const { status } = useSession()
   const router = useRouter()
-
-  // 비로그인이면 랜딩페이지로
-  if (status === 'unauthenticated') {
-    router.push('/')
-    return null
-  }
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg">
-        <p className="text-text3">로딩 중...</p>
-      </div>
-    )
-  }
-
   const { product, setProduct } = useProductStore()
   const { images, storeIntroImage, termsImage, setStoreIntroImage, setTermsImage } =
     useImageStore()
@@ -54,6 +40,19 @@ export default function ProductNewPage() {
   const { generateContent } = useAIGenerate()
   const canGenerate = images.length > 0 && product.name.trim() !== ''
 
+  // 비로그인이면 랜딩페이지로 (훅 아래에서 early return)
+  useEffect(() => {
+    if (status === 'unauthenticated') router.push('/')
+  }, [status, router])
+
+  if (status === 'loading' || status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg">
+        <p className="text-text3">로딩 중...</p>
+      </div>
+    )
+  }
+
   const toggleFeature = (feature: string) => {
     const features = product.features.includes(feature)
       ? product.features.filter((f) => f !== feature)
@@ -62,7 +61,7 @@ export default function ProductNewPage() {
   }
 
   // PNG 다운로드 — 본문은 서버, 상하단 이미지는 클라이언트에서 원본 이어붙이기
-  const handleDownload = useCallback(async () => {
+  const handleDownload = async () => {
     if (!generatedContent) return
     showToast('이미지 생성 중...')
     const { compressForRender } = await import('@/lib/image')
@@ -147,7 +146,7 @@ export default function ProductNewPage() {
     } catch {
       showToast('다운로드 실패 — 다시 시도해주세요')
     }
-  }, [generatedContent, product.price, product.name])
+  }
 
   const handleCopyAll = () => {
     if (!generatedContent) return
