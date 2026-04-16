@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession, signOut } from 'next-auth/react'
 import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
 import { useEditorStore } from '@/stores/editorStore'
 
 export default function Header() {
   const [isDark, setIsDark] = useState(true)
+  const { data: session } = useSession()
   const { resetProduct } = useProductStore()
   const { resetAll: resetImages } = useImageStore()
   const { resetEditor } = useEditorStore()
@@ -148,6 +150,25 @@ export default function Header() {
       >
         패션 · 의류 · 잡화
       </div>
+
+      {/* 유저 정보 + 로그아웃 */}
+      {session?.user && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--text3)' }}>
+            {session.user.name || session.user.email}
+          </span>
+          <button
+            onClick={() => signOut({ callbackUrl: '/' })}
+            style={{
+              fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--text3)',
+              background: 'none', border: 'none', cursor: 'pointer',
+              textDecoration: 'underline',
+            }}
+          >
+            로그아웃
+          </button>
+        </div>
+      )}
     </header>
   )
 }

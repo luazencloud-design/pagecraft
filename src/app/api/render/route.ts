@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
 import { renderDetailPage } from '@/services/render.service'
+import { requireAuth } from '@/lib/apiAuth'
 import type { RenderRequest } from '@/types/ai'
 
 export const maxDuration = 60
 
 export async function POST(req: Request) {
+  const { error } = await requireAuth() // 인증만, 사용량 제한 없음 (다운로드니까)
+  if (error) return error
+
   try {
     const body = (await req.json()) as RenderRequest
 
@@ -14,8 +18,6 @@ export async function POST(req: Request) {
         { status: 400 },
       )
     }
-
-    console.log(`[render] 이미지 ${body.images?.length || 0}장, storeIntro: ${!!body.storeIntroImage}, terms: ${!!body.termsImage}`)
 
     const pngBuffer = await renderDetailPage(body)
 
