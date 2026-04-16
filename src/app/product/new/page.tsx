@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
@@ -28,20 +28,6 @@ const FEATURES = [
 export default function ProductNewPage() {
   const { status } = useSession()
   const router = useRouter()
-
-  // 비로그인이면 랜딩페이지로
-  if (status === 'unauthenticated') {
-    router.push('/')
-    return null
-  }
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg">
-        <p className="text-text3">로딩 중...</p>
-      </div>
-    )
-  }
-
   const { product, setProduct } = useProductStore()
   const { images, storeIntroImage, termsImage, setStoreIntroImage, setTermsImage } =
     useImageStore()
@@ -53,6 +39,19 @@ export default function ProductNewPage() {
   } = useEditorStore()
   const { generateContent } = useAIGenerate()
   const canGenerate = images.length > 0 && product.name.trim() !== ''
+
+  // 비로그인이면 랜딩페이지로 (훅 아래에서 early return)
+  useEffect(() => {
+    if (status === 'unauthenticated') router.push('/')
+  }, [status, router])
+
+  if (status === 'loading' || status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg">
+        <p className="text-text3">로딩 중...</p>
+      </div>
+    )
+  }
 
   const toggleFeature = (feature: string) => {
     const features = product.features.includes(feature)
