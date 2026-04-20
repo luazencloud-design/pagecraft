@@ -332,6 +332,52 @@ function getCameraFocus(
   return { part: '전신', shot: '풀샷', crop: '전신' }
 }
 
+/**
+ * Gemini를 이용한 배경 제거
+ * 상품 사진에서 배경만 제거하고 투명(PNG) 또는 흰색 배경으로 반환
+ */
+export async function removeBackgroundGemini(imageDataUrl: string): Promise<string> {
+  const apiKey = getApiKey()
+  const base64 = imageDataUrl.replace(/^data:image\/\w+;base64,/, '')
+
+  const prompt = `Remove the background from this product image. Keep only the main product/subject intact with clean edges. The output should have a pure white background (#FFFFFF). Preserve all details, colors, and textures of the product itself. Do not modify, crop, or alter the product in any way—only replace the background.`
+
+  const body = {
+    contents: [{
+      role: 'user',
+      parts: [
+        { text: prompt },
+        { inlineData: { mimeType: 'image/jpeg', data: base64 } },
+      ],
+    }],
+    generationConfig: {
+      responseModalities: ['IMAGE', 'TEXT'],
+    },
+  }
+
+  const res = await geminiRequest(
+    `${GEMINI_BASE}/${getImageModel()}:generateContent?key=${apiKey}`,
+    body,
+  )
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`Gemini 배경제거 오류: ${res.status} ${err}`)
+  }
+
+  const data = await res.json()
+  const responseParts = data.candidates?.[0]?.content?.parts || []
+  const imagePart = responseParts.find(
+    (p: { inlineData?: { mimeType: string; data: string } }) => p.inlineData?.mimeType?.startsWith('image/'),
+  )
+
+  if (!imagePart?.inlineData) {
+    throw new Error('배경 제거에 실패했습니다.')
+  }
+
+  return `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`
+}
+
 export async function generateModelImage(
   req: AIModelImageRequest,
 ): Promise<string> {
