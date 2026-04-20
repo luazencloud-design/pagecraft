@@ -340,15 +340,19 @@ export async function removeBackgroundGemini(imageDataUrl: string): Promise<stri
   const apiKey = getApiKey()
   const base64 = imageDataUrl.replace(/^data:image\/\w+;base64,/, '')
 
-  const prompt = `Extract ONLY the single main product from this image and place it on a pure white background (#FFFFFF).
+  const prompt = `Your task: Remove only the background of this image and replace it with pure white (#FFFFFF). Keep EVERYTHING about the product(s) exactly as they appear in the original image.
 
-CRITICAL RULES:
-- Keep ONLY the product itself. Remove ALL surrounding objects including: packaging boxes, display stands, platforms, pedestals, paper, fabric, hands, mannequins, shadows, reflections, props, or any supporting items.
-- If the product is on top of a box, display, or stand — REMOVE the box/display completely. Only the product remains.
-- If there are multiple items, keep only the most prominent/central product.
-- Preserve the product's exact details, colors, textures, and proportions.
-- Do not crop, rotate, or alter the product.
-- Output: product isolated on pure white background.`
+ABSOLUTE RULES — DO NOT VIOLATE:
+1. PRESERVE EVERY PRODUCT: If there are 2 shoes, output 2 shoes. If there are 3 items, output 3 items. Count them and keep all of them.
+2. PRESERVE EXACT POSE/PLACEMENT: If a shoe lies on its side, keep it on its side. If it stands upright, keep it upright. Do not "fix" or "reorient" the product.
+3. PRESERVE EXACT POSITION: Products must stay in the exact same location within the frame. Do not re-center or re-arrange.
+4. PRESERVE EXACT APPEARANCE: Identical shape, color, logos, stitching, laces, sole, texture, lighting direction. Do not regenerate or redraw — this is a background-only edit.
+5. REMOVE ONLY THE BACKGROUND AND SUPPORT OBJECTS: The ground, wall, boxes, stands, pedestals, paper, fabric props, hands, mannequins, price tags, shadows on ground — remove these and fill with pure white.
+6. Do NOT create new angles, do NOT generate variations, do NOT "improve" the product.
+
+Think of this as erasing the background in Photoshop with a perfect mask — the product pixels must remain unchanged.
+
+Output: The exact same product(s) in the exact same position and pose, with only the background replaced by pure white.`
 
   const body = {
     contents: [{
