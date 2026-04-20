@@ -21,7 +21,7 @@ export function useBgRemoval() {
         image: compressed,
       })
       // 후처리 — Gemini가 회색빛 배경 만드는 문제 해결
-      const whitened = await whitenNearWhite(res.image, 235)
+      const whitened = await whitenNearWhite(res.image, 245)
       return whitened
     } catch (err) {
       console.error('배경 제거 실패:', err)

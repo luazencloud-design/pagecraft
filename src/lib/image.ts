@@ -116,9 +116,9 @@ export function compressForRender(dataUrl: string) {
  * 배경 제거 결과 후처리 — 연한 회색/흰색 배경을 순수 #FFFFFF로 강제
  * Gemini가 완벽한 흰색을 못 만드는 문제 해결
  *
- * @param threshold 이 값 이상인 RGB는 순수 흰색으로 치환 (기본 235)
+ * @param threshold 이 값 이상인 RGB는 순수 흰색으로 치환 (기본 245)
  */
-export function whitenNearWhite(dataUrl: string, threshold: number = 235): Promise<string> {
+export function whitenNearWhite(dataUrl: string, threshold: number = 245): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => {
