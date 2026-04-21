@@ -16,16 +16,19 @@ ApiError: Request Entity Too Large — FUNCTION_PAYLOAD_TOO_LARGE
 - 상품 이미지 3~4장 이상 업로드 후 상세페이지 생성 시 413 에러
 - 로컬에서는 정상, Vercel 배포 후에만 발생
 
-**원인**
-- Vercel 무료/Pro 티어 공통 body 제한: **4.5MB**
-- 이미지를 base64 원본으로 서버에 전송하면 초과
-- `next.config.ts`의 `bodySizeLimit` 설정은 Vercel 플랫폼 제한과 무관
+**원인 (딥다이브)**
+- Vercel Serverless Functions는 내부적으로 **AWS Lambda (Node.js 런타임) + API Gateway** 위에서 동작
+- Lambda **동기 호출 하드 캡: 요청/응답 각 6MB** — Vercel은 헤더/라우팅 오버헤드를 감안해 **4.5MB**로 제한 (요금제 무관)
+- 이미지를 base64로 인코딩하면 **원본 대비 약 1.33배 팽창** → 실제 바이너리 예산은 ~3.4MB
+- `next.config.ts`의 `experimental.serverActions.bodySizeLimit`은 **Next.js 프로세스 내부에서만 유효** — Vercel 엣지/게이트웨이 단에서 이미 4.5MB로 끊기 때문에 아무 효과 없음 (로컬 `next dev`에서는 Next.js가 직접 받으니 통과해서 "로컬만 정상" 현상 발생)
 
 **해결**
 - AI 분석용만 `compressForAI(400px, 0.5)` 압축 후 전송 (최대 5장)
 - 렌더링은 클라이언트 HTML로 전환, 다운로드 시에만 서버 호출
+- 용도별 압축 함수 분기 → #19 참고
 
 **관련 파일**: `src/lib/image.ts`, `src/hooks/useAIGenerate.ts`
+**관련 이슈**: #19 (압축 분기), #20 (3장 제한), #21 (Lambda 제약 종합)
 
 ---
 
@@ -312,3 +315,63 @@ return { allowed: true, remaining: LIMIT - newValue }
 - 실제 모델 생성에 3장 이상 참고 이미지는 불필요 (Gemini가 주요 특징만 추출)
 
 **관련 파일**: `src/components/image/AiModelToggle.tsx`
+
+---
+
+## #21. Vercel Serverless = AWS Lambda 제약의 실전 영향
+
+> #1, #4, #13, #19, #20 모두 이 한 장의 슬라이드에서 파생됨. 문서에 남겨 두는 이유는
+> "왜 이런 선택을 했는가" 를 새로 합류하는 사람이 코드만 보고 추적하기 어렵기 때문.
+
+### 런타임 구조
+Vercel Serverless Functions (Node.js 런타임) 는 **AWS Lambda + API Gateway** 를 Vercel
+이 래핑한 구조다. 따라서 우리가 마주치는 거의 모든 "이상한 상한선" 은 Lambda 제약을
+그대로 상속한다. (Edge Functions 는 V8 Isolates 기반이라 규칙이 다르지만, 우리는
+`@napi-rs/canvas` · `ioredis` 네이티브 모듈 의존으로 **Node.js 런타임만 사용**.)
+
+### 주요 제약과 코드 대응
+
+| 제약 | Lambda 한계 | Vercel 적용값 | 우리 코드 대응 |
+|------|------------|---------------|----------------|
+| **요청 payload** | 6MB (sync invoke) | **4.5MB** (요금제 무관) | base64 팽창 1.33× 고려 → 1024px JPEG 0.9, 3장 제한 (#19, #20) |
+| **응답 payload** | 6MB (sync invoke) | **4.5MB** | 본문 PNG 하나만 반환 (상하단은 클라에서 합성, README 하이브리드 전략) |
+| **실행 시간** | 15분 | Hobby 10s / **Pro 60s** / Enterprise 300s | `export const maxDuration = 60` on `/api/render`, `/api/image/bg-remove` — Gemini 이미지 생성은 15~30s 소요 |
+| **메모리** | 128MB–10GB | Hobby 1024MB / **Pro 3008MB** | `@napi-rs/canvas`로 800×2000 본문 렌더 시 peak ~500MB → Pro 요금제 필수 |
+| **Cold start** | 100ms~3s (네이티브 클수록↑) | 동일 | 전역 싱글톤 (`let redis` 모듈 스코프)로 warm invocation 재사용 (#13) |
+| **/tmp 임시 저장소** | 512MB ephemeral | 동일 | 사용 안 함 (모든 처리 인메모리) |
+| **번들 크기** | 50MB zipped / 250MB unzipped | 동일 | `@napi-rs/canvas`는 플랫폼별 prebuild 자동 트리밍 → Linux x64만 포함 |
+| **동시 실행** | 계정당 기본 1000 | 동일 | 데모 규모에서는 신경 안 씀 |
+
+### `bodySizeLimit`이 Vercel에서 안 먹히는 이유
+- `next.config.ts`의 `experimental.serverActions.bodySizeLimit`은 **Next.js 프로세스가 요청을 받은 이후** 에 적용됨
+- Vercel은 요청이 Lambda로 라우팅되기 **전**에 엣지 게이트웨이에서 4.5MB를 끊음
+- → 프로덕션에서 값을 10MB로 올려도 413 그대로 발생. 로컬 `next dev`는 Next.js가 직접 받기 때문에 통과됨 → "내 컴에선 됩니다" 함정
+
+### Cold Start 실전 수치
+- **@napi-rs/canvas** 네이티브 바이너리 로드: 첫 호출 +2~4s
+- **ioredis** TCP 핸드셰이크 + TLS: +300~500ms
+- **Gemini SDK** 초기화: +200ms
+- 합산하면 초기 cold 호출은 체감 3~5초 느림 → 사용자에게 "첫 요청 느림" 으로 보일 수 있음
+- 대응: 모듈 스코프 싱글톤 (`let redis`), SDK import는 route 파일 상단에서 한 번
+
+### 런타임 선택 기준
+| 기능 | 런타임 | 이유 |
+|------|--------|------|
+| `/api/render` | **Node.js** | `@napi-rs/canvas` 네이티브 모듈 |
+| `/api/image/bg-remove` | **Node.js** | `maxDuration=60` 필요, Edge는 30s 상한 |
+| `/api/ai/copy` | **Node.js** | Gemini SDK + ioredis 연결 |
+| `/api/auth/*` | **Node.js** | NextAuth가 Node 전제 |
+| `/api/usage` | **Node.js** | ioredis (Edge 불가) |
+
+→ 전 라우트 Node.js. Edge로 옮길 후보 없음.
+
+### Fluid Compute (2025~) 관련
+Vercel이 도입한 Fluid Compute도 동일하게 Lambda 위에서 돌지만 **한 인스턴스에서 동시 호출을 다중 처리** 가능. 우리 라우트는 Gemini/Redis I/O가 대부분이라 혜택이 있을 수 있지만 현재 명시 설정은 안 함 (기본값 유지).
+
+### 교훈
+- "로컬에선 되는데 배포만 하면 깨진다" 의 80%는 Lambda 제약 (payload / duration / cold start)
+- Vercel 공식 문서의 숫자는 Lambda 원본을 한 번 더 조인 값 — 근본은 AWS 쪽 문서 확인
+- 데모 서비스는 **Pro 요금제가 사실상 필수** (maxDuration 60s + 메모리 3008MB 때문)
+
+**관련 파일**: `src/app/api/render/route.ts`, `src/app/api/image/bg-remove/route.ts`, `src/lib/rateLimit.ts`
+**관련 이슈**: #1 (payload 원리), #13 (ioredis 싱글톤), #19 (압축 분기), #20 (3장 제한)
