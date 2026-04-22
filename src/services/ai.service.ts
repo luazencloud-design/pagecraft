@@ -350,15 +350,39 @@ function getCameraFocus(
  * - 출력: 완전 투명 PNG (alpha channel) — 상세페이지 흰 배경에 자연스럽게 올려짐
  * - 비용: $0.01/호출 (Gemini $0.04 대비 약 75% 절감)
  * - 처리 시간: 평균 3~10초 → maxDuration=60 안전
+ * - 429 재시도: Replicate 신규 계정 burst=1 제한 또는 일시적 throttle 흡수
  */
 export async function removeBackgroundRecraft(imageDataUrl: string): Promise<string> {
   const replicate = getReplicate()
 
-  // Replicate SDK가 data URL 입력을 받아, 내부적으로 자동 업로드 처리함
-  const output = (await replicate.run(
-    'recraft-ai/recraft-remove-background',
-    { input: { image: imageDataUrl } },
-  )) as unknown
+  // 429 재시도 루프 — retry-after 헤더 존중, 최대 3회
+  const MAX_RETRIES = 3
+  let output: unknown
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      output = await replicate.run(
+        'recraft-ai/recraft-remove-background',
+        { input: { image: imageDataUrl } },
+      )
+      break
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      const isRateLimit = status === 429
+      if (!isRateLimit || attempt === MAX_RETRIES) throw err
+
+      // retry-after 헤더 읽어서 해당 초 + 1초 여유 후 재시도
+      const headers = (err as { response?: { headers?: Headers } })?.response?.headers
+      const retryAfterRaw = headers?.get?.('retry-after')
+      const retryAfterSec = retryAfterRaw ? Number(retryAfterRaw) : 6
+      const waitMs = (Number.isFinite(retryAfterSec) ? retryAfterSec : 6) * 1000 + 1000
+      console.warn(`[Recraft] 429 throttle → ${waitMs}ms 후 재시도 (${attempt + 1}/${MAX_RETRIES})`)
+      await new Promise((r) => setTimeout(r, waitMs))
+    }
+  }
+
+  if (output === undefined) {
+    throw new Error('Recraft 응답을 받지 못했습니다.')
+  }
 
   // SDK 버전에 따라 결과가 FileOutput 객체 / 문자열 / 배열일 수 있음 — 방어적 처리
   let resultUrl: string
