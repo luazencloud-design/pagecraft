@@ -4,12 +4,12 @@ import { useState, useCallback } from 'react'
 import { useImageStore } from '@/stores/imageStore'
 import { useUsageStore } from '@/stores/usageStore'
 import { api } from '@/lib/api'
-import { compressForAI, whitenNearWhite } from '@/lib/image'
+import { compressForBgRemoval } from '@/lib/image'
 import { showToast } from '@/components/ui/Toast'
 
 export function useBgRemoval() {
   const { images, updateImage } = useImageStore()
-  const [isModelLoading] = useState(false) // Gemini 사용 — 모델 로드 없음
+  const [isModelLoading] = useState(false) // Recraft 사용 — 모델 로드 없음
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState('')
 
@@ -17,15 +17,15 @@ export function useBgRemoval() {
     setIsProcessing(true)
     setProgress('배경 제거 중...')
     try {
-      const compressed = await compressForAI(dataUrl)
+      // Recraft는 해상도 보존형 — 2048px/0.92로 고품질 입력
+      const compressed = await compressForBgRemoval(dataUrl)
       const res = await api.post<{ image: string }>('/api/image/bg-remove', {
         image: compressed,
       })
-      // 후처리 — Gemini가 회색빛 배경 만드는 문제 해결
-      const whitened = await whitenNearWhite(res.image, 245)
-      // 크레딧 소비 후 UI 즉시 반영
+      // Recraft는 진짜 픽셀 마스크 기반 투명 PNG 반환 → whitenNearWhite 불필요
+      // (반투명 엣지 픽셀을 순수 흰색으로 바꾸면 헤일로 생김)
       useUsageStore.getState().fetchUsage()
-      return whitened
+      return res.image
     } catch (err) {
       console.error('배경 제거 실패:', err)
       return null
