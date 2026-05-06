@@ -84,16 +84,6 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
 
           {/* 컨텐츠 — 좌측 정렬로 트렌디감 */}
           <div style={{ position: 'relative', zIndex: 1, padding: '72px 56px 56px' }}>
-            {/* 작은 라벨 */}
-            <p
-              style={{
-                fontSize: 10, letterSpacing: 5, color: '#a06850',
-                margin: '0 0 28px', fontWeight: 700,
-              }}
-            >
-              K-BEAUTY ESSENTIAL · 2025
-            </p>
-
             {/* 거대 영문 무드 — 두툼한 sans-serif */}
             {content.mood_callout && (
               <p
@@ -111,12 +101,15 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
             {/* 짧은 구분 라인 */}
             <div style={{ width: 48, height: 3, background: '#1a1a1a', margin: '0 0 22px' }} />
 
-            {/* 타이틀 — 한국어/일본어 */}
+            {/* 타이틀 — mood_callout 없으면 hero 사이즈로 보정 */}
             <h1
               style={{
-                fontSize: 26, fontWeight: 800, color: '#1a1a1a',
-                margin: '0 0 12px', letterSpacing: '-0.015em',
-                lineHeight: 1.3,
+                fontSize: content.mood_callout ? 26 : 44,
+                fontWeight: content.mood_callout ? 800 : 900,
+                color: '#1a1a1a',
+                margin: '0 0 12px',
+                letterSpacing: content.mood_callout ? '-0.015em' : '-0.03em',
+                lineHeight: content.mood_callout ? 1.3 : 1.1,
                 wordBreak: 'keep-all',
               }}
             >

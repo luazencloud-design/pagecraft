@@ -57,19 +57,6 @@ const Qoo10ClassicPreview = forwardRef<HTMLDivElement, Qoo10ClassicPreviewProps>
             minHeight: 420,
           }}
         >
-          {/* 작은 매거진 인덱스 — 좌상단, 회전·도장 없음 */}
-          <p
-            style={{
-              position: 'absolute', top: 28, left: 56,
-              
-              fontSize: 11, letterSpacing: 4, color: '#a04030',
-               fontWeight: 600,
-              margin: 0,
-            }}
-          >
-            ── EDITORIAL · 2025 ──
-          </p>
-
           {/* 거대 영문 무드 — 두툼한 sans-serif */}
           {content.mood_callout && (
             <h1
@@ -88,8 +75,18 @@ const Qoo10ClassicPreview = forwardRef<HTMLDivElement, Qoo10ClassicPreviewProps>
           {/* 작은 가로 라인 */}
           <div style={{ width: 40, height: 2, background: '#a04030', margin: '0 auto 22px' }} />
 
-          {/* 일본어/한국어 타이틀 */}
-          <p style={{ fontSize: 24, fontWeight: 800, color: '#3d1810', margin: '0 0 12px', letterSpacing: '-0.015em', wordBreak: 'keep-all' }}>
+          {/* 타이틀 — mood_callout 없으면 hero 사이즈로 보정 */}
+          <p
+            style={{
+              fontSize: content.mood_callout ? 24 : 48,
+              fontWeight: content.mood_callout ? 800 : 900,
+              color: '#3d1810',
+              margin: '0 0 12px',
+              letterSpacing: content.mood_callout ? '-0.015em' : '-0.03em',
+              lineHeight: content.mood_callout ? 1.3 : 1.1,
+              wordBreak: 'keep-all',
+            }}
+          >
             {content.product_name}
           </p>
 

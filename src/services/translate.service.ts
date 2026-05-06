@@ -107,21 +107,16 @@ export async function translateContent(req: TranslateRequest): Promise<Generated
 
   const result = safeParseJSON<GeneratedAll>(text)
 
-  // 안전장치: AI가 시각 필드(mood_callout / english_label 등) 누락 시 원본에서 복구
-  // 이 필드들은 양 언어 동일한 시각 디자인 요소이므로 원본 값 그대로 사용해도 안전
+  // 안전장치: color_swatches.english_label 같은 양 언어 동일한 영문 라벨은 누락 시 원본에서 복구
+  // mood_callout은 누락돼도 OK — 템플릿이 product_name을 hero 사이즈로 자동 보정
   if (result.content && req.current.content) {
     const src = req.current.content
     const dst = result.content
-    if (!dst.mood_callout && src.mood_callout) {
-      dst.mood_callout = src.mood_callout
-    }
     if (!dst.before_after && src.before_after) {
       dst.before_after = src.before_after
     }
-    // color_swatches: 결과 누락이면 원본 그대로, 있으면 english_label만 원본 보존
-    if ((!dst.color_swatches || dst.color_swatches.length === 0) && src.color_swatches?.length) {
-      dst.color_swatches = src.color_swatches
-    } else if (dst.color_swatches?.length && src.color_swatches?.length) {
+    // color_swatches.english_label 누락 시만 보정 (영문은 양 언어 동일)
+    if (dst.color_swatches?.length && src.color_swatches?.length) {
       dst.color_swatches = dst.color_swatches.map((sw, i) => ({
         ...sw,
         english_label: sw.english_label || src.color_swatches?.[i]?.english_label,
