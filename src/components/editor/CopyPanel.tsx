@@ -209,7 +209,7 @@ function SpecBlock({ specs, onUpdate }: { specs: { key: string; value: string }[
 
 function LangSwitcher() {
   const { currentLang, isTranslating, langCache } = useEditorStore()
-  const { translateTo, canTranslate, altLang, isCached } = useTranslate()
+  const { translateTo, syncFromDirty, canTranslate, altLang, isCached, dirtyLang } = useTranslate()
 
   if (!canTranslate) return null
 
@@ -218,38 +218,101 @@ function LangSwitcher() {
   const cachedLangs = Object.keys(langCache) as Array<'ko' | 'ja'>
   const cacheCount = cachedLangs.length
 
+  // dirty 상태: 한쪽 언어를 수정해서 다른 언어가 옛 데이터인 상황
+  const isDirty = dirtyLang !== null
+  const dirtyLabel = dirtyLang === 'ja' ? '일본어' : '한국어'
+  const targetLang: 'ko' | 'ja' = dirtyLang === 'ja' ? 'ko' : 'ja'
+  const targetLabel = targetLang === 'ja' ? '일본어' : '한국어'
+
   return (
-    <div className="bg-surface2 border border-border rounded-[10px] mb-3 overflow-hidden">
-      <div className="flex items-center justify-between px-[13px] py-[10px]">
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold text-text2">현재 언어</span>
-          <span className="text-[11px] px-[8px] py-[2px] rounded-[4px] bg-accent-dim text-accent font-semibold">
-            {currentLabel}
-          </span>
-          {cacheCount > 1 && (
-            <span className="text-[9px] text-text3" title="캐시된 언어 버전이 있어요">
-              {cacheCount}개 버전 보관 중
-            </span>
-          )}
-        </div>
-        <button
-          disabled={isTranslating}
-          onClick={() => translateTo(altLang)}
-          className={`px-[10px] py-[4px] rounded-[5px] text-[11px] cursor-pointer transition-all duration-150 border ${
-            isTranslating
-              ? 'border-border text-text3 cursor-wait'
-              : 'border-accent text-accent hover:bg-accent hover:text-bg'
-          }`}
-          title={isCached ? '저장된 버전으로 즉시 전환' : 'AI로 새로 작성 (크레딧 차감)'}
+    <>
+      {/* dirty 동기화 배너 — 양 언어 캐시 있고 한쪽이 수정됐을 때만 */}
+      {isDirty && (
+        <div
+          style={{
+            background: 'rgba(255, 200, 60, 0.1)',
+            border: '1px solid rgba(255, 200, 60, 0.4)',
+            borderRadius: 10,
+            padding: '11px 13px',
+            marginBottom: 10,
+          }}
         >
-          {isTranslating
-            ? '⏳ 변환 중...'
-            : isCached
-              ? `${altLabel}로 전환 ↻`
-              : `${altLabel} 만들기 🌐`}
-        </button>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 14 }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <p className="text-[12px] font-semibold text-text" style={{ margin: 0, lineHeight: 1.5 }}>
+                {dirtyLabel} 수정사항이 {targetLabel}에 아직 반영되지 않았어요
+              </p>
+              <p className="text-[10px] text-text3" style={{ margin: '4px 0 0', lineHeight: 1.6 }}>
+                💡 여러 항목 한 번에 수정 후 동기화하세요 — <b>크레딧 1개 차감</b>
+              </p>
+            </div>
+          </div>
+          <button
+            disabled={isTranslating}
+            onClick={() => syncFromDirty()}
+            style={{
+              width: '100%',
+              padding: '7px 12px',
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: isTranslating ? 'wait' : 'pointer',
+              background: isTranslating ? 'var(--surface3)' : 'var(--accent)',
+              color: isTranslating ? 'var(--text3)' : '#0c0c10',
+              border: 'none',
+              transition: 'all 0.15s',
+            }}
+          >
+            {isTranslating ? '⏳ 동기화 중...' : `🔄 ${targetLabel} 다시 작성 (크레딧 1개)`}
+          </button>
+        </div>
+      )}
+
+      {/* 기존 토글 UI */}
+      <div className="bg-surface2 border border-border rounded-[10px] mb-3 overflow-hidden">
+        <div className="flex items-center justify-between px-[13px] py-[10px]">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-text2">현재 언어</span>
+            <span className="text-[11px] px-[8px] py-[2px] rounded-[4px] bg-accent-dim text-accent font-semibold">
+              {currentLabel}
+            </span>
+            {dirtyLang === currentLang && (
+              <span className="text-[9px] text-yellow font-semibold" title="이 언어 수정 중">
+                ✏️ 수정중
+              </span>
+            )}
+            {cacheCount > 1 && dirtyLang !== currentLang && (
+              <span className="text-[9px] text-text3" title="캐시된 언어 버전이 있어요">
+                {cacheCount}개 버전 보관 중
+              </span>
+            )}
+          </div>
+          <button
+            disabled={isTranslating}
+            onClick={() => translateTo(altLang)}
+            className={`px-[10px] py-[4px] rounded-[5px] text-[11px] cursor-pointer transition-all duration-150 border ${
+              isTranslating
+                ? 'border-border text-text3 cursor-wait'
+                : 'border-accent text-accent hover:bg-accent hover:text-bg'
+            }`}
+            title={
+              isCached
+                ? dirtyLang === currentLang
+                  ? '저장된 버전 (옛 데이터일 수 있음) 으로 전환'
+                  : '저장된 버전으로 즉시 전환'
+                : 'AI로 새로 작성 (크레딧 차감)'
+            }
+          >
+            {isTranslating
+              ? '⏳ 변환 중...'
+              : isCached
+                ? `${altLabel}로 전환 ↻`
+                : `${altLabel} 만들기 🌐`}
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 

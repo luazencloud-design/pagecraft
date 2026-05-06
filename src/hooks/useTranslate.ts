@@ -20,9 +20,10 @@ import { PLATFORM_META } from '@/types/product'
 export function useTranslate() {
   const { product } = useProductStore()
   const {
-    currentLang, langCache,
+    currentLang, langCache, dirtyLang,
     generatedContent, generatedTitles, generatedTags,
     setGeneratedAllForLang, switchLang, setIsTranslating,
+    cacheLang, setDirty,
   } = useEditorStore()
 
   const translateTo = useCallback(async (toLang: Lang): Promise<boolean> => {
@@ -77,6 +78,44 @@ export function useTranslate() {
     switchLang, setGeneratedAllForLang, setIsTranslating,
   ])
 
+  /**
+   * dirty 언어 기준으로 다른 언어를 재작성 + 캐시 갱신
+   * 사용자가 한국어 편집 후 일본어 동기화 클릭하는 흐름.
+   * 활성 언어는 바뀌지 않음 (사용자가 보던 언어 그대로) — 같은 언어면 화면도 갱신.
+   */
+  const syncFromDirty = useCallback(async (): Promise<boolean> => {
+    if (!dirtyLang) return true  // 동기화할 게 없음
+    const source = langCache[dirtyLang]
+    if (!source) {
+      showToast('동기화할 원본을 찾을 수 없습니다', 'error')
+      return false
+    }
+    const targetLang: Lang = dirtyLang === 'ja' ? 'ko' : 'ja'
+
+    setIsTranslating(true)
+    try {
+      const result = await api.post<GeneratedAll>('/api/translate', {
+        current: source,
+        fromLang: dirtyLang,
+        toLang: targetLang,
+        targetPlatform: targetLang === 'ja' ? 'qoo10-jp' : 'coupang',
+      })
+      cacheLang(targetLang, result)
+      setDirty(null)
+      useUsageStore.getState().fetchUsage()
+      const targetLabel = targetLang === 'ja' ? '일본어' : '한국어'
+      showToast(`${targetLabel} 동기화 완료`)
+      return true
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '동기화에 실패했습니다.'
+      showToast(msg, 'error')
+      console.error('동기화 실패:', err)
+      return false
+    } finally {
+      setIsTranslating(false)
+    }
+  }, [dirtyLang, langCache, cacheLang, setDirty, setIsTranslating])
+
   /** 현재 플랫폼 기준 "다른 언어 만들기" 가능 여부 */
   const meta = PLATFORM_META[product.platform]
   const canTranslate = !!generatedContent && meta?.market === 'jp'
@@ -86,8 +125,10 @@ export function useTranslate() {
 
   return {
     translateTo,
+    syncFromDirty,
     canTranslate,
     altLang,
     isCached: !!langCache[altLang],
+    dirtyLang,
   }
 }
