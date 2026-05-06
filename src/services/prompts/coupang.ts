@@ -124,6 +124,7 @@ export function buildCoupangRewritePrompt(source: GeneratedAll): string {
 - color_swatches[].personal_color: 일본어 ブルベ/イエベ → 한국어 쿨톤/웜톤
 - before_after.before/after: 한국어 자연스러운 표현 (예: "바른 직후" / "시간 경과 후")
 - specs[].key: 한국어로 (成分→제품의 주소재, 原産国→제조국 등)
+- hashtags: 한국어로 번역 (#リップベース → #립베이스). 원본 개수 유지
 
 【필수】 원본에 있는 모든 시각 필드는 출력에도 반드시 포함. 특히 mood_callout이 원본에 있으면
 출력 JSON의 content.mood_callout 키를 빠뜨리면 안 됩니다.
@@ -140,6 +141,7 @@ ${JSON.stringify(source, null, 2)}
     "mood_callout": "${source.content.mood_callout || ''}",  ← 원본 값 그대로 복사 (있으면 필수)
     "selling_points": ["...", "...", "..."],
     "description": "...",
+    "hashtags": ["#...", ...],  ← 원본에 있으면 한국어로 번역해서 포함
     "color_swatches": [...],  ← 원본에 있으면 반드시 포함, english_label 영문 그대로
     "before_after": {"before": "...", "after": "..."},  ← 원본에 있으면 반드시 포함
     "specs": [{"key":"제품의 주소재","value":"..."}, ...],

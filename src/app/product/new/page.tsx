@@ -52,6 +52,8 @@ export default function ProductNewPage() {
     return {
       ...generatedContent,
       mood_callout: generatedContent.mood_callout || otherContent.mood_callout,
+      // hashtags는 언어별로 다르게 생성되므로 fallback 시 비어있으면 다른 언어 것 보여줌 (차선)
+      hashtags: (generatedContent.hashtags?.length ? generatedContent.hashtags : otherContent.hashtags) ?? [],
       color_swatches: (generatedContent.color_swatches?.length ? generatedContent.color_swatches : otherContent.color_swatches) ?? [],
       before_after: generatedContent.before_after || otherContent.before_after,
     }

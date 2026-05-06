@@ -47,59 +47,83 @@ const Qoo10ClassicPreview = forwardRef<HTMLDivElement, Qoo10ClassicPreviewProps>
           <img src={storeIntroImage} alt="" style={{ width: '100%', display: 'block' }} />
         )}
 
-        {/* 헤더 — 깔끔한 매거진 (소프트 그라디언트 + 거대 Serif + 넓은 여백) */}
+        {/* 헤더 — 가운데 정렬 stacked 타이틀 + 부제 + 해시태그 칩
+            (카라그램·아누아 큐텐 페이지 레퍼런스, Modern과 동일 구조 + Classic 톤) */}
         <div
           style={{
             background: 'linear-gradient(180deg, #fdf3e7 0%, #fae5d2 100%)',
-            padding: '80px 56px 64px',
+            padding: '80px 40px 60px',
             textAlign: 'center',
             position: 'relative',
-            minHeight: 420,
           }}
         >
-          {/* 거대 영문 무드 — 두툼한 sans-serif */}
+          {/* 거대 영문 무드 — 코랄 액센트 */}
           {content.mood_callout && (
-            <h1
+            <p
               style={{
-                fontSize: 68, fontWeight: 900,
-                color: '#a04030',
-                margin: '40px 0 18px',
-                letterSpacing: '-0.03em',
-                lineHeight: 0.95,
+                fontSize: 64, fontWeight: 900,
+                color: '#d4877d',
+                margin: '0 0 8px',
+                letterSpacing: '-0.025em',
+                lineHeight: 1.0,
               }}
             >
               {content.mood_callout}
-            </h1>
+            </p>
           )}
 
-          {/* 작은 가로 라인 */}
-          <div style={{ width: 40, height: 2, background: '#a04030', margin: '0 auto 22px' }} />
-
-          {/* 타이틀 — mood_callout 없으면 hero 사이즈로 보정 */}
-          <p
+          {/* 타이틀 — mood_callout 없으면 hero 사이즈 */}
+          <h1
             style={{
-              fontSize: content.mood_callout ? 24 : 48,
-              fontWeight: content.mood_callout ? 800 : 900,
+              fontSize: content.mood_callout ? 36 : 54,
+              fontWeight: 900,
               color: '#3d1810',
-              margin: '0 0 12px',
-              letterSpacing: content.mood_callout ? '-0.015em' : '-0.03em',
-              lineHeight: content.mood_callout ? 1.3 : 1.1,
+              margin: 0,
+              letterSpacing: '-0.02em',
+              lineHeight: 1.15,
               wordBreak: 'keep-all',
             }}
           >
             {content.product_name}
-          </p>
+          </h1>
 
           {/* 부제 */}
           <p
             style={{
-              fontSize: 13, color: '#7a4a3a',
-              margin: 0, lineHeight: 1.7, fontWeight: 500,
+              fontSize: 14, color: '#7a4a3a',
+              margin: '22px 0 0',
+              lineHeight: 1.6, fontWeight: 500,
               wordBreak: 'keep-all', maxWidth: 560, marginInline: 'auto',
             }}
           >
             {content.subtitle}
           </p>
+
+          {/* 해시태그 칩 — 코랄 톤 pill */}
+          {content.hashtags && content.hashtags.length > 0 && (
+            <div
+              style={{
+                display: 'flex', gap: 10, justifyContent: 'center',
+                flexWrap: 'wrap', marginTop: 28,
+              }}
+            >
+              {content.hashtags.slice(0, 5).map((tag, i) => (
+                <span
+                  key={i}
+                  style={{
+                    fontSize: 13,
+                    color: '#a04030',
+                    background: '#f5c5b5',
+                    padding: '8px 18px',
+                    borderRadius: 22,
+                    fontWeight: 600,
+                  }}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 메인 이미지 풀블리드 */}

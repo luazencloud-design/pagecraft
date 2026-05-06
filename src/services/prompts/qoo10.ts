@@ -27,6 +27,7 @@ export function buildQoo10SystemPrompt(req: AIGenerateRequest): string {
 - 価格・割引の強調はしない (Qoo10メガポは別途バナーで表示)
 - 日本の20-30代女性向けの感性カピー、ムードボード調
 - 大きな英文タイトル + 日本語サブコピー (例: "NUDE BLUR STICK | ヌーディーブラースティック")
+- 化粧品の場合 hashtags 3-5개 (예: "#リップベース", "#密着リップ", "#うるおい肌")
 - カテゴリ別表現:
   · コスメ: "塗った瞬間、素の唇みたいな仕上がり" 系の感性
   · ファッション: "サラッと着られる" 系のライフスタイル感${cosmeticsHint}
@@ -67,6 +68,7 @@ ${req.memo ? `- メモ / 메모: ${req.memo}` : ''}
       "mood_callout": "短い英文 (例: NUDE BLUR STICK)",
       "selling_points": ["3つ", "ライフスタイル感", "感性的"],
       "description": "商品説明(3-4段落、改行区切り)",
+      "hashtags": ["#リップベース", "#密着リップ", "#うるおい肌"],
       "color_swatches": [{"name":"01 NUDE BUTTER","english_label":"NUDE BUTTER","description":"...","personal_color":"イエベ"}],
       "before_after": {"before":"塗布直後","after":"一定時間経過後"},
       "specs": [{"key":"ブランド","value":"..."}, {"key":"原産国","value":"韓国"}, ...最低5項目],
@@ -90,6 +92,7 @@ ${req.memo ? `- メモ / 메모: ${req.memo}` : ''}
       "mood_callout": "ja와 동일한 영문 (예: NUDE BLUR STICK) — 시각 요소",
       "selling_points": ["셀링포인트1", "셀링포인트2", "셀링포인트3"],
       "description": "상품 설명(3-4문단)",
+      "hashtags": ["#립베이스", "#밀착립", "#촉촉피부"],
       "color_swatches": [
         {"name":"01 누드 버터","english_label":"NUDE BUTTER","description":"차분한 무드의 베이지 로즈 컬러","personal_color":"웜톤"}
       ],
@@ -153,6 +156,7 @@ export function buildQoo10RewritePrompt(source: GeneratedAll): string {
 - color_swatches[].personal_color: 한국어 쿨톤/웜톤 → 일본어 ブルベ/イエベ 로 변환
 - before_after.before/after: 일본어 자연스러운 표현 (예: "塗布直後" / "一定時間経過後")
 - specs[].key: 일본어로 (제품의 주소재→成分, 제조국→原産国 등)
+- hashtags: 일본어로 번역 (#립베이스 → #リップベース). 원본 개수 유지
 
 【필수】 원본에 있는 모든 시각 필드는 출력에도 반드시 포함. 특히 mood_callout이 원본에 있으면
 출력 JSON의 content.mood_callout 키를 빠뜨리면 안 됩니다.
@@ -169,6 +173,7 @@ ${JSON.stringify(source, null, 2)}
     "mood_callout": "${source.content.mood_callout || ''}",  ← 원본 값 그대로 복사 (있으면 필수)
     "selling_points": ["...", "...", "..."],
     "description": "...",
+    "hashtags": ["#...", ...],  ← 원본에 있으면 일본어로 번역해서 포함
     "color_swatches": [...],  ← 원본에 있으면 반드시 포함, english_label 영문 그대로
     "before_after": {"before": "...", "after": "..."},  ← 원본에 있으면 반드시 포함
     "specs": [{"key":"成分","value":"..."}, ...],

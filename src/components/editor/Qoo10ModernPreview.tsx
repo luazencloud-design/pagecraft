@@ -51,76 +51,84 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
           <img src={storeIntroImage} alt="" style={{ width: '100%', display: 'block' }} />
         )}
 
-        {/* 헤더 — 깔끔 트렌디 (단일 컬러 블롭 + 큰 타이포 + 넓은 여백) */}
+        {/* 헤더 — 가운데 정렬 stacked 타이틀 + 부제 + 해시태그 칩
+            (카라그램·아누아 큐텐 페이지 레퍼런스) */}
         <div
           style={{
-            background: '#fafafa',
-            padding: 0,
+            background: '#fdf6ee',
+            padding: '80px 40px 56px',
             position: 'relative',
             overflow: 'hidden',
-            minHeight: 420,
+            textAlign: 'center',
           }}
         >
-          {/* 우상단 한 개의 큰 블롭만 — 절제 */}
-          <div
-            style={{
-              position: 'absolute', top: -120, right: -100,
-              width: 420, height: 420, borderRadius: '50%',
-              background: 'radial-gradient(circle at 30% 30%, #fde0d0 0%, #f8c8a8 70%, #e8a890 100%)',
-              opacity: 0.85,
-              zIndex: 0,
-            }}
-          />
-          {/* 좌하단 작은 액센트 */}
-          <div
-            style={{
-              position: 'absolute', bottom: -40, left: -30,
-              width: 140, height: 140, borderRadius: '50%',
-              background: '#1a1a1a',
-              opacity: 0.04,
-              zIndex: 0,
-            }}
-          />
-
-          {/* 컨텐츠 — 좌측 정렬로 트렌디감 */}
-          <div style={{ position: 'relative', zIndex: 1, padding: '72px 56px 56px' }}>
-            {/* 거대 영문 무드 — 두툼한 sans-serif */}
-            {content.mood_callout && (
-              <p
-                style={{
-                  fontSize: 64, fontWeight: 900, color: '#1a1a1a',
-                  margin: '0 0 24px',
-                  letterSpacing: '-0.035em',
-                  lineHeight: 0.95,
-                }}
-              >
-                {content.mood_callout}
-              </p>
-            )}
-
-            {/* 짧은 구분 라인 */}
-            <div style={{ width: 48, height: 3, background: '#1a1a1a', margin: '0 0 22px' }} />
-
-            {/* 타이틀 — mood_callout 없으면 hero 사이즈로 보정 */}
-            <h1
+          {/* 거대 영문 무드 — 살구/코랄 액센트 */}
+          {content.mood_callout && (
+            <p
               style={{
-                fontSize: content.mood_callout ? 26 : 44,
-                fontWeight: content.mood_callout ? 800 : 900,
-                color: '#1a1a1a',
-                margin: '0 0 12px',
-                letterSpacing: content.mood_callout ? '-0.015em' : '-0.03em',
-                lineHeight: content.mood_callout ? 1.3 : 1.1,
-                wordBreak: 'keep-all',
+                fontSize: 60, fontWeight: 900, color: '#e8a890',
+                margin: '0 0 8px',
+                letterSpacing: '-0.025em',
+                lineHeight: 1.0,
               }}
             >
-              {content.product_name}
-            </h1>
-
-            {/* 부제 — 회색 톤으로 절제 */}
-            <p style={{ fontSize: 14, color: '#666', margin: 0, lineHeight: 1.7, wordBreak: 'keep-all', maxWidth: 520 }}>
-              {content.subtitle}
+              {content.mood_callout}
             </p>
-          </div>
+          )}
+
+          {/* 일본어/한국어 타이틀 — mood_callout 없으면 hero 사이즈 */}
+          <h1
+            style={{
+              fontSize: content.mood_callout ? 38 : 56,
+              fontWeight: 900,
+              color: '#3d3d3d',
+              margin: 0,
+              letterSpacing: '-0.02em',
+              lineHeight: 1.15,
+              wordBreak: 'keep-all',
+            }}
+          >
+            {content.product_name}
+          </h1>
+
+          {/* 부제 — N Colors | BRAND PRODUCT 식 */}
+          <p
+            style={{
+              fontSize: 15, color: '#888',
+              margin: '22px 0 0',
+              lineHeight: 1.6,
+              wordBreak: 'keep-all',
+              fontWeight: 500,
+            }}
+          >
+            {content.subtitle}
+          </p>
+
+          {/* 해시태그 칩 — 둥근 살구색 pill, 회전 X */}
+          {content.hashtags && content.hashtags.length > 0 && (
+            <div
+              style={{
+                display: 'flex', gap: 10, justifyContent: 'center',
+                flexWrap: 'wrap', marginTop: 28,
+              }}
+            >
+              {content.hashtags.slice(0, 5).map((tag, i) => (
+                <span
+                  key={i}
+                  style={{
+                    fontSize: 13,
+                    color: '#a04030',
+                    background: '#f5d0c0',
+                    padding: '8px 18px',
+                    borderRadius: 22,
+                    fontWeight: 600,
+                  }}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 메인 이미지 */}
