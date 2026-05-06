@@ -95,31 +95,39 @@ export default function ProductNewPage() {
 
     showToast('이미지 생성 중...')
     try {
-      // 동적 import — html2canvas는 클라이언트 전용
-      const html2canvas = (await import('html2canvas')).default
-      const canvas = await html2canvas(node, {
+      // 폰트 로드 완료까지 대기 — Pretendard/Noto Sans JP가 시스템 폰트로 떨어지면 자간·배치 깨짐
+      if (typeof document !== 'undefined' && document.fonts) {
+        try {
+          await Promise.all([
+            document.fonts.load('500 16px "Pretendard Variable"'),
+            document.fonts.load('700 12px "Pretendard Variable"'),
+            document.fonts.load('800 24px "Pretendard Variable"'),
+            document.fonts.load('900 64px "Pretendard Variable"'),
+            document.fonts.load('500 16px "Noto Sans JP"'),
+            document.fonts.load('800 24px "Noto Sans JP"'),
+            document.fonts.load('900 64px "Noto Sans JP"'),
+          ])
+          await document.fonts.ready
+        } catch {
+          // 폰트 로드 실패해도 진행
+        }
+      }
+
+      // html-to-image — html2canvas보다 web font / 한글·일본어 metric 처리가 안정적
+      const { toPng } = await import('html-to-image')
+      const dataUrl = await toPng(node, {
         backgroundColor: '#ffffff',
-        scale: 2,         // 고해상도 (800 → 1600px)
-        useCORS: true,    // dataURL 이미지는 OK이지만 외부 src 대비
-        logging: false,
-        windowWidth: 800,
-        windowHeight: node.scrollHeight,
+        pixelRatio: 2,    // 고해상도 (800 → 1600px)
+        cacheBust: true,
+        skipFonts: false, // 폰트 임베딩 활성
       })
 
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          showToast('이미지 생성 실패', 'error')
-          return
-        }
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        const safeName = (generatedContent.product_name || product.name || '상품').replace(/[/\\?%*:|"<>]/g, '')
-        a.download = `상세페이지_${safeName}.png`
-        a.click()
-        URL.revokeObjectURL(url)
-        showToast('이미지 다운로드 완료')
-      }, 'image/png')
+      const a = document.createElement('a')
+      a.href = dataUrl
+      const safeName = (generatedContent.product_name || product.name || '상품').replace(/[/\\?%*:|"<>]/g, '')
+      a.download = `상세페이지_${safeName}.png`
+      a.click()
+      showToast('이미지 다운로드 완료')
     } catch (err) {
       console.error('다운로드 실패:', err)
       showToast('다운로드 실패 — 다시 시도해주세요', 'error')
