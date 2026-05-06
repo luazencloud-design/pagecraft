@@ -32,12 +32,15 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
     // 색상 swatch용 임시 컬러 매핑 (실제 색상 미감지 시 fallback)
     const swatchColors = ['#e8c5c5', '#d4a373', '#c9a09a', '#b08a78', '#dba9a9', '#e6b8a2', '#c4938b', '#a87968']
 
+    // 폰트 스택 — 두툼한 sans-serif 통일 (Pretendard 우선, JP/KR 모두 자연스럽게)
+    const FONT_BODY = "'Pretendard Variable', 'Pretendard', 'Noto Sans JP', 'Noto Sans KR', 'Hiragino Sans', sans-serif"
+
     return (
       <div
         ref={ref}
         style={{
           width: 800,
-          fontFamily: "'Noto Sans JP', 'Hiragino Sans', sans-serif",
+          fontFamily: FONT_BODY,
           lineHeight: 1.5,
           overflow: 'hidden',
           background: '#ffffff',
@@ -91,16 +94,14 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
               K-BEAUTY ESSENTIAL · 2025
             </p>
 
-            {/* 거대 영문 무드 — 깔끔한 굵은 Serif */}
+            {/* 거대 영문 무드 — 두툼한 sans-serif */}
             {content.mood_callout && (
               <p
                 style={{
-                  fontFamily: "'Playfair Display', 'Noto Serif JP', serif",
-                  fontSize: 60, fontWeight: 800, color: '#1a1a1a',
+                  fontSize: 64, fontWeight: 900, color: '#1a1a1a',
                   margin: '0 0 24px',
-                  letterSpacing: '-0.025em',
-                  lineHeight: 0.98,
-                  fontStyle: 'italic',
+                  letterSpacing: '-0.035em',
+                  lineHeight: 0.95,
                 }}
               >
                 {content.mood_callout}
@@ -188,10 +189,9 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
                 {/* 큰 번호 */}
                 <div
                   style={{
-                    fontFamily: "'Playfair Display', 'Noto Serif JP', serif",
-                    fontSize: 56, fontWeight: 700,
+                    fontSize: 56, fontWeight: 900,
                     color: '#e0a890', lineHeight: 1, margin: '0 0 12px',
-                    fontStyle: 'italic',
+                    letterSpacing: '-0.03em',
                   }}
                 >
                   {String(i + 1).padStart(2, '0')}
@@ -281,9 +281,8 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
                   {sw.english_label && (
                     <p
                       style={{
-                        fontFamily: "'Playfair Display', 'Noto Serif JP', serif",
-                        fontSize: 14, fontWeight: 700, color: '#3d3d3d',
-                        margin: '0 0 4px', letterSpacing: '0.04em',
+                        fontSize: 14, fontWeight: 800, color: '#3d3d3d',
+                        margin: '0 0 4px', letterSpacing: '-0.01em',
                       }}
                     >
                       {sw.english_label}
@@ -312,19 +311,10 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
           </div>
         )}
 
-        {/* 첫 설명 문단 — 인용구 스타일 */}
+        {/* 첫 설명 문단 */}
         {descLines[0] && (
-          <div style={{ background: '#fff', padding: '60px 40px', textAlign: 'center', position: 'relative' }}>
-            <span
-              style={{
-                fontFamily: "'Playfair Display', 'Noto Serif JP', serif",
-                fontSize: 80, color: '#f0d4ba', position: 'absolute',
-                top: 20, left: 60, lineHeight: 1, fontStyle: 'italic',
-              }}
-            >
-              "
-            </span>
-            <p style={{ fontSize: 14, color: '#3d3d3d', lineHeight: 2, margin: 0, maxWidth: 600, marginInline: 'auto', wordBreak: 'keep-all', position: 'relative', zIndex: 1 }}>
+          <div style={{ background: '#fff', padding: '60px 40px', textAlign: 'center' }}>
+            <p style={{ fontSize: 15, color: '#3d3d3d', lineHeight: 2, margin: 0, maxWidth: 600, marginInline: 'auto', wordBreak: 'keep-all', fontWeight: 500 }}>
               {descLines[0]}
             </p>
           </div>
@@ -355,7 +345,7 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
               <p style={{ fontSize: 11, letterSpacing: 5, color: '#a06850', margin: '0 0 6px', fontWeight: 600 }}>
                 ◆ INFORMATION ◆
               </p>
-              <p style={{ fontFamily: "'Playfair Display', 'Noto Serif JP', serif", fontSize: 24, color: '#3d3d3d', margin: 0, fontWeight: 600, fontStyle: 'italic' }}>
+              <p style={{ fontSize: 26, color: '#1a1a1a', margin: 0, fontWeight: 900, letterSpacing: '-0.02em' }}>
                 Product Details
               </p>
             </div>
@@ -414,7 +404,7 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
               <p style={{ fontSize: 10, letterSpacing: 3, color: '#a06850', margin: '0 0 4px', fontWeight: 600 }}>
                 PRICE
               </p>
-              <p style={{ fontFamily: "'Playfair Display', 'Noto Serif JP', serif", fontSize: 32, fontWeight: 700, color: '#3d3d3d', margin: 0, letterSpacing: '0.02em' }}>
+              <p style={{ fontSize: 34, fontWeight: 900, color: '#1a1a1a', margin: 0, letterSpacing: '-0.025em' }}>
                 {yenPrice}
               </p>
             </div>

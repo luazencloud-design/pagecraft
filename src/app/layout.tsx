@@ -20,7 +20,12 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
+        {/* 기본 UI + 큐텐 템플릿: 두툼한 sans-serif 통일 (Pretendard / Noto Sans JP) */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700;800;900&display=swap"
+          rel="stylesheet"
+        />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
       </head>
       <body className="bg-bg text-text antialiased">
         <Script id="theme-init" strategy="beforeInteractive">{`
