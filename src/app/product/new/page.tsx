@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
@@ -58,6 +58,9 @@ export default function ProductNewPage() {
   }, [generatedContent, currentLang, langCache])
   const canGenerate = images.length > 0 && product.name.trim() !== ''
 
+  // 미리보기 DOM 캡처용 ref — DetailPagePreview의 wrapper div에 연결
+  const previewRef = useRef<HTMLDivElement>(null)
+
   const skipAuth = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
 
   // 비로그인이면 랜딩페이지로 (SKIP_AUTH면 패스)
@@ -73,80 +76,41 @@ export default function ProductNewPage() {
     )
   }
 
-  // PNG 다운로드 — 본문은 서버, 상하단 이미지는 클라이언트에서 원본 이어붙이기
+  /**
+   * PNG 다운로드 — 미리보기 DOM을 html2canvas로 직접 캡처
+   *
+   * 이전: /api/render 서버 캔버스 (한국 템플릿 고정 → 큐텐 템플릿 무시 버그)
+   * 지금: 화면에 보이는 그대로 캡처하므로 어떤 템플릿이든 동일하게 동작
+   *
+   * 800px 고정 폭 미리보기 div를 그대로 캡처. 화면 zoom(0.825) 은 시각 변환이라
+   * DOM 자체는 800px이므로 캡처 결과도 800px 원본 해상도.
+   */
   const handleDownload = async () => {
     if (!generatedContent) return
+    const node = previewRef.current
+    if (!node) {
+      showToast('미리보기를 찾지 못했습니다', 'error')
+      return
+    }
+
     showToast('이미지 생성 중...')
-    const { compressForRender } = await import('@/lib/image')
-    const { api } = await import('@/lib/api')
-    const latestImages = useImageStore.getState().images
-    const renderImages = await Promise.all(
-      latestImages.map((img) => compressForRender(img.dataUrl))
-    )
-    // 상하단 이미지는 서버에 안 보냄 — 클라이언트에서 원본으로 이어붙임
     try {
-      const pngBlob = await api.post<Blob>('/api/render', {
-        data: generatedContent,
-        price: product.price,
-        images: renderImages,
+      // 동적 import — html2canvas는 클라이언트 전용
+      const html2canvas = (await import('html2canvas')).default
+      const canvas = await html2canvas(node, {
+        backgroundColor: '#ffffff',
+        scale: 2,         // 고해상도 (800 → 1600px)
+        useCORS: true,    // dataURL 이미지는 OK이지만 외부 src 대비
+        logging: false,
+        windowWidth: 800,
+        windowHeight: node.scrollHeight,
       })
-      if (!(pngBlob instanceof Blob)) return
-
-      const storeIntro = useImageStore.getState().storeIntroImage
-      const terms = useImageStore.getState().termsImage
-
-      // 상하단 이미지 없으면 본문 PNG 그대로 다운로드
-      if (!storeIntro && !terms) {
-        const url = URL.createObjectURL(pngBlob)
-        const a = document.createElement('a')
-        a.href = url
-        const safeName = (generatedContent.product_name || product.name || '상품').replace(/[/\\?%*:|"<>]/g, '')
-        a.download = `상세페이지_${safeName}.png`
-        a.click()
-        URL.revokeObjectURL(url)
-        showToast('이미지 다운로드 완료')
-        return
-      }
-
-      // 클라이언트 canvas에서 원본 이미지 + 본문 PNG 세로 이어붙이기
-      const loadImg = (src: string): Promise<HTMLImageElement> =>
-        new Promise((resolve, reject) => {
-          const img = new Image()
-          img.onload = () => resolve(img)
-          img.onerror = reject
-          img.src = src
-        })
-
-      const bodyUrl = URL.createObjectURL(pngBlob)
-      const bodyImg = await loadImg(bodyUrl)
-      const WIDTH = bodyImg.width
-
-      const imgs: HTMLImageElement[] = []
-      if (storeIntro) imgs.push(await loadImg(storeIntro))
-      imgs.push(bodyImg)
-      if (terms) imgs.push(await loadImg(terms))
-
-      // 각 이미지를 WIDTH 기준으로 높이 계산
-      const heights = imgs.map((img) => Math.round((WIDTH / img.width) * img.height))
-      const totalHeight = heights.reduce((a, b) => a + b, 0)
-
-      const canvas = document.createElement('canvas')
-      canvas.width = WIDTH
-      canvas.height = totalHeight
-      const ctx = canvas.getContext('2d')!
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, WIDTH, totalHeight)
-
-      let y = 0
-      imgs.forEach((img, i) => {
-        ctx.drawImage(img, 0, y, WIDTH, heights[i])
-        y += heights[i]
-      })
-
-      URL.revokeObjectURL(bodyUrl)
 
       canvas.toBlob((blob) => {
-        if (!blob) return
+        if (!blob) {
+          showToast('이미지 생성 실패', 'error')
+          return
+        }
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
@@ -156,8 +120,9 @@ export default function ProductNewPage() {
         URL.revokeObjectURL(url)
         showToast('이미지 다운로드 완료')
       }, 'image/png')
-    } catch {
-      showToast('다운로드 실패 — 다시 시도해주세요')
+    } catch (err) {
+      console.error('다운로드 실패:', err)
+      showToast('다운로드 실패 — 다시 시도해주세요', 'error')
     }
   }
 
@@ -354,6 +319,7 @@ export default function ProductNewPage() {
             {!isGenerating && previewContent && (
               <div style={{ zoom: 0.825 }}>
                 <DetailPagePreview
+                  ref={previewRef}
                   content={previewContent}
                   price={product.price}
                   images={images.map((img) => img.dataUrl)}
