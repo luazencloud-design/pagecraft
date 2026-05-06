@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
@@ -19,6 +19,7 @@ import { useImageStore } from '@/stores/imageStore'
 import { useEditorStore } from '@/stores/editorStore'
 import { useAIGenerate } from '@/hooks/useAIGenerate'
 import { showToast } from '@/components/ui/Toast'
+import type { GeneratedContent } from '@/types/ai'
 
 export default function ProductNewPage() {
   const { status } = useSession()
@@ -31,8 +32,31 @@ export default function ProductNewPage() {
     generatedContent,
     loadingMessage,
     generateError,
+    currentLang,
+    langCache,
   } = useEditorStore()
   const { generateContent } = useAIGenerate()
+
+  /**
+   * 큐텐 템플릿용 시각 필드 fallback —
+   * 한국어로 토글했을 때 ko에 mood_callout/hashtags/swatches/before_after 가 비어있으면
+   * 같은 캐시의 ja 결과에서 가져와 시각 디자인 일관성 유지.
+   * (영문 mood/swatch label은 양 언어 동일이라 그대로, 일본어 hashtags는 fallback이지만 차선)
+   */
+  const previewContent = useMemo<GeneratedContent | null>(() => {
+    if (!generatedContent) return null
+    const otherLang = currentLang === 'ko' ? 'ja' : 'ko'
+    const otherContent = langCache[otherLang]?.content
+    if (!otherContent) return generatedContent
+
+    return {
+      ...generatedContent,
+      mood_callout: generatedContent.mood_callout || otherContent.mood_callout,
+      hashtags: (generatedContent.hashtags?.length ? generatedContent.hashtags : otherContent.hashtags) ?? [],
+      color_swatches: (generatedContent.color_swatches?.length ? generatedContent.color_swatches : otherContent.color_swatches) ?? [],
+      before_after: generatedContent.before_after || otherContent.before_after,
+    }
+  }, [generatedContent, currentLang, langCache])
   const canGenerate = images.length > 0 && product.name.trim() !== ''
 
   const skipAuth = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
@@ -328,10 +352,10 @@ export default function ProductNewPage() {
             )}
 
             {/* 실시간 HTML 미리보기 — generatedContent 변경 시 자동 리렌더링 */}
-            {!isGenerating && generatedContent && (
+            {!isGenerating && previewContent && (
               <div style={{ zoom: 0.825 }}>
                 <DetailPagePreview
-                  content={generatedContent}
+                  content={previewContent}
                   price={product.price}
                   images={images.map((img) => img.dataUrl)}
                   template={product.template}
