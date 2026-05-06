@@ -27,7 +27,6 @@ export function buildQoo10SystemPrompt(req: AIGenerateRequest): string {
 - 価格・割引の強調はしない (Qoo10メガポは別途バナーで表示)
 - 日本の20-30代女性向けの感性カピー、ムードボード調
 - 大きな英文タイトル + 日本語サブコピー (例: "NUDE BLUR STICK | ヌーディーブラースティック")
-- 日本語ハッシュタグ (例: "#リップベース", "#密着ブラーリップ")
 - カテゴリ別表現:
   · コスメ: "塗った瞬間、素の唇みたいな仕上がり" 系の感性
   · ファッション: "サラッと着られる" 系のライフスタイル感${cosmeticsHint}
@@ -41,9 +40,8 @@ export function buildQoo10SystemPrompt(req: AIGenerateRequest): string {
 【共通ルール】
 - 사실관계 (성분, 원산지, 사이즈 등) 는 양쪽 동일
 - 셀링포인트의 핵심 메시지도 동일하지만 톤만 다르게
-- **ja와 ko 양쪽 모두 mood_callout / hashtags / color_swatches / before_after 채울 것**
+- **ja와 ko 양쪽 모두 mood_callout / color_swatches / before_after 채울 것**
   · mood_callout: 양쪽 다 영문 그대로 (예: "NUDE BLUR STICK") — 시각 디자인 요소
-  · hashtags: ja는 일본어 (#リップベース), ko는 한국어 (#립베이스)
   · color_swatches.english_label: 양쪽 다 영문 그대로 (예: "BALLET PINK")
   · color_swatches.name/description/personal_color: ja는 일본어, ko는 한국어
     (퍼스널컬러는 ja="ブルベ"/"イエベ", ko="쿨톤"/"웜톤")
@@ -69,7 +67,6 @@ ${req.memo ? `- メモ / 메모: ${req.memo}` : ''}
       "mood_callout": "短い英文 (例: NUDE BLUR STICK)",
       "selling_points": ["3つ", "ライフスタイル感", "感性的"],
       "description": "商品説明(3-4段落、改行区切り)",
-      "hashtags": ["#リップベース", "#密着リップ"],
       "color_swatches": [{"name":"01 NUDE BUTTER","english_label":"NUDE BUTTER","description":"...","personal_color":"イエベ"}],
       "before_after": {"before":"塗布直後","after":"一定時間経過後"},
       "specs": [{"key":"ブランド","value":"..."}, {"key":"原産国","value":"韓国"}, ...最低5項目],
@@ -93,7 +90,6 @@ ${req.memo ? `- メモ / 메모: ${req.memo}` : ''}
       "mood_callout": "ja와 동일한 영문 (예: NUDE BLUR STICK) — 시각 요소",
       "selling_points": ["셀링포인트1", "셀링포인트2", "셀링포인트3"],
       "description": "상품 설명(3-4문단)",
-      "hashtags": ["#립베이스", "#밀착립", "...4-6개"],
       "color_swatches": [
         {"name":"01 누드 버터","english_label":"NUDE BUTTER","description":"차분한 무드의 베이지 로즈 컬러","personal_color":"웜톤"}
       ],

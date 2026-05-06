@@ -39,9 +39,9 @@ export default function ProductNewPage() {
 
   /**
    * 큐텐 템플릿용 시각 필드 fallback —
-   * 한국어로 토글했을 때 ko에 mood_callout/hashtags/swatches/before_after 가 비어있으면
+   * 한국어로 토글했을 때 ko에 mood_callout/swatches/before_after 가 비어있으면
    * 같은 캐시의 ja 결과에서 가져와 시각 디자인 일관성 유지.
-   * (영문 mood/swatch label은 양 언어 동일이라 그대로, 일본어 hashtags는 fallback이지만 차선)
+   * 영문 mood/swatch english_label은 양 언어 동일이라 fallback이 자연스러움.
    */
   const previewContent = useMemo<GeneratedContent | null>(() => {
     if (!generatedContent) return null
@@ -52,7 +52,6 @@ export default function ProductNewPage() {
     return {
       ...generatedContent,
       mood_callout: generatedContent.mood_callout || otherContent.mood_callout,
-      hashtags: (generatedContent.hashtags?.length ? generatedContent.hashtags : otherContent.hashtags) ?? [],
       color_swatches: (generatedContent.color_swatches?.length ? generatedContent.color_swatches : otherContent.color_swatches) ?? [],
       before_after: generatedContent.before_after || otherContent.before_after,
     }
