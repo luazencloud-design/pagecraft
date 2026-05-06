@@ -115,12 +115,21 @@ export default function ProductNewPage() {
 
       // html-to-image — html2canvas보다 web font / 한글·일본어 metric 처리가 안정적
       const { toPng } = await import('html-to-image')
-      const dataUrl = await toPng(node, {
+
+      // 1차: 폰트 임베딩 시도 (crossOrigin 설정된 link만 성공)
+      // 실패 시 (CORS 문제 등) skipFonts로 재시도 — 브라우저 캐시된 폰트로 그려짐
+      const captureOptions = {
         backgroundColor: '#ffffff',
-        pixelRatio: 2,    // 고해상도 (800 → 1600px)
+        pixelRatio: 2,
         cacheBust: true,
-        skipFonts: false, // 폰트 임베딩 활성
-      })
+      }
+      let dataUrl: string
+      try {
+        dataUrl = await toPng(node, { ...captureOptions, skipFonts: false })
+      } catch (err) {
+        console.warn('폰트 임베딩 실패, skipFonts로 재시도:', err)
+        dataUrl = await toPng(node, { ...captureOptions, skipFonts: true })
+      }
 
       const a = document.createElement('a')
       a.href = dataUrl
