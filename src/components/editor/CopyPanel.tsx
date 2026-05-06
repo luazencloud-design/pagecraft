@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
+import { useTranslate } from '@/hooks/useTranslate'
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false)
@@ -206,6 +207,52 @@ function SpecBlock({ specs, onUpdate }: { specs: { key: string; value: string }[
   )
 }
 
+function LangSwitcher() {
+  const { currentLang, isTranslating, langCache } = useEditorStore()
+  const { translateTo, canTranslate, altLang, isCached } = useTranslate()
+
+  if (!canTranslate) return null
+
+  const altLabel = altLang === 'ja' ? '🇯🇵 日本語' : '🇰🇷 한국어'
+  const currentLabel = currentLang === 'ja' ? '🇯🇵 日本語' : '🇰🇷 한국어'
+  const cachedLangs = Object.keys(langCache) as Array<'ko' | 'ja'>
+  const cacheCount = cachedLangs.length
+
+  return (
+    <div className="bg-surface2 border border-border rounded-[10px] mb-3 overflow-hidden">
+      <div className="flex items-center justify-between px-[13px] py-[10px]">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-semibold text-text2">현재 언어</span>
+          <span className="text-[11px] px-[8px] py-[2px] rounded-[4px] bg-accent-dim text-accent font-semibold">
+            {currentLabel}
+          </span>
+          {cacheCount > 1 && (
+            <span className="text-[9px] text-text3" title="캐시된 언어 버전이 있어요">
+              {cacheCount}개 버전 보관 중
+            </span>
+          )}
+        </div>
+        <button
+          disabled={isTranslating}
+          onClick={() => translateTo(altLang)}
+          className={`px-[10px] py-[4px] rounded-[5px] text-[11px] cursor-pointer transition-all duration-150 border ${
+            isTranslating
+              ? 'border-border text-text3 cursor-wait'
+              : 'border-accent text-accent hover:bg-accent hover:text-bg'
+          }`}
+          title={isCached ? '저장된 버전으로 즉시 전환' : 'AI로 다시 작성 (크레딧 차감)'}
+        >
+          {isTranslating
+            ? '⏳ 변환 중...'
+            : isCached
+              ? `${altLabel} 보기 ↻`
+              : `${altLabel} 만들기 🌐`}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function CopyPanel() {
   const { generatedContent, setGeneratedContent } = useEditorStore()
 
@@ -240,6 +287,7 @@ export default function CopyPanel() {
 
   return (
     <div className="space-y-0">
+      <LangSwitcher />
       <EditableBlock title="상품명" text={product_name} onSave={(v) => update('product_name', v)} />
       <EditableBlock title="서브타이틀" text={subtitle} onSave={(v) => update('subtitle', v)} />
       <EditableBlock title="메인 카피" text={main_copy} onSave={(v) => update('main_copy', v)} />

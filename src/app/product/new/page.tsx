@@ -334,6 +334,7 @@ export default function ProductNewPage() {
                   content={generatedContent}
                   price={product.price}
                   images={images.map((img) => img.dataUrl)}
+                  template={product.template}
                   storeIntroImage={storeIntroImage}
                   termsImage={termsImage}
                 />

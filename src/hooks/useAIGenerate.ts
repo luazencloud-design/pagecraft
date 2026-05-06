@@ -7,6 +7,7 @@ import { useEditorStore } from '@/stores/editorStore'
 import { useUsageStore } from '@/stores/usageStore'
 import { api } from '@/lib/api'
 import { compressForAI } from '@/lib/image'
+import { PLATFORM_META } from '@/types/product'
 import type { GeneratedAll, GeneratedTag } from '@/types/ai'
 import type { CoupangSuggestResponse } from '@/types/market'
 
@@ -26,6 +27,8 @@ export function useAIGenerate() {
     setGeneratedContent,
     setGeneratedTitles,
     setGeneratedTags,
+    setGeneratedAllForLang,
+    clearLangCache,
     setIsGenerating,
     setLoadingMessage,
     setGenerateError,
@@ -39,6 +42,8 @@ export function useAIGenerate() {
     setIsGenerating(true)
     setGenerateError('')
     setLoadingMessage(LOADING_MESSAGES[0])
+    // 새 생성 시작 시 기존 언어 캐시 초기화 (이전 상품 결과 누수 방지)
+    clearLangCache()
 
     let msgIdx = 0
     const interval = setInterval(() => {
@@ -47,17 +52,23 @@ export function useAIGenerate() {
     }, 3000)
 
     try {
-      // 쿠팡 인기 검색어 가져오기 (실패해도 무시)
+      // 한국 마켓일 때만 쿠팡 인기 검색어 호출 (큐텐 등은 스킵)
+      const platformMeta = PLATFORM_META[product.platform]
+      const targetLang = platformMeta?.lang ?? 'ko'
+      const useAutocomplete = platformMeta?.hasAutocomplete ?? false
+
       let coupangSuggestions: string[] = []
-      try {
-        if (product.name) {
-          const suggest = await api.get<CoupangSuggestResponse>(
-            `/api/market/suggest?keyword=${encodeURIComponent(product.name)}`,
-          )
-          coupangSuggestions = suggest.suggestions || []
+      if (useAutocomplete) {
+        try {
+          if (product.name) {
+            const suggest = await api.get<CoupangSuggestResponse>(
+              `/api/market/suggest?keyword=${encodeURIComponent(product.name)}`,
+            )
+            coupangSuggestions = suggest.suggestions || []
+          }
+        } catch {
+          // 쿠팡 API 실패해도 계속 진행
         }
-      } catch {
-        // 쿠팡 API 실패해도 계속 진행
       }
 
       const aiImages = await Promise.all(
@@ -77,18 +88,11 @@ export function useAIGenerate() {
         coupangSuggestions,
       })
 
-      // content 설정
-      setGeneratedContent(result.content)
-      // 크레딧 소비 후 UI 즉시 반영
-      useUsageStore.getState().fetchUsage()
+      // 활성 언어 + 캐시에 동시 저장
+      setGeneratedAllForLang(targetLang, result)
 
-      // titles 설정
-      if (result.titles?.length > 0) {
-        setGeneratedTitles(result.titles)
-      }
-
-      // tags 설정
-      if (result.tags?.length > 0) {
+      // 트렌딩 태그 마킹은 별도로 (한국어 + 자동완성 있을 때만)
+      if (useAutocomplete && result.tags?.length > 0) {
         const trendingSet = new Set(
           coupangSuggestions.map((s) => s.replace(/\s/g, '').toLowerCase()),
         )
@@ -98,6 +102,9 @@ export function useAIGenerate() {
         }))
         setGeneratedTags(tags)
       }
+
+      // 크레딧 소비 후 UI 즉시 반영
+      useUsageStore.getState().fetchUsage()
 
       setActiveTab('copy')
     } catch (err) {
@@ -115,6 +122,8 @@ export function useAIGenerate() {
     setGeneratedContent,
     setGeneratedTitles,
     setGeneratedTags,
+    setGeneratedAllForLang,
+    clearLangCache,
     setIsGenerating,
     setLoadingMessage,
     setGenerateError,
