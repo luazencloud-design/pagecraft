@@ -115,28 +115,33 @@ export function buildCoupangRewritePrompt(source: GeneratedAll): string {
 - 한국어 자연스러운 어순/조사 사용
 - 외래어/브랜드명은 한글 표기 또는 원어 (사용자 표기 따름)
 
-【시각 필드】
-- mood_callout: 영문 그대로 유지 (NUDE BLUR STICK 등)
-- color_swatches.english_label: 영문 그대로 유지 (BALLET PINK 등)
-- color_swatches.name/description: 한국어로 번역
-- color_swatches.personal_color: 쿨톤/웜톤 으로 (일본어 ブルベ/イエベ → 한국어)
-- before_after: 한국어 자연스러운 표현 (예: "바른 직후" / "시간 경과 후")
-- specs.key: 한국어로 (成分→제품의 주소재, 原産国→제조국 등)
+【시각 필드 — 매우 중요】
+다음 필드들은 **번역 대상이 아닌 시각 디자인 요소**입니다. 원본 값을 그대로 복사하세요:
+- mood_callout: 원본의 영문 값 그대로 (예: "ROSE WATER TONER" → "ROSE WATER TONER")
+  ※ 절대 번역/변경/삭제 금지. 원본에 있으면 출력에도 반드시 포함.
+- color_swatches[].english_label: 원본 영문 그대로 (예: "BALLET PINK")
+- color_swatches[].name/description: 한국어로 번역
+- color_swatches[].personal_color: 일본어 ブルベ/イエベ → 한국어 쿨톤/웜톤
+- before_after.before/after: 한국어 자연스러운 표현 (예: "바른 직후" / "시간 경과 후")
+- specs[].key: 한국어로 (成分→제품의 주소재, 原産国→제조국 등)
+
+【필수】 원본에 있는 모든 시각 필드는 출력에도 반드시 포함. 특히 mood_callout이 원본에 있으면
+출력 JSON의 content.mood_callout 키를 빠뜨리면 안 됩니다.
 
 원본 (日本語 — 사용자 편집본):
 ${JSON.stringify(source, null, 2)}
 
-반드시 아래 JSON 형식으로 응답 (모든 텍스트 한국어):
+반드시 아래 JSON 형식으로 응답 (모든 텍스트 한국어, 단 시각 필드는 영문 그대로):
 {
   "content": {
     "product_name": "...",
     "subtitle": "...",
     "main_copy": "...",
-    "mood_callout": "...(영문 유지, 큐텐 템플릿이라면)",
+    "mood_callout": "${source.content.mood_callout || ''}",  ← 원본 값 그대로 복사 (있으면 필수)
     "selling_points": ["...", "...", "..."],
     "description": "...",
-    "color_swatches": [...] (있으면 유지, english_label 영문 유지),
-    "before_after": {"before": "...", "after": "..."} (있으면 유지),
+    "color_swatches": [...],  ← 원본에 있으면 반드시 포함, english_label 영문 그대로
+    "before_after": {"before": "...", "after": "..."},  ← 원본에 있으면 반드시 포함
     "specs": [{"key":"제품의 주소재","value":"..."}, ...],
     "keywords": ["..."],
     "caution": "..."

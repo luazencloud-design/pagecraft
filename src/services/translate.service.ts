@@ -105,5 +105,29 @@ export async function translateContent(req: TranslateRequest): Promise<Generated
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) throw new Error('Gemini 번역 응답에서 텍스트를 찾을 수 없습니다.')
 
-  return safeParseJSON<GeneratedAll>(text)
+  const result = safeParseJSON<GeneratedAll>(text)
+
+  // 안전장치: AI가 시각 필드(mood_callout / english_label 등) 누락 시 원본에서 복구
+  // 이 필드들은 양 언어 동일한 시각 디자인 요소이므로 원본 값 그대로 사용해도 안전
+  if (result.content && req.current.content) {
+    const src = req.current.content
+    const dst = result.content
+    if (!dst.mood_callout && src.mood_callout) {
+      dst.mood_callout = src.mood_callout
+    }
+    if (!dst.before_after && src.before_after) {
+      dst.before_after = src.before_after
+    }
+    // color_swatches: 결과 누락이면 원본 그대로, 있으면 english_label만 원본 보존
+    if ((!dst.color_swatches || dst.color_swatches.length === 0) && src.color_swatches?.length) {
+      dst.color_swatches = src.color_swatches
+    } else if (dst.color_swatches?.length && src.color_swatches?.length) {
+      dst.color_swatches = dst.color_swatches.map((sw, i) => ({
+        ...sw,
+        english_label: sw.english_label || src.color_swatches?.[i]?.english_label,
+      }))
+    }
+  }
+
+  return result
 }
