@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { GeneratedContent, GeneratedTitle, GeneratedTag, GeneratedAll } from '@/types/ai'
+import type {
+  GeneratedContent, GeneratedTitle, GeneratedTag, GeneratedAll, GeneratedByLang,
+} from '@/types/ai'
 import type { Lang } from '@/types/product'
 
 type ActiveTab = 'copy' | 'title' | 'tags' | 'export'
@@ -36,6 +38,11 @@ interface EditorState {
 
   /** 특정 언어로 전체 결과 저장 + 활성 언어로 전환 */
   setGeneratedAllForLang: (lang: Lang, all: GeneratedAll) => void
+  /**
+   * 여러 언어를 한 번에 캐시에 저장 + 활성 언어로 전환
+   * (큐텐 바이링구얼 응답 처리용)
+   */
+  setGeneratedByLang: (byLang: GeneratedByLang, activeLang: Lang) => void
   /** 캐시 hit 시 즉시 전환, miss면 false 반환 (번역 트리거는 호출자) */
   switchLang: (lang: Lang) => boolean
   /** 캐시 초기화 (새 상품 시작 등) */
@@ -99,6 +106,22 @@ export const useEditorStore = create<EditorState>()(
           generatedTags: (all.tags ?? []).map((text) => ({ text, isTrending: false })),
           langCache: { ...state.langCache, [lang]: all },
         })),
+
+      setGeneratedByLang: (byLang, activeLang) =>
+        set((state) => {
+          const active = byLang[activeLang]
+          // activeLang 결과가 없으면 다른 언어 중 하나로 fallback
+          const fallback = active ?? byLang.ko ?? byLang.ja
+          if (!fallback) return state  // 둘 다 없으면 무변경
+          const resolvedLang: Lang = active ? activeLang : (byLang.ko ? 'ko' : 'ja')
+          return {
+            currentLang: resolvedLang,
+            generatedContent: fallback.content,
+            generatedTitles: fallback.titles ?? [],
+            generatedTags: (fallback.tags ?? []).map((text) => ({ text, isTrending: false })),
+            langCache: { ...state.langCache, ...byLang },
+          }
+        }),
 
       switchLang: (lang) => {
         const cached = get().langCache[lang]

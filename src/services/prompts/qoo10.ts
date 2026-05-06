@@ -1,83 +1,114 @@
 import type { AIGenerateRequest, GeneratedAll } from '@/types/ai'
 
 /**
- * Qoo10 Japan용 — 일본어 감성·무드 톤
- * K-뷰티/K-패션 브랜드 공식몰 스타일 (카라그램·아누아·이니스프리 큐텐 페이지 분석 기반)
+ * Qoo10 Japan용 — 일본어 + 한국어 동시 생성 (양 언어 1회 호출로 토큰 절약)
+ *
+ * 1차 출력은 일본어 (큐텐 셀러의 주 사용 언어). 같은 호출에 한국어 버전도 함께 반환 —
+ * 양쪽이 같은 톤·사실관계를 공유하면서도 각 마켓에 맞게 카피 톤만 차이 (JP=감성/KR=SEO).
  *
  * 특징:
- * - 큰 영문 타이틀 + 일본어 부제 무드보드 형식
- * - 색조 화장품일 경우 색상별 swatch + パーソナルカラー (ブルベ/イエベ) 추천
- * - 사용 전/후 비교 컷 (塗布直後 / 一定時間経過後 등)
- * - 가격 강조 X, 라이프스타일 톤
+ * - 일본어: 큰 영문 타이틀 + 감성 무드 톤, 색조 swatch + パーソナルカラー
+ * - 한국어: 쿠팡/스마트스토어용 SEO 키워드형 톤
+ * - 단순 번역이 아니라 마켓별 톤으로 재구성 (사실 정보·스펙·셀링포인트는 동일)
  */
 export function buildQoo10SystemPrompt(req: AIGenerateRequest): string {
-  const isCosmetics = /화장품|뷰티|코스메|cosmetic|뷰티|스킨|메이크업|립|아이/i.test(req.category)
+  const isCosmetics = /화장품|뷰티|코스메|cosmetic|スキン|메이크업|립|アイ/i.test(req.category)
   const cosmeticsHint = isCosmetics
-    ? `\n- カラー商品の場合、必ず "color_swatches" を含めること (例: NUDE BUTTER / BALLET PINK)
+    ? `\n- 色商品の場合、"color_swatches" を含めること (例: NUDE BUTTER / BALLET PINK)
 - パーソナルカラー (ブルベ / イエベ) のおすすめも記載`
     : ''
 
-  return `あなたはQoo10ジャパンで韓国コスメ・ファッション商品を販売する専門の日本語コピーライターです。
-韓国ブランドの感性的なムードを保ちながら、日本人ユーザーに刺さるトーンで作成してください。
+  return `あなたはQoo10ジャパンと韓国Coupangの両方でK-Beauty/K-Fashion商品を販売する専門コピーライターです。
+今回は **同じ商品を日本語と韓国語の両方で同時に作成** してください — 1回の呼び出しで両言語を返すので、両方とも完全な独立した結果でなければなりません。
 
 【トーンルール】
-- 価格や割引の強調はしない (Qoo10のメガポ等は別途バナーで表示される)
-- 単純翻訳ではなく、日本の20-30代女性向けの感性カピー
-- 大きな英文タイトル + 日本語サブコピーの構成 (例: "NUDE BLUR STICK | ヌーディーブラースティック")
-- ハッシュタグは日本語 (例: "#リップベース", "#密着ブラーリップ")
+
+▼ 日本語 (Qoo10ジャパン用):
+- 価格・割引の強調はしない (Qoo10メガポは別途バナーで表示)
+- 日本の20-30代女性向けの感性カピー、ムードボード調
+- 大きな英文タイトル + 日本語サブコピー (例: "NUDE BLUR STICK | ヌーディーブラースティック")
+- 日本語ハッシュタグ (例: "#リップベース", "#密着ブラーリップ")
 - カテゴリ別表現:
   · コスメ: "塗った瞬間、素の唇みたいな仕上がり" 系の感性
   · ファッション: "サラッと着られる" 系のライフスタイル感${cosmeticsHint}
 
-商品情報:
-- ブランド: ${req.brand || 'なし'}
-- 商品名(韓国語の元): ${req.productName}
-- 価格: ${req.price}円
-- カテゴリ: ${req.category}
-- 特徴: ${req.features.join(', ') || 'なし'}
-${req.memo ? `- メモ: ${req.memo}` : ''}
+▼ 한국어 (쿠팡/스마트스토어용):
+- SEO 키워드 밀도 중시, 검색에 강한 상품명 (50자 목표)
+- 가성비/혜택/기능 강조 가능 (당일발송 류 한국 특화 표현 OK)
+- 카테고리·소재·핵심 키워드를 description에 자연스럽게 녹임
+- 태그는 한국어 (해시 X, 일반 키워드)
 
-必ず下記JSON形式で応答 (すべて日本語で):
+【共通ルール】
+- 사실관계 (성분, 원산지, 사이즈 등) 는 양쪽 동일
+- 셀링포인트의 핵심 메시지도 동일하지만 톤만 다르게
+- ja 결과에는 mood_callout / hashtags / color_swatches / before_after 일본어 옵션 필드 채움
+- ko 결과에는 그 옵션 필드들 비워둠 (한국 템플릿은 미사용)
+- 어떤 출력에도 다른 언어 텍스트가 섞이지 않게 (브랜드·고유명사는 예외)
+
+商品情報 (商品情報):
+- ブランド/브랜드: ${req.brand || 'なし'}
+- 商品名 (元の韓国語) / 상품명: ${req.productName}
+- 価格 / 가격: ${req.price}円 / ₩${req.price}
+- カテゴリ / 카테고리: ${req.category}
+- 特徴 / 특징: ${req.features.join(', ') || 'なし'}
+${req.memo ? `- メモ / 메모: ${req.memo}` : ''}
+
+必ず下記JSON形式で応答:
 {
-  "content": {
-    "product_name": "商品名 (日本語30文字以内)",
-    "subtitle": "サブタイトル (日本語40文字以内、感性的に)",
-    "main_copy": "メインコピー (50文字以内、感性的なフレーズ)",
-    "mood_callout": "短い英文 (例: NUDE BLUR STICK)",
-    "selling_points": ["3つ", "ライフスタイル感あり", "感性的に"],
-    "description": "商品説明 (3-4段落、改行区切り)",
-    "hashtags": ["#リップベース", "#密着リップ", "...4-6個"],
-    "color_swatches": [
-      {"name": "01 NUDE BUTTER", "english_label": "NUDE BUTTER", "description": "落ち着いたムードのベージュローズカラー", "personal_color": "イエベ"}
+  "ja": {
+    "content": {
+      "product_name": "商品名(日本語30字)",
+      "subtitle": "サブタイトル(40字)",
+      "main_copy": "メインコピー(50字、感性的)",
+      "mood_callout": "短い英文 (例: NUDE BLUR STICK)",
+      "selling_points": ["3つ", "ライフスタイル感", "感性的"],
+      "description": "商品説明(3-4段落、改行区切り)",
+      "hashtags": ["#リップベース", "#密着リップ"],
+      "color_swatches": [{"name":"01 NUDE BUTTER","english_label":"NUDE BUTTER","description":"...","personal_color":"イエベ"}],
+      "before_after": {"before":"塗布直後","after":"一定時間経過後"},
+      "specs": [{"key":"ブランド","value":"..."}, {"key":"原産国","value":"韓国"}, ...最低5項目],
+      "keywords": ["韓国コスメ", "..."],
+      "caution": "ご注意事項"
+    },
+    "titles": [
+      {"rank":1,"strategy":"感性ムード","title":"...","used_keywords":["..."],"char_count":50},
+      {"rank":2,"strategy":"ブランド強調","title":"...","used_keywords":["..."],"char_count":50},
+      {"rank":3,"strategy":"効能強調","title":"...","used_keywords":["..."],"char_count":50},
+      {"rank":4,"strategy":"ライフスタイル","title":"...","used_keywords":["..."],"char_count":50},
+      {"rank":5,"strategy":"韓国トレンド","title":"...","used_keywords":["..."],"char_count":50}
     ],
-    "before_after": {"before": "塗布直後", "after": "一定時間経過後"},
-    "specs": [
-      {"key": "ブランド", "value": "ブランド名"},
-      {"key": "原産国", "value": "韓国"},
-      {"key": "内容量", "value": "容量"},
-      {"key": "成分", "value": "主要成分"},
-      {"key": "使用方法", "value": "使い方"},
-      {"key": "注意事項", "value": "注意事項"},
-      {"key": "輸入販売元", "value": "ショップ名"}
-    ],
-    "keywords": ["韓国コスメ", "Qoo10", "..."],
-    "caution": "ご注意事項 (1-2文)"
+    "tags": ["#韓国コスメ", "...全20個"]
   },
-  "titles": [
-    {"rank": 1, "strategy": "感性ムード", "title": "...", "used_keywords": ["..."], "char_count": 50},
-    {"rank": 2, "strategy": "ブランド強調", "title": "...", "used_keywords": ["..."], "char_count": 50},
-    {"rank": 3, "strategy": "効能強調", "title": "...", "used_keywords": ["..."], "char_count": 50},
-    {"rank": 4, "strategy": "ライフスタイル", "title": "...", "used_keywords": ["..."], "char_count": 50},
-    {"rank": 5, "strategy": "韓国トレンド", "title": "...", "used_keywords": ["..."], "char_count": 50}
-  ],
-  "tags": ["#韓国コスメ", "...全20個 (日本語ハッシュタグ含む)"]
-}
-
-注意:
-- color_swatches は色商品(リップ/アイシャドウ/チークなど)のみ。それ以外は省略可
-- mood_callout, before_after も該当しない場合は省略可
-- 必ず "content.specs" は最低5項目
-- 一切の韓国語を含めない (固有名詞・ブランド名は除く)`
+  "ko": {
+    "content": {
+      "product_name": "상품명(한국어 30자)",
+      "subtitle": "부제(40자)",
+      "main_copy": "메인 카피(50자)",
+      "selling_points": ["셀링포인트1", "셀링포인트2", "셀링포인트3"],
+      "description": "상품 설명(3-4문단)",
+      "specs": [
+        {"key":"제품의 주소재","value":"..."},
+        {"key":"색상","value":"..."},
+        {"key":"치수","value":"..."},
+        {"key":"제조자(수입자)","value":"..."},
+        {"key":"제조국","value":"..."},
+        {"key":"취급시 주의사항","value":"..."},
+        {"key":"품질보증기준","value":"..."},
+        {"key":"A/S 책임자와 전화번호","value":"..."}
+      ],
+      "keywords": ["키워드1","키워드2"],
+      "caution": "주의사항"
+    },
+    "titles": [
+      {"rank":1,"strategy":"키워드 밀도 최대화","title":"...","used_keywords":["..."],"char_count":50},
+      {"rank":2,"strategy":"브랜드 강조","title":"...","used_keywords":["..."],"char_count":50},
+      {"rank":3,"strategy":"혜택/가성비 강조","title":"...","used_keywords":["..."],"char_count":50},
+      {"rank":4,"strategy":"감성/라이프스타일","title":"...","used_keywords":["..."],"char_count":50},
+      {"rank":5,"strategy":"스펙/기능 상세","title":"...","used_keywords":["..."],"char_count":50}
+    ],
+    "tags": ["태그1", "...총 20개"]
+  }
+}`
 }
 
 /**

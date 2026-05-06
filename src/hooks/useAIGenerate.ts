@@ -8,7 +8,7 @@ import { useUsageStore } from '@/stores/usageStore'
 import { api } from '@/lib/api'
 import { compressForAI } from '@/lib/image'
 import { PLATFORM_META } from '@/types/product'
-import type { GeneratedAll, GeneratedTag } from '@/types/ai'
+import type { GeneratedByLang, GeneratedTag } from '@/types/ai'
 import type { CoupangSuggestResponse } from '@/types/market'
 
 const LOADING_MESSAGES = [
@@ -27,7 +27,7 @@ export function useAIGenerate() {
     setGeneratedContent,
     setGeneratedTitles,
     setGeneratedTags,
-    setGeneratedAllForLang,
+    setGeneratedByLang,
     clearLangCache,
     setIsGenerating,
     setLoadingMessage,
@@ -75,8 +75,8 @@ export function useAIGenerate() {
         images.slice(0, 5).map((img) => compressForAI(img.dataUrl))
       )
 
-      // 한번의 API 호출로 content + titles + tags 모두 생성
-      const result = await api.post<GeneratedAll>('/api/ai/copy', {
+      // 한번의 API 호출로 — 큐텐이면 양 언어 동시 생성, 한국이면 ko 단일
+      const byLang = await api.post<GeneratedByLang>('/api/ai/copy', {
         images: aiImages,
         brand: product.brand,
         productName: product.name,
@@ -88,15 +88,16 @@ export function useAIGenerate() {
         coupangSuggestions,
       })
 
-      // 활성 언어 + 캐시에 동시 저장
-      setGeneratedAllForLang(targetLang, result)
+      // 모든 받은 언어를 캐시에 저장 + 활성 언어로 플랫폼 기본 lang 사용
+      setGeneratedByLang(byLang, targetLang)
 
-      // 트렌딩 태그 마킹은 별도로 (한국어 + 자동완성 있을 때만)
-      if (useAutocomplete && result.tags?.length > 0) {
+      // 트렌딩 태그 마킹은 활성 언어 결과에 한해 (한국어 + 자동완성 있을 때만)
+      const activeAll = byLang[targetLang]
+      if (useAutocomplete && activeAll?.tags && activeAll.tags.length > 0) {
         const trendingSet = new Set(
           coupangSuggestions.map((s) => s.replace(/\s/g, '').toLowerCase()),
         )
-        const tags: GeneratedTag[] = result.tags.map((text) => ({
+        const tags: GeneratedTag[] = activeAll.tags.map((text) => ({
           text,
           isTrending: trendingSet.has(text.replace(/\s/g, '').toLowerCase()),
         }))
@@ -122,7 +123,7 @@ export function useAIGenerate() {
     setGeneratedContent,
     setGeneratedTitles,
     setGeneratedTags,
-    setGeneratedAllForLang,
+    setGeneratedByLang,
     clearLangCache,
     setIsGenerating,
     setLoadingMessage,

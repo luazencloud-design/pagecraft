@@ -58,6 +58,12 @@ export interface GeneratedAll {
   tags: string[]
 }
 
+/**
+ * 언어별 결과 — Qoo10 플랫폼은 한 번 호출로 양 언어를 받아 캐시에 동시 저장
+ * 한국 마켓은 { ko: ... } 한쪽만 채워짐
+ */
+export type GeneratedByLang = Partial<Record<'ko' | 'ja', GeneratedAll>>
+
 export interface AIGenerateRequest {
   images: string[]
   brand: string

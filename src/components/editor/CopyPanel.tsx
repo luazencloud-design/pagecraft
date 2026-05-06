@@ -240,12 +240,12 @@ function LangSwitcher() {
               ? 'border-border text-text3 cursor-wait'
               : 'border-accent text-accent hover:bg-accent hover:text-bg'
           }`}
-          title={isCached ? '저장된 버전으로 즉시 전환' : 'AI로 다시 작성 (크레딧 차감)'}
+          title={isCached ? '저장된 버전으로 즉시 전환' : 'AI로 새로 작성 (크레딧 차감)'}
         >
           {isTranslating
             ? '⏳ 변환 중...'
             : isCached
-              ? `${altLabel} 보기 ↻`
+              ? `${altLabel}로 전환 ↻`
               : `${altLabel} 만들기 🌐`}
         </button>
       </div>

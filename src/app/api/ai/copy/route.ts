@@ -4,6 +4,12 @@ import { requireAuth, refundOnFailure } from '@/lib/apiAuth'
 import { friendlyErrorMessage } from '@/lib/errorMessage'
 import type { AIGenerateRequest } from '@/types/ai'
 
+/**
+ * 통합 AI 생성
+ * 반환 타입은 GeneratedByLang (= Partial<Record<'ko'|'ja', GeneratedAll>>)
+ * - 한국 플랫폼: { ko: ... }
+ * - 큐텐 재팬: { ja: ..., ko: ... } — 양 언어 동시 생성으로 토글 즉시 전환 가능
+ */
 export async function POST(req: Request) {
   const { session, error } = await requireAuth('generate')
   if (error) return error

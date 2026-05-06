@@ -7,6 +7,7 @@ import type {
   GeneratedContent,
   GeneratedTitle,
   GeneratedAll,
+  GeneratedByLang,
 } from '@/types/ai'
 import type { Platform } from '@/types/product'
 import { PLATFORM_META } from '@/types/product'
@@ -116,13 +117,20 @@ const buildTagPrompt = buildCoupangTagPrompt
 
 /**
  * 통합 생성 — content + titles + tags를 한번의 API 호출로
+ *
+ * 반환 타입:
+ * - 한국 마켓: { ko: GeneratedAll }
+ * - 일본 마켓 (큐텐): { ja: GeneratedAll, ko: GeneratedAll } — 1회 호출로 양 언어 동시 생성
+ *   클라에서 즉시 토글 가능 (캐시 hit), 추가 API 호출 불필요
  */
 export async function generateAll(
   req: AIGenerateRequest,
   coupangSuggestions: string[] = [],
-): Promise<GeneratedAll> {
+): Promise<GeneratedByLang> {
   const apiKey = getApiKey()
   const systemPrompt = buildSystemPrompt(req, coupangSuggestions)
+  const platform = req.platform as Platform
+  const isJpMarket = PLATFORM_META[platform]?.market === 'jp'
 
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = []
 
@@ -133,14 +141,19 @@ export async function generateAll(
     })
   }
 
-  parts.push({ text: '이 상품 이미지를 분석하고 상세페이지 콘텐츠, 최적화 상품명 5개, 검색 태그 20개를 한번에 생성해주세요.' })
+  parts.push({
+    text: isJpMarket
+      ? 'この商品画像を分析し、Qoo10ジャパン用の日本語コピーと쿠팡用の韓国語コピーを両方同時に生成してください。'
+      : '이 상품 이미지를 분석하고 상세페이지 콘텐츠, 최적화 상품명 5개, 검색 태그 20개를 한번에 생성해주세요.',
+  })
 
   const body = {
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents: [{ role: 'user', parts }],
     generationConfig: {
       responseMimeType: 'application/json',
-      maxOutputTokens: 8192,
+      // 양 언어 동시 생성하려면 토큰 한도 상향
+      maxOutputTokens: isJpMarket ? 16384 : 8192,
     },
   }
 
@@ -158,7 +171,21 @@ export async function generateAll(
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) throw new Error('Gemini 응답에서 텍스트를 찾을 수 없습니다.')
 
-  return safeParseJSON(text) as GeneratedAll
+  if (isJpMarket) {
+    // 큐텐 — 바이링구얼 응답 { ja: {...}, ko: {...} }
+    const parsed = safeParseJSON<{ ja?: GeneratedAll; ko?: GeneratedAll }>(text)
+    const result: GeneratedByLang = {}
+    if (parsed.ja) result.ja = parsed.ja
+    if (parsed.ko) result.ko = parsed.ko
+    if (!result.ja && !result.ko) {
+      throw new Error('큐텐 응답에서 ja/ko 어느 언어도 추출하지 못했습니다.')
+    }
+    return result
+  }
+
+  // 한국 마켓 — 단일 GeneratedAll 응답 → ko 키로 래핑
+  const single = safeParseJSON<GeneratedAll>(text)
+  return { ko: single }
 }
 
 export async function generateTitles(
