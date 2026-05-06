@@ -105,24 +105,5 @@ export async function translateContent(req: TranslateRequest): Promise<Generated
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) throw new Error('Gemini 번역 응답에서 텍스트를 찾을 수 없습니다.')
 
-  const result = safeParseJSON<GeneratedAll>(text)
-
-  // 안전장치: color_swatches.english_label 같은 양 언어 동일한 영문 라벨은 누락 시 원본에서 복구
-  // mood_callout은 누락돼도 OK — 템플릿이 product_name을 hero 사이즈로 자동 보정
-  if (result.content && req.current.content) {
-    const src = req.current.content
-    const dst = result.content
-    if (!dst.before_after && src.before_after) {
-      dst.before_after = src.before_after
-    }
-    // color_swatches.english_label 누락 시만 보정 (영문은 양 언어 동일)
-    if (dst.color_swatches?.length && src.color_swatches?.length) {
-      dst.color_swatches = dst.color_swatches.map((sw, i) => ({
-        ...sw,
-        english_label: sw.english_label || src.color_swatches?.[i]?.english_label,
-      }))
-    }
-  }
-
-  return result
+  return safeParseJSON<GeneratedAll>(text)
 }

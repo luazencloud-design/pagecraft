@@ -12,12 +12,6 @@ import type { AIGenerateRequest, GeneratedAll } from '@/types/ai'
  * - 단순 번역이 아니라 마켓별 톤으로 재구성 (사실 정보·스펙·셀링포인트는 동일)
  */
 export function buildQoo10SystemPrompt(req: AIGenerateRequest): string {
-  const isCosmetics = /화장품|뷰티|코스메|cosmetic|スキン|메이크업|립|アイ/i.test(req.category)
-  const cosmeticsHint = isCosmetics
-    ? `\n- 色商品の場合、"color_swatches" を含めること (例: NUDE BUTTER / BALLET PINK)
-- パーソナルカラー (ブルベ / イエベ) のおすすめも記載`
-    : ''
-
   return `あなたはQoo10ジャパンと韓国Coupangの両方でK-Beauty/K-Fashion商品を販売する専門コピーライターです。
 今回は **同じ商品を日本語と韓国語の両方で同時に作成** してください — 1回の呼び出しで両言語を返すので、両方とも完全な独立した結果でなければなりません。
 
@@ -30,7 +24,7 @@ export function buildQoo10SystemPrompt(req: AIGenerateRequest): string {
 - 化粧品の場合 hashtags 3-5개 (예: "#リップベース", "#密着リップ", "#うるおい肌")
 - カテゴリ別表現:
   · コスメ: "塗った瞬間、素の唇みたいな仕上がり" 系の感性
-  · ファッション: "サラッと着られる" 系のライフスタイル感${cosmeticsHint}
+  · ファッション: "サラッと着られる" 系のライフスタイル感
 
 ▼ 한국어 (쿠팡/스마트스토어용):
 - SEO 키워드 밀도 중시, 검색에 강한 상품명 (50자 목표)
@@ -41,12 +35,7 @@ export function buildQoo10SystemPrompt(req: AIGenerateRequest): string {
 【共通ルール】
 - 사실관계 (성분, 원산지, 사이즈 등) 는 양쪽 동일
 - 셀링포인트의 핵심 메시지도 동일하지만 톤만 다르게
-- **ja와 ko 양쪽 모두 mood_callout / color_swatches / before_after 채울 것**
-  · mood_callout: 양쪽 다 영문 그대로 (예: "NUDE BLUR STICK") — 시각 디자인 요소
-  · color_swatches.english_label: 양쪽 다 영문 그대로 (예: "BALLET PINK")
-  · color_swatches.name/description/personal_color: ja는 일본어, ko는 한국어
-    (퍼스널컬러는 ja="ブルベ"/"イエベ", ko="쿨톤"/"웜톤")
-  · before_after: ja={"塗布直後","一定時間経過後"}, ko={"바른 직후","시간 경과 후"}
+- ja와 ko 양쪽 모두 mood_callout 채울 것 (영문 그대로 — 양 언어 동일 시각 요소)
 - 양쪽 결과는 같은 큐텐 비주얼 템플릿에서 렌더링됨 → 어느 언어로 토글해도 시각 요소 유지되어야 함
 - 다른 언어 텍스트가 섞이지 않게 (브랜드·고유명사·english_label·mood_callout은 예외)
 
@@ -69,8 +58,6 @@ ${req.memo ? `- メモ / 메모: ${req.memo}` : ''}
       "selling_points": ["3つ", "ライフスタイル感", "感性的"],
       "description": "商品説明(3-4段落、改行区切り)",
       "hashtags": ["#リップベース", "#密着リップ", "#うるおい肌"],
-      "color_swatches": [{"name":"01 NUDE BUTTER","english_label":"NUDE BUTTER","description":"...","personal_color":"イエベ"}],
-      "before_after": {"before":"塗布直後","after":"一定時間経過後"},
       "specs": [{"key":"ブランド","value":"..."}, {"key":"原産国","value":"韓国"}, ...最低5項目],
       "keywords": ["韓国コスメ", "..."],
       "caution": "ご注意事項"
@@ -93,10 +80,6 @@ ${req.memo ? `- メモ / 메모: ${req.memo}` : ''}
       "selling_points": ["셀링포인트1", "셀링포인트2", "셀링포인트3"],
       "description": "상품 설명(3-4문단)",
       "hashtags": ["#립베이스", "#밀착립", "#촉촉피부"],
-      "color_swatches": [
-        {"name":"01 누드 버터","english_label":"NUDE BUTTER","description":"차분한 무드의 베이지 로즈 컬러","personal_color":"웜톤"}
-      ],
-      "before_after": {"before":"바른 직후","after":"시간 경과 후"},
       "specs": [
         {"key":"제품의 주소재","value":"..."},
         {"key":"색상","value":"..."},
@@ -151,10 +134,6 @@ export function buildQoo10RewritePrompt(source: GeneratedAll): string {
 다음 필드들은 **번역 대상이 아닌 시각 디자인 요소**입니다. 원본 값을 그대로 복사하세요:
 - mood_callout: 원본의 영문 값 그대로 (예: "ROSE WATER TONER" → "ROSE WATER TONER")
   ※ 절대 번역/변경/삭제 금지. 원본에 있으면 출력에도 반드시 포함.
-- color_swatches[].english_label: 원본 영문 그대로 (예: "BALLET PINK")
-- color_swatches[].name/description: 일본어로 번역
-- color_swatches[].personal_color: 한국어 쿨톤/웜톤 → 일본어 ブルベ/イエベ 로 변환
-- before_after.before/after: 일본어 자연스러운 표현 (예: "塗布直後" / "一定時間経過後")
 - specs[].key: 일본어로 (제품의 주소재→成分, 제조국→原産国 등)
 - hashtags: 일본어로 번역 (#립베이스 → #リップベース). 원본 개수 유지
 
@@ -174,8 +153,6 @@ ${JSON.stringify(source, null, 2)}
     "selling_points": ["...", "...", "..."],
     "description": "...",
     "hashtags": ["#...", ...],  ← 원본에 있으면 일본어로 번역해서 포함
-    "color_swatches": [...],  ← 원본에 있으면 반드시 포함, english_label 영문 그대로
-    "before_after": {"before": "...", "after": "..."},  ← 원본에 있으면 반드시 포함
     "specs": [{"key":"成分","value":"..."}, ...],
     "keywords": ["..."],
     "caution": "..."

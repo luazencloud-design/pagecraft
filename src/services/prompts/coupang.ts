@@ -119,10 +119,6 @@ export function buildCoupangRewritePrompt(source: GeneratedAll): string {
 다음 필드들은 **번역 대상이 아닌 시각 디자인 요소**입니다. 원본 값을 그대로 복사하세요:
 - mood_callout: 원본의 영문 값 그대로 (예: "ROSE WATER TONER" → "ROSE WATER TONER")
   ※ 절대 번역/변경/삭제 금지. 원본에 있으면 출력에도 반드시 포함.
-- color_swatches[].english_label: 원본 영문 그대로 (예: "BALLET PINK")
-- color_swatches[].name/description: 한국어로 번역
-- color_swatches[].personal_color: 일본어 ブルベ/イエベ → 한국어 쿨톤/웜톤
-- before_after.before/after: 한국어 자연스러운 표현 (예: "바른 직후" / "시간 경과 후")
 - specs[].key: 한국어로 (成分→제품의 주소재, 原産国→제조국 등)
 - hashtags: 한국어로 번역 (#リップベース → #립베이스). 원본 개수 유지
 
@@ -142,8 +138,6 @@ ${JSON.stringify(source, null, 2)}
     "selling_points": ["...", "...", "..."],
     "description": "...",
     "hashtags": ["#...", ...],  ← 원본에 있으면 한국어로 번역해서 포함
-    "color_swatches": [...],  ← 원본에 있으면 반드시 포함, english_label 영문 그대로
-    "before_after": {"before": "...", "after": "..."},  ← 원본에 있으면 반드시 포함
     "specs": [{"key":"제품의 주소재","value":"..."}, ...],
     "keywords": ["..."],
     "caution": "..."

@@ -29,9 +29,6 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
     const descLines = content.description ? content.description.split('\n').filter(Boolean) : []
     const yenPrice = price ? `¥${Number(price.replace(/[^\d]/g, '') || 0).toLocaleString()}` : ''
 
-    // 색상 swatch용 임시 컬러 매핑 (실제 색상 미감지 시 fallback)
-    const swatchColors = ['#e8c5c5', '#d4a373', '#c9a09a', '#b08a78', '#dba9a9', '#e6b8a2', '#c4938b', '#a87968']
-
     // 폰트 스택 — 두툼한 sans-serif 통일 (Pretendard 우선, JP/KR 모두 자연스럽게)
     const FONT_BODY = "'Pretendard Variable', 'Pretendard', 'Noto Sans JP', 'Noto Sans KR', 'Hiragino Sans', sans-serif"
 
@@ -210,108 +207,6 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
           </div>
         </div>
 
-        {/* 사용 전/후 비교 */}
-        {content.before_after && images[1] && images[2] && (
-          <div style={{ background: '#fff', padding: '60px 40px' }}>
-            <p style={{ fontSize: 12, letterSpacing: 5, color: '#a06850', textAlign: 'center', margin: '0 0 32px', fontWeight: 600 }}>
-              BEFORE & AFTER
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, position: 'relative' }}>
-              {/* 가운데 화살표 */}
-              <div
-                style={{
-                  position: 'absolute', top: '50%', left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  width: 44, height: 44, borderRadius: '50%',
-                  background: '#c08770', color: '#fff',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 22, zIndex: 2,
-                  boxShadow: '0 4px 12px rgba(160,104,80,0.4)',
-                }}
-              >
-                →
-              </div>
-              <div style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
-                <img src={images[1]} alt="" style={{ width: '100%', display: 'block' }} />
-                <div style={{ position: 'absolute', top: 12, left: 12, padding: '4px 12px', background: 'rgba(255,255,255,0.9)', borderRadius: 12, fontSize: 11, color: '#888', fontWeight: 600 }}>
-                  {content.before_after.before}
-                </div>
-              </div>
-              <div style={{ borderRadius: 12, overflow: 'hidden', position: 'relative', boxShadow: '0 8px 24px rgba(192,135,112,0.25)' }}>
-                <img src={images[2]} alt="" style={{ width: '100%', display: 'block' }} />
-                <div style={{ position: 'absolute', top: 12, left: 12, padding: '4px 12px', background: '#c08770', borderRadius: 12, fontSize: 11, color: '#fff', fontWeight: 700 }}>
-                  ✦ {content.before_after.after}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 색상 swatches — 컬러 도트 + 영문 라벨 */}
-        {content.color_swatches && content.color_swatches.length > 0 && (
-          <div style={{ background: 'linear-gradient(180deg, #faf6f2 0%, #fdf6ee 100%)', padding: '60px 32px' }}>
-            <p style={{ fontSize: 12, letterSpacing: 5, color: '#a06850', textAlign: 'center', margin: '0 0 8px', fontWeight: 600 }}>
-              COLOR LINEUP
-            </p>
-            <p style={{ fontSize: 22, color: '#3d3d3d', textAlign: 'center', margin: '0 0 36px', fontWeight: 600 }}>
-              全{content.color_swatches.length}カラー
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(4, content.color_swatches.length)}, 1fr)`, gap: 14 }}>
-              {content.color_swatches.slice(0, 8).map((sw, i) => (
-                <div
-                  key={i}
-                  style={{
-                    background: '#fff', borderRadius: 14,
-                    padding: '22px 14px 20px', textAlign: 'center',
-                    border: '1px solid #f0e0d0',
-                    boxShadow: '0 3px 10px rgba(160,104,80,0.06)',
-                    position: 'relative',
-                  }}
-                >
-                  {/* 컬러 도트 */}
-                  <div
-                    style={{
-                      width: 52, height: 52, borderRadius: '50%',
-                      background: swatchColors[i % swatchColors.length],
-                      margin: '0 auto 14px',
-                      boxShadow: 'inset 0 -4px 8px rgba(0,0,0,0.08), 0 2px 6px rgba(160,104,80,0.2)',
-                    }}
-                  />
-
-                  {sw.english_label && (
-                    <p
-                      style={{
-                        fontSize: 14, fontWeight: 800, color: '#3d3d3d',
-                        margin: '0 0 4px', letterSpacing: '-0.01em',
-                      }}
-                    >
-                      {sw.english_label}
-                    </p>
-                  )}
-                  <p style={{ fontSize: 10, color: '#a06850', margin: '0 0 10px', fontWeight: 600 }}>
-                    {sw.name}
-                  </p>
-                  <p style={{ fontSize: 10, color: '#7a6050', lineHeight: 1.6, margin: '0 0 10px', wordBreak: 'keep-all' }}>
-                    {sw.description}
-                  </p>
-                  {sw.personal_color && (
-                    <span
-                      style={{
-                        display: 'inline-block', fontSize: 9, fontWeight: 700,
-                        color: '#fff', background: '#c08770',
-                        padding: '3px 9px', borderRadius: 10,
-                      }}
-                    >
-                      ✓ {sw.personal_color}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* 첫 설명 문단 */}
         {descLines[0] && (
           <div style={{ background: '#fff', padding: '60px 40px', textAlign: 'center' }}>
@@ -321,8 +216,8 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
           </div>
         )}
 
-        {/* 추가 이미지 + 설명 */}
-        {images.slice(content.before_after ? 3 : 1).map((imgSrc, i) => {
+        {/* 추가 이미지 + 설명 — 어떤 개수든 안전하게 순차 렌더 (이미지가 없거나 1장만 있어도 OK) */}
+        {images.slice(1).map((imgSrc, i) => {
           const lineIdx = i + 1
           const altBg = i % 2 === 0 ? '#fdf6ee' : '#fff'
           return (

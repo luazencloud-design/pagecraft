@@ -5,18 +5,6 @@ export interface SpecItem {
   value: string
 }
 
-/** Qoo10 — 색상 swatch (립/아이/치크 등) */
-export interface ColorSwatch {
-  /** "01 NUDE BUTTER" 같은 전체 라벨 */
-  name: string
-  /** 짧은 영문 라벨 — 큰 글자로 표시 (예: "BALLET PINK") */
-  english_label?: string
-  /** 짧은 한 줄 묘사 */
-  description: string
-  /** 추천 퍼스널컬러: "ブルベ" | "イエベ" | "둘 다" */
-  personal_color?: string
-}
-
 export interface GeneratedContent {
   product_name: string
   subtitle: string
@@ -28,14 +16,10 @@ export interface GeneratedContent {
   caution: string
 
   /* ─────────────── Qoo10 전용 옵션 필드 ─────────────── */
-  /** 일본어 해시태그 (예: ["#リップベース", "#密着リップ"]) */
-  hashtags?: string[]
-  /** 색상별 swatch 정보 — 화장품 색조 제품 전용 */
-  color_swatches?: ColorSwatch[]
   /** 큰 영문 무드 카피 (예: "NUDE BLUR STICK") — 헤더 보조 */
   mood_callout?: string
-  /** 사용 전/후 비교 문구 — { before: "塗布直後", after: "一定時間経過後" } */
-  before_after?: { before: string; after: string }
+  /** 해시태그 (예: ["#リップベース", "#密着リップ"]) */
+  hashtags?: string[]
 }
 
 export interface GeneratedTitle {

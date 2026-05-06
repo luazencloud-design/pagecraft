@@ -27,10 +27,6 @@ const Qoo10ClassicPreview = forwardRef<HTMLDivElement, Qoo10ClassicPreviewProps>
     const descLines = content.description ? content.description.split('\n').filter(Boolean) : []
     const yenPrice = price ? `¥${Number(price.replace(/[^\d]/g, '') || 0).toLocaleString()}` : ''
 
-    const swatchColors = ['#e8c5c5', '#d4a373', '#c9a09a', '#b08a78', '#dba9a9', '#e6b8a2', '#c4938b', '#a87968']
-
-    const ROMAN = ['I', 'II', 'III']
-
     return (
       <div
         ref={ref}
@@ -199,101 +195,6 @@ const Qoo10ClassicPreview = forwardRef<HTMLDivElement, Qoo10ClassicPreviewProps>
           ))}
         </div>
 
-        {/* 사용 전/후 비교 — 매거진 액자 */}
-        {content.before_after && images[1] && images[2] && (
-          <div style={{ background: 'linear-gradient(180deg, #fdf6ee 0%, #f8e0c8 100%)', padding: '60px 40px' }}>
-            <p style={{  fontSize: 22, color: '#a06850', textAlign: 'center', margin: '0 0 32px',  letterSpacing: '0.04em' }}>
-              ✦ Before & After ✦
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 22 }}>
-              <div style={{ background: '#fff', padding: 8, borderRadius: 4, boxShadow: '0 4px 12px rgba(160,104,80,0.15)' }}>
-                <img src={images[1]} alt="" style={{ width: '100%', display: 'block', borderRadius: 2 }} />
-                <p style={{ fontSize: 14, color: '#888', textAlign: 'center', padding: '14px 0 8px', margin: 0, fontWeight: 600, letterSpacing: '0.02em' }}>
-                  {content.before_after.before}
-                </p>
-              </div>
-              <div style={{ background: '#fff', padding: 8, borderRadius: 4, boxShadow: '0 8px 24px rgba(192,135,112,0.4)', border: '3px solid #c08770' }}>
-                <img src={images[2]} alt="" style={{ width: '100%', display: 'block', borderRadius: 2 }} />
-                <p style={{ fontSize: 16, color: '#a04030', textAlign: 'center', padding: '14px 0 8px', margin: 0, fontWeight: 800, letterSpacing: '0.02em' }}>
-                  ★ {content.before_after.after}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 색상 swatches — 매거진 행 스타일 + 컬러 도트 */}
-        {content.color_swatches && content.color_swatches.length > 0 && (
-          <div style={{ background: '#fff', padding: '60px 40px' }}>
-            <div style={{ textAlign: 'center', marginBottom: 36 }}>
-              <p style={{ fontSize: 11, letterSpacing: 5, color: '#a06850', margin: '0 0 4px', fontWeight: 600 }}>
-                COLOR LINE-UP
-              </p>
-              <p style={{ fontSize: 30, color: '#a04030', margin: 0, fontWeight: 900, letterSpacing: '-0.02em' }}>
-                {content.color_swatches.length} Shades
-              </p>
-            </div>
-
-            {content.color_swatches.slice(0, 8).map((sw, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 24,
-                  padding: '24px 14px',
-                  borderTop: i === 0 ? '2px solid #c08770' : 'none',
-                  borderBottom: i === Math.min(content.color_swatches!.length, 8) - 1 ? '2px solid #c08770' : '1px solid #f0e0d0',
-                }}
-              >
-                {/* 컬러 도트 */}
-                <div
-                  style={{
-                    width: 64, height: 64, borderRadius: '50%',
-                    background: swatchColors[i % swatchColors.length],
-                    flexShrink: 0,
-                    boxShadow: 'inset 0 -6px 12px rgba(0,0,0,0.1), 0 3px 8px rgba(160,104,80,0.25)',
-                    border: '2px solid #fff',
-                    outline: '1px solid #f0e0d0',
-                  }}
-                />
-
-                {/* 텍스트 영역 */}
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 4 }}>
-                    {sw.personal_color && (
-                      <span
-                        style={{
-                          fontSize: 10, color: '#fff',
-                          background: '#c08770', borderRadius: 12,
-                          padding: '3px 10px', fontWeight: 700,
-                        }}
-                      >
-                        ✓ {sw.personal_color}におすすめ
-                      </span>
-                    )}
-                    <p style={{ fontSize: 13, color: '#a06850', margin: 0, fontWeight: 600 }}>
-                      {sw.name}
-                    </p>
-                  </div>
-                  {sw.english_label && (
-                    <p
-                      style={{
-                        fontSize: 30, fontWeight: 900, color: '#a04030',
-                        margin: '0 0 6px', letterSpacing: '-0.02em',
-                        lineHeight: 1.1,
-                      }}
-                    >
-                      {sw.english_label}
-                    </p>
-                  )}
-                  <p style={{ fontSize: 12, color: '#7a5a48', lineHeight: 1.7, margin: 0, wordBreak: 'keep-all' }}>
-                    {sw.description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* 첫 설명 문단 — 풀 와이드 */}
         {descLines[0] && (
           <div style={{ background: 'linear-gradient(135deg, #fbe9d8 0%, #f8c9a8 100%)', padding: '70px 40px', textAlign: 'center' }}>
@@ -304,7 +205,8 @@ const Qoo10ClassicPreview = forwardRef<HTMLDivElement, Qoo10ClassicPreviewProps>
         )}
 
         {/* 추가 이미지 + 설명 */}
-        {images.slice(content.before_after ? 3 : 1).map((imgSrc, i) => {
+        {/* 추가 이미지 — 어떤 개수든 안전하게 순차 렌더 */}
+        {images.slice(1).map((imgSrc, i) => {
           const lineIdx = i + 1
           const altBg = i % 2 === 0 ? '#fff' : '#fdf6ee'
           return (
