@@ -41,9 +41,15 @@ export function buildQoo10SystemPrompt(req: AIGenerateRequest): string {
 【共通ルール】
 - 사실관계 (성분, 원산지, 사이즈 등) 는 양쪽 동일
 - 셀링포인트의 핵심 메시지도 동일하지만 톤만 다르게
-- ja 결과에는 mood_callout / hashtags / color_swatches / before_after 일본어 옵션 필드 채움
-- ko 결과에는 그 옵션 필드들 비워둠 (한국 템플릿은 미사용)
-- 어떤 출력에도 다른 언어 텍스트가 섞이지 않게 (브랜드·고유명사는 예외)
+- **ja와 ko 양쪽 모두 mood_callout / hashtags / color_swatches / before_after 채울 것**
+  · mood_callout: 양쪽 다 영문 그대로 (예: "NUDE BLUR STICK") — 시각 디자인 요소
+  · hashtags: ja는 일본어 (#リップベース), ko는 한국어 (#립베이스)
+  · color_swatches.english_label: 양쪽 다 영문 그대로 (예: "BALLET PINK")
+  · color_swatches.name/description/personal_color: ja는 일본어, ko는 한국어
+    (퍼스널컬러는 ja="ブルベ"/"イエベ", ko="쿨톤"/"웜톤")
+  · before_after: ja={"塗布直後","一定時間経過後"}, ko={"바른 직후","시간 경과 후"}
+- 양쪽 결과는 같은 큐텐 비주얼 템플릿에서 렌더링됨 → 어느 언어로 토글해도 시각 요소 유지되어야 함
+- 다른 언어 텍스트가 섞이지 않게 (브랜드·고유명사·english_label·mood_callout은 예외)
 
 商品情報 (商品情報):
 - ブランド/브랜드: ${req.brand || 'なし'}
@@ -84,8 +90,14 @@ ${req.memo ? `- メモ / 메모: ${req.memo}` : ''}
       "product_name": "상품명(한국어 30자)",
       "subtitle": "부제(40자)",
       "main_copy": "메인 카피(50자)",
+      "mood_callout": "ja와 동일한 영문 (예: NUDE BLUR STICK) — 시각 요소",
       "selling_points": ["셀링포인트1", "셀링포인트2", "셀링포인트3"],
       "description": "상품 설명(3-4문단)",
+      "hashtags": ["#립베이스", "#밀착립", "...4-6개"],
+      "color_swatches": [
+        {"name":"01 누드 버터","english_label":"NUDE BUTTER","description":"차분한 무드의 베이지 로즈 컬러","personal_color":"웜톤"}
+      ],
+      "before_after": {"before":"바른 직후","after":"시간 경과 후"},
       "specs": [
         {"key":"제품의 주소재","value":"..."},
         {"key":"색상","value":"..."},

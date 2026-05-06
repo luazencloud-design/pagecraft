@@ -48,78 +48,163 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
           <img src={storeIntroImage} alt="" style={{ width: '100%', display: 'block' }} />
         )}
 
-        {/* 헤더 — 피치 그라디언트 + 떠 있는 도트 패턴 */}
+        {/* 헤더 — 트렌디 Y2K K-뷰티 (블롭 + 색상 블록 + 거대 영문 + 스티커) */}
         <div
           style={{
-            background: 'linear-gradient(135deg, #fce7d3 0%, #f8dac1 50%, #f5cfb4 100%)',
-            padding: '64px 40px 56px',
-            textAlign: 'center',
+            background: '#fff',
+            padding: 0,
             position: 'relative',
             overflow: 'hidden',
+            minHeight: 460,
           }}
         >
-          {/* 장식 도트 */}
-          <div style={{ position: 'absolute', top: 28, left: 60, width: 8, height: 8, borderRadius: '50%', background: '#fff', opacity: 0.7 }} />
-          <div style={{ position: 'absolute', top: 80, left: 110, width: 4, height: 4, borderRadius: '50%', background: '#c08770', opacity: 0.4 }} />
-          <div style={{ position: 'absolute', top: 50, right: 80, width: 12, height: 12, borderRadius: '50%', background: '#fff', opacity: 0.5 }} />
-          <div style={{ position: 'absolute', bottom: 40, right: 130, width: 6, height: 6, borderRadius: '50%', background: '#c08770', opacity: 0.5 }} />
-          <div style={{ position: 'absolute', bottom: 70, left: 90, width: 10, height: 10, borderRadius: '50%', background: '#fff', opacity: 0.6 }} />
-
-          {/* 상단 라벨 */}
-          <div style={{ display: 'inline-block', padding: '5px 14px', background: 'rgba(255,255,255,0.7)', borderRadius: 20, marginBottom: 18 }}>
-            <span style={{ fontSize: 11, letterSpacing: 3, color: '#a06850', fontWeight: 600 }}>
-              ◆ K-BEAUTY ◆
-            </span>
-          </div>
-
-          {/* 영문 무드 (있으면) */}
-          {content.mood_callout && (
-            <p
-              style={{
-                fontFamily: "'Playfair Display', 'Noto Serif JP', serif",
-                fontSize: 14, letterSpacing: 5, color: '#a06850',
-                margin: '0 0 12px', fontWeight: 500,
-                fontStyle: 'italic',
-              }}
-            >
-              ❀ {content.mood_callout} ❀
-            </p>
-          )}
-
-          {/* 일본어 타이틀 */}
-          <h1
+          {/* 배경 블롭 #1 — 좌상단 큰 핑크 */}
+          <div
             style={{
-              fontSize: 36, fontWeight: 700, color: '#3d3d3d',
-              margin: '0 0 12px', letterSpacing: '-0.02em',
-              textShadow: '0 1px 2px rgba(255,255,255,0.5)',
+              position: 'absolute', top: -80, left: -60,
+              width: 380, height: 380, borderRadius: '50%',
+              background: 'radial-gradient(circle at 30% 30%, #ffd1c1 0%, #f5a08a 60%, #e08070 100%)',
+              filter: 'blur(2px)',
+              zIndex: 0,
+            }}
+          />
+          {/* 배경 블롭 #2 — 우하단 살구 */}
+          <div
+            style={{
+              position: 'absolute', bottom: -60, right: -80,
+              width: 320, height: 320, borderRadius: '50%',
+              background: 'radial-gradient(circle at 60% 40%, #fce0a8 0%, #f0c080 70%, #d4a060 100%)',
+              filter: 'blur(2px)',
+              zIndex: 0,
+            }}
+          />
+          {/* 배경 블롭 #3 — 가운데 작은 라벤더 */}
+          <div
+            style={{
+              position: 'absolute', top: 150, right: 80,
+              width: 90, height: 90, borderRadius: '50%',
+              background: '#e8c5e8', opacity: 0.5, filter: 'blur(1px)',
+              zIndex: 0,
+            }}
+          />
+
+          {/* 그레인 노이즈 효과 — 약한 망점 */}
+          <div
+            style={{
+              position: 'absolute', inset: 0,
+              backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.4) 1px, transparent 1px)',
+              backgroundSize: '12px 12px',
+              opacity: 0.5,
+              zIndex: 1,
+            }}
+          />
+
+          {/* NEW 스티커 — 좌상단 회전 */}
+          <div
+            style={{
+              position: 'absolute', top: 26, left: 26, zIndex: 4,
+              width: 64, height: 64, borderRadius: '50%',
+              background: '#ff5050', color: '#fff',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 900, letterSpacing: 1,
+              transform: 'rotate(-12deg)',
+              boxShadow: '0 6px 16px rgba(255,80,80,0.4)',
+              border: '3px dashed #fff',
+              fontFamily: 'sans-serif',
             }}
           >
-            {content.product_name}
-          </h1>
+            <span style={{ fontSize: 9, letterSpacing: 2 }}>★ JUST ★</span>
+            <span style={{ fontSize: 13, marginTop: 1 }}>ARRIVED</span>
+          </div>
 
-          {/* 부제 */}
-          <p style={{ fontSize: 14, color: '#7a5a48', margin: '0 0 24px', lineHeight: 1.7, fontWeight: 500 }}>
-            {content.subtitle}
-          </p>
+          {/* TRENDING 뱃지 — 우상단 */}
+          <div
+            style={{
+              position: 'absolute', top: 32, right: 28, zIndex: 4,
+              padding: '7px 14px',
+              background: '#1a1a1a', color: '#fff',
+              fontSize: 10, letterSpacing: 3, fontWeight: 800,
+              transform: 'rotate(3deg)',
+              borderRadius: 4,
+              boxShadow: '4px 4px 0 #ff5050',
+            }}
+          >
+            🔥 TRENDING NOW
+          </div>
 
-          {/* 해시태그 — 스티커 스타일 */}
-          {content.hashtags && content.hashtags.length > 0 && (
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-              {content.hashtags.slice(0, 5).map((tag, i) => (
-                <span
-                  key={i}
-                  style={{
-                    fontSize: 11, color: '#fff',
-                    background: i % 2 === 0 ? '#e0a890' : '#c08770',
-                    padding: '5px 13px', borderRadius: 14, fontWeight: 600,
-                    boxShadow: '0 2px 4px rgba(160,104,80,0.25)',
-                  }}
-                >
-                  {tag}
-                </span>
-              ))}
+          {/* 컨텐츠 */}
+          <div style={{ position: 'relative', zIndex: 3, padding: '110px 40px 60px', textAlign: 'center' }}>
+            {/* 거대 영문 무드 (있으면) */}
+            {content.mood_callout && (
+              <p
+                style={{
+                  fontFamily: "'Playfair Display', 'Noto Serif JP', serif",
+                  fontSize: 56, fontWeight: 900, color: '#1a1a1a',
+                  margin: '0 0 6px',
+                  letterSpacing: '-0.02em',
+                  lineHeight: 0.95,
+                  fontStyle: 'italic',
+                  textShadow: '4px 4px 0 #ffd1c1',
+                  WebkitTextStroke: '0.5px #1a1a1a',
+                }}
+              >
+                {content.mood_callout}
+              </p>
+            )}
+
+            {/* K-BEAUTY 라벨 + 라인 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, margin: '14px 0 18px' }}>
+              <div style={{ width: 30, height: 2, background: '#1a1a1a' }} />
+              <span style={{ fontSize: 11, letterSpacing: 5, color: '#1a1a1a', fontWeight: 800 }}>
+                K-BEAUTY ESSENTIAL
+              </span>
+              <div style={{ width: 30, height: 2, background: '#1a1a1a' }} />
             </div>
-          )}
+
+            {/* 일본어/한국어 타이틀 */}
+            <h1
+              style={{
+                fontSize: 32, fontWeight: 900, color: '#1a1a1a',
+                margin: '0 0 14px', letterSpacing: '-0.02em',
+                lineHeight: 1.2,
+                wordBreak: 'keep-all',
+              }}
+            >
+              {content.product_name}
+            </h1>
+
+            {/* 부제 */}
+            <p style={{ fontSize: 13, color: '#3d3d3d', margin: '0 0 24px', lineHeight: 1.7, fontWeight: 500, wordBreak: 'keep-all' }}>
+              {content.subtitle}
+            </p>
+
+            {/* 해시태그 — 스티커 스타일 (회전 + 컬러 블록) */}
+            {content.hashtags && content.hashtags.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {content.hashtags.slice(0, 5).map((tag, i) => {
+                  const palette = ['#1a1a1a', '#ff5050', '#1a1a1a', '#e08070', '#1a1a1a']
+                  return (
+                    <span
+                      key={i}
+                      style={{
+                        fontSize: 11, color: '#fff',
+                        background: palette[i % palette.length],
+                        padding: '6px 14px',
+                        borderRadius: 4,
+                        fontWeight: 800,
+                        letterSpacing: '0.03em',
+                        transform: i % 2 === 0 ? 'rotate(-1.5deg)' : 'rotate(1.5deg)',
+                        boxShadow: '3px 3px 0 rgba(255,255,255,0.7)',
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 메인 이미지 */}
