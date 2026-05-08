@@ -3,6 +3,11 @@
 import { useState } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
 import { useTranslate } from '@/hooks/useTranslate'
+import { useProductStore } from '@/stores/productStore'
+import { PLATFORM_META } from '@/types/product'
+import { buildEbayPlainText } from '@/lib/ebayHtml'
+import { showToast } from '@/components/ui/Toast'
+import type { GeneratedContent } from '@/types/ai'
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false)
@@ -316,8 +321,72 @@ function LangSwitcher() {
   )
 }
 
-// eBay 전체 페이지 복사는 미리보기 헤더의 "📋 전체 복사" 버튼이 처리 (page.tsx).
-// CopyPanel은 개별 필드 편집/복사에 집중.
+/**
+ * 전체 텍스트 복사 — 모든 플랫폼 공통 (CopyPanel 상단 마스터 버튼)
+ * - eBay: buildEbayPlainText (섹션별 평문, 메모장에서도 깔끔)
+ * - 그 외: [상품명] [판매포인트] [상세설명] 라벨 박스 (셀러 필드 정리용)
+ *
+ * 서식 유지 HTML 복사는 미리보기 헤더의 별도 버튼 (eBay 전용).
+ */
+function buildLabeledText(c: GeneratedContent): string {
+  const parts: string[] = []
+  parts.push(`[상품명] ${c.product_name}`)
+  parts.push(`[서브타이틀] ${c.subtitle}`)
+  parts.push(`[메인카피] ${c.main_copy}`)
+  parts.push('')
+  parts.push('[판매포인트]')
+  c.selling_points.forEach((sp, i) => parts.push(`${i + 1}. ${sp}`))
+  parts.push('')
+  parts.push('[상세설명]')
+  parts.push(c.description)
+  parts.push('')
+  parts.push('[스펙]')
+  c.specs.forEach((s) => parts.push(`${s.key}: ${s.value}`))
+  parts.push('')
+  parts.push(`[키워드] ${c.keywords.join(', ')}`)
+  if (c.caution) parts.push(`[주의사항] ${c.caution}`)
+  return parts.join('\n')
+}
+
+function CopyAllButton({ content }: { content: GeneratedContent }) {
+  const [copied, setCopied] = useState(false)
+  const { product } = useProductStore()
+  const meta = PLATFORM_META[product.platform]
+  const isUsMarket = meta?.market === 'us'
+
+  const handleCopy = async () => {
+    const text = isUsMarket
+      ? buildEbayPlainText(content, product.price)
+      : buildLabeledText(content)
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      showToast('전체 텍스트 복사됨')
+      setTimeout(() => setCopied(false), 1800)
+    } catch (err) {
+      console.error('복사 실패:', err)
+      showToast('복사 실패', 'error')
+    }
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      className={`w-full mb-3 px-3 py-2.5 rounded-[8px] text-[12px] font-bold cursor-pointer transition-all duration-150 border ${
+        copied
+          ? 'border-green text-green bg-green/10'
+          : 'border-border2 text-text2 hover:border-accent hover:text-accent'
+      }`}
+      title={
+        isUsMarket
+          ? '섹션별 평문으로 복사 — 메모장 등 어디든 깔끔하게 붙여집니다'
+          : '상품 정보 전체를 라벨 박스 텍스트로 복사 — 쿠팡/스토어 필드 정리용'
+      }
+    >
+      {copied ? '✓ 복사됨' : '📋 전체 복사'}
+    </button>
+  )
+}
 
 export default function CopyPanel() {
   const { generatedContent, setGeneratedContent } = useEditorStore()
@@ -365,6 +434,7 @@ export default function CopyPanel() {
   return (
     <div className="space-y-0">
       <LangSwitcher />
+      <CopyAllButton content={generatedContent} />
       <EditableBlock title="상품명" text={product_name} onSave={(v) => update('product_name', v)} />
       <EditableBlock title="서브타이틀" text={subtitle} onSave={(v) => update('subtitle', v)} />
       <EditableBlock title="메인 카피" text={main_copy} onSave={(v) => update('main_copy', v)} />
