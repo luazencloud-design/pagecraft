@@ -145,28 +145,6 @@ export default function ProductNewPage() {
     }
   }
 
-  const handleCopyAll = () => {
-    if (!generatedContent) return
-    const parts: string[] = []
-    parts.push(`[상품명] ${generatedContent.product_name}`)
-    parts.push(`[서브타이틀] ${generatedContent.subtitle}`)
-    parts.push(`[메인카피] ${generatedContent.main_copy}`)
-    parts.push('')
-    parts.push('[판매포인트]')
-    generatedContent.selling_points.forEach((sp, i) => parts.push(`${i + 1}. ${sp}`))
-    parts.push('')
-    parts.push('[상세설명]')
-    parts.push(generatedContent.description)
-    parts.push('')
-    parts.push('[스펙]')
-    generatedContent.specs.forEach((s) => parts.push(`${s.key}: ${s.value}`))
-    parts.push('')
-    parts.push(`[키워드] ${generatedContent.keywords.join(', ')}`)
-    parts.push(`[주의사항] ${generatedContent.caution}`)
-    navigator.clipboard.writeText(parts.join('\n'))
-    showToast('전체 텍스트 복사됨')
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <Header />
@@ -253,24 +231,14 @@ export default function ProductNewPage() {
           <div style={{ width: '100%', maxWidth: 660, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
             <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginRight: 'auto' }}>preview.html</span>
             {generatedContent && (
-              <>
-                <button
-                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border2)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text)' }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text2)' }}
-                  onClick={handleCopyAll}
-                >
-                  📋 전체 복사
-                </button>
-                <button
-                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, background: 'var(--accent)', border: '1px solid var(--accent)', color: '#0c0c10', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.2s' }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent2)' }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)' }}
-                  onClick={handleDownload}
-                >
-                  ⬇ 이미지 저장
-                </button>
-              </>
+              <button
+                style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, background: 'var(--accent)', border: '1px solid var(--accent)', color: '#0c0c10', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.2s' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent2)' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)' }}
+                onClick={handleDownload}
+              >
+                ⬇ 이미지 저장
+              </button>
             )}
           </div>
 
