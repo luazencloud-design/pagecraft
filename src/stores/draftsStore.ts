@@ -26,7 +26,19 @@ import {
  * 3. 타겟 드래프트 스냅샷 → 라이브 사본으로 복사
  * 4. zustand rehydrate → 스토어 reload
  * 5. imageStore 다시 hydrate → 타겟 드래프트 이미지 로드
+ *
+ * 향후 백엔드 도입 시:
+ * - 서버가 source of truth (무제한 보관)
+ * - localStorage는 LRU 캐시 (최근 N개만 보관)
+ * - MAX_DRAFTS는 캐시 크기로 의미 변경
  */
+
+/**
+ * localStorage 보관 가능한 최대 드래프트 수.
+ * 평균 드래프트당 ~15-30KB → 20개면 0.5-1MB (5MB 한도 안전)
+ * 백엔드 도입 후엔 로컬 캐시 크기로만 사용 (서버는 무제한).
+ */
+export const MAX_DRAFTS = 20
 
 export interface DraftMeta {
   id: string
@@ -154,6 +166,13 @@ export const useDraftsStore = create<DraftsState>()(
       },
 
       createDraft: async () => {
+        // 0. 한도 체크 — localStorage 5MB 한도 보호
+        if (get().drafts.length >= MAX_DRAFTS) {
+          throw new Error(
+            `드래프트는 최대 ${MAX_DRAFTS}개까지 보관할 수 있어요. 사용 안 하는 드래프트를 삭제해주세요.`,
+          )
+        }
+
         // 1. 현재 작업 스냅샷 저장 (옛 currentId)
         const currentId = get().currentId
         if (currentId) await snapshotCurrent(currentId)

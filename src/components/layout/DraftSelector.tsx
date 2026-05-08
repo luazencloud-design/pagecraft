@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useDraftsStore } from '@/stores/draftsStore'
+import { useDraftsStore, MAX_DRAFTS } from '@/stores/draftsStore'
 import { useProductStore } from '@/stores/productStore'
 import { showToast } from '@/components/ui/Toast'
 
@@ -76,12 +76,14 @@ export default function DraftSelector() {
       setOpen(false)
       showToast('새 드래프트 생성됨')
     } catch (err) {
-      console.error(err)
-      showToast('드래프트 생성 실패', 'error')
+      const msg = err instanceof Error ? err.message : '드래프트 생성 실패'
+      showToast(msg, 'error')
     } finally {
       setBusy(false)
     }
   }
+
+  const isAtLimit = drafts.length >= MAX_DRAFTS
 
   const handleDelete = async (id: string, name: string) => {
     if (busy) return
@@ -136,18 +138,19 @@ export default function DraftSelector() {
         {/* + 새 드래프트 */}
         <button
           onClick={handleCreate}
-          disabled={busy}
+          disabled={busy || isAtLimit}
           style={{
             background: 'var(--surface2)',
             border: '1px solid var(--border)',
             borderRadius: 7,
             padding: '7px 10px',
             fontSize: 14,
-            color: 'var(--text2)',
-            cursor: busy ? 'wait' : 'pointer',
+            color: isAtLimit ? 'var(--text3)' : 'var(--text2)',
+            cursor: busy ? 'wait' : isAtLimit ? 'not-allowed' : 'pointer',
+            opacity: isAtLimit ? 0.5 : 1,
             minHeight: 32,
           }}
-          title="새 드래프트 만들기"
+          title={isAtLimit ? `최대 ${MAX_DRAFTS}개 도달 — 사용 안 하는 드래프트를 삭제하세요` : '새 드래프트 만들기'}
         >
           ＋
         </button>
@@ -233,22 +236,24 @@ export default function DraftSelector() {
 
           <button
             onClick={handleCreate}
-            disabled={busy}
+            disabled={busy || isAtLimit}
             style={{
               width: '100%',
               padding: '9px',
               background: 'transparent',
               border: 'none',
               borderTop: '1px solid var(--border)',
-              cursor: busy ? 'wait' : 'pointer',
-              color: 'var(--accent)',
+              cursor: busy ? 'wait' : isAtLimit ? 'not-allowed' : 'pointer',
+              color: isAtLimit ? 'var(--text3)' : 'var(--accent)',
               fontSize: 12,
               fontWeight: 600,
               fontFamily: 'var(--font)',
               textAlign: 'center',
+              opacity: isAtLimit ? 0.5 : 1,
             }}
+            title={isAtLimit ? `최대 ${MAX_DRAFTS}개까지 보관 가능` : ''}
           >
-            ＋ 새 드래프트
+            {isAtLimit ? `한도 도달 (${MAX_DRAFTS}/${MAX_DRAFTS})` : '＋ 새 드래프트'}
           </button>
         </div>
       )}
