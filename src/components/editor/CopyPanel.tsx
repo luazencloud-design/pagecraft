@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
 import { useDraftsStore } from '@/stores/draftsStore'
 import { useTranslate } from '@/hooks/useTranslate'
@@ -47,6 +47,13 @@ function EditableBlock({
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(text)
+
+  // 외부에서 text가 바뀌면(AI 재생성, 드래프트 전환, 언어 토글 등) 편집 모드/draft 리셋
+  // — stale 사용자 입력이 새 콘텐츠 위에 남아있는 버그 방지
+  useEffect(() => {
+    setDraft(text)
+    setEditing(false)
+  }, [text])
 
   const startEdit = () => {
     setDraft(text)
@@ -140,6 +147,12 @@ function InlineCopy({ text }: { text: string }) {
 function SpecBlock({ specs, onUpdate }: { specs: { key: string; value: string }[]; onUpdate: (specs: { key: string; value: string }[]) => void }) {
   const [editing, setEditing] = useState(false)
   const [drafts, setDrafts] = useState<string[]>([])
+
+  // 외부에서 specs 변경 시 편집 모드/draft 리셋 (EditableBlock과 동일 패턴)
+  useEffect(() => {
+    setDrafts(specs.map((s) => s.value))
+    setEditing(false)
+  }, [specs])
 
   const startEdit = () => {
     setDrafts(specs.map(s => s.value))
