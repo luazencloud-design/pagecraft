@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useDraftsStore, MAX_DRAFTS } from '@/stores/draftsStore'
+import { useDraftsStore } from '@/stores/draftsStore'
 import { useProductStore } from '@/stores/productStore'
 import { showToast } from '@/components/ui/Toast'
 
@@ -16,7 +16,7 @@ const PLACEHOLDER = '이름 없음'
  * - 수동 편집 X — 상품명만 바꾸면 됨
  */
 export default function DraftSelector() {
-  const { drafts, currentId, createDraft, switchDraft, deleteDraft, touchCurrent } =
+  const { drafts, currentId, createDraft, switchDraft, deleteDraft, clearAllDrafts, touchCurrent } =
     useDraftsStore()
   const { product } = useProductStore()
   const [open, setOpen] = useState(false)
@@ -83,8 +83,6 @@ export default function DraftSelector() {
     }
   }
 
-  const isAtLimit = drafts.length >= MAX_DRAFTS
-
   const handleDelete = async (id: string, name: string) => {
     if (busy) return
     if (!confirm(`"${displayName(name)}" 드래프트를 삭제할까요?\n이미지·텍스트 모두 사라집니다.`)) return
@@ -95,6 +93,27 @@ export default function DraftSelector() {
     } catch (err) {
       console.error(err)
       showToast('삭제 실패', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleClearAll = async () => {
+    if (busy) return
+    if (
+      !confirm(
+        `모든 드래프트(${drafts.length}개)를 삭제하고 새로 시작할까요?\n이미지·텍스트 모두 사라지고 되돌릴 수 없습니다.`,
+      )
+    )
+      return
+    setBusy(true)
+    try {
+      await clearAllDrafts()
+      setOpen(false)
+      showToast('모든 드래프트가 정리되었습니다')
+    } catch (err) {
+      console.error(err)
+      showToast('정리 실패', 'error')
     } finally {
       setBusy(false)
     }
@@ -135,22 +154,21 @@ export default function DraftSelector() {
           <span style={{ fontSize: 9, color: 'var(--text3)', marginLeft: 6 }}>▼</span>
         </button>
 
-        {/* + 새 드래프트 */}
+        {/* + 새 드래프트 — 한도 도달 시엔 클릭 시 toast로 안내 (시각 disabled X) */}
         <button
           onClick={handleCreate}
-          disabled={busy || isAtLimit}
+          disabled={busy}
           style={{
             background: 'var(--surface2)',
             border: '1px solid var(--border)',
             borderRadius: 7,
             padding: '7px 10px',
             fontSize: 14,
-            color: isAtLimit ? 'var(--text3)' : 'var(--text2)',
-            cursor: busy ? 'wait' : isAtLimit ? 'not-allowed' : 'pointer',
-            opacity: isAtLimit ? 0.5 : 1,
+            color: 'var(--text2)',
+            cursor: busy ? 'wait' : 'pointer',
             minHeight: 32,
           }}
-          title={isAtLimit ? `최대 ${MAX_DRAFTS}개 도달 — 사용 안 하는 드래프트를 삭제하세요` : '새 드래프트 만들기'}
+          title="새 드래프트 만들기"
         >
           ＋
         </button>
@@ -236,24 +254,44 @@ export default function DraftSelector() {
 
           <button
             onClick={handleCreate}
-            disabled={busy || isAtLimit}
+            disabled={busy}
             style={{
               width: '100%',
               padding: '9px',
               background: 'transparent',
               border: 'none',
               borderTop: '1px solid var(--border)',
-              cursor: busy ? 'wait' : isAtLimit ? 'not-allowed' : 'pointer',
-              color: isAtLimit ? 'var(--text3)' : 'var(--accent)',
+              cursor: busy ? 'wait' : 'pointer',
+              color: 'var(--accent)',
               fontSize: 12,
               fontWeight: 600,
               fontFamily: 'var(--font)',
               textAlign: 'center',
-              opacity: isAtLimit ? 0.5 : 1,
             }}
-            title={isAtLimit ? `최대 ${MAX_DRAFTS}개까지 보관 가능` : ''}
           >
-            {isAtLimit ? `한도 도달 (${MAX_DRAFTS}/${MAX_DRAFTS})` : '＋ 새 드래프트'}
+            ＋ 새 드래프트
+          </button>
+
+          {/* 전부 정리 — 위험 액션 */}
+          <button
+            onClick={handleClearAll}
+            disabled={busy}
+            style={{
+              width: '100%',
+              padding: '8px',
+              background: 'transparent',
+              border: 'none',
+              borderTop: '1px solid var(--border)',
+              cursor: busy ? 'wait' : 'pointer',
+              color: 'var(--text3)',
+              fontSize: 11,
+              fontWeight: 500,
+              fontFamily: 'var(--font)',
+              textAlign: 'center',
+            }}
+            title="모든 드래프트를 삭제하고 새로 시작"
+          >
+            🗑 드래프트 전부 정리하기
           </button>
         </div>
       )}

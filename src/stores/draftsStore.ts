@@ -64,6 +64,9 @@ interface DraftsState {
   /** 드래프트 삭제 — 현재 드래프트 삭제 시 다음 드래프트로 자동 전환 */
   deleteDraft: (id: string) => Promise<void>
 
+  /** 전부 정리 — 모든 드래프트 삭제 후 빈 드래프트 1개 생성 */
+  clearAllDrafts: () => Promise<void>
+
   /** 현재 드래프트 메타 업데이트 — 이름 = product.name 자동 동기화용 */
   touchCurrent: (name?: string) => void
 }
@@ -253,6 +256,42 @@ export const useDraftsStore = create<DraftsState>()(
           // 현재 아닌 드래프트 삭제 → 단순 목록에서 제거
           set({ drafts: remaining })
         }
+      },
+
+      clearAllDrafts: async () => {
+        // 1. 모든 드래프트의 스냅샷 + 이미지 삭제
+        for (const d of get().drafts) {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem(productSnapshotKey(d.id))
+            localStorage.removeItem(editorSnapshotKey(d.id))
+          }
+          await clearImagesFromDB(d.id).catch(() => {})
+        }
+
+        // 2. 라이브 사본 비우기
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('pagecraft-product')
+          localStorage.removeItem('pagecraft-editor')
+        }
+
+        // 3. 빈 드래프트 1개 생성 + 활성화
+        const newId = crypto.randomUUID()
+        const newMeta: DraftMeta = {
+          id: newId,
+          name: '',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        }
+        set({ drafts: [newMeta], currentId: newId })
+
+        // 4. 스토어 초기화
+        useProductStore.getState().resetProduct()
+        useEditorStore.getState().resetEditor()
+        useImageStore.setState({
+          images: [],
+          thumbnailImageId: null,
+          bgSelectedIds: [],
+        })
       },
 
       touchCurrent: (name) => {
