@@ -12,214 +12,142 @@ interface EbayPreviewProps {
 }
 
 /**
- * eBay (US) 템플릿 — 텍스트 위주 정보 박스 스택
+ * eBay (US) — 텍스트 문서 스타일 미리보기
  *
- * 특징:
- * - SEO 80자 타이틀 (h1)
- * - Condition / Shipping / Returns 뱃지
- * - 5-7 bullet points (Key Features)
- * - 긴 description (plain text 문단)
- * - Item Specifics 표 (Brand / MPN / Type / Color / Size / Material...)
- * - Shipping & Returns 3-박스 그리드
- * - eBay 시그니처 블루 (#0654BA) 액센트
+ * 설계 원칙:
+ * - 셀러가 페이지 내용을 그대로 복사 → eBay 설명 에디터에 붙여넣기
+ * - eBay는 마크다운 X, 인라인 HTML 스타일(글자 크기/색/굵기/밑줄)은 지원
+ * - 미리보기 = 복사될 결과 (WYSIWYG)
+ * - 시각적 장식(배너/그라디언트/테이블 zebra) 최소 — 인쇄 가능한 문서 톤
  *
- * 800px 고정 폭 — html-to-image 호환
+ * 800px 고정 폭. 폰트는 Arial 등 어디에든 안전한 sans-serif.
  */
 const EbayPreview = forwardRef<HTMLDivElement, EbayPreviewProps>(
   ({ content, price, images, storeIntroImage, termsImage }, ref) => {
     const descLines = content.description ? content.description.split('\n').filter(Boolean) : []
     const usdPrice = price ? `$${Number(price.replace(/[^\d.]/g, '') || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''
 
-    const FONT_BODY = "'Pretendard Variable', 'Pretendard', 'Inter', 'Noto Sans KR', sans-serif"
+    // 폰트는 Arial — eBay 에디터 기본 폰트와 호환
+    const FONT = "Arial, 'Helvetica Neue', Helvetica, sans-serif"
 
-    const EBAY_BLUE = '#0654BA'
-    const EBAY_RED = '#E53238'
-    const EBAY_TEXT = '#191919'
-    const EBAY_GRAY = '#707070'
-    const EBAY_BORDER = '#E5E5E5'
-    const EBAY_BG_ALT = '#F7F7F7'
+    const COLOR_TEXT = '#191919'
+    const COLOR_GRAY = '#707070'
+    const COLOR_ACCENT = '#0654BA'   // eBay 블루
+    const COLOR_PRICE = '#E53238'    // eBay 빨강
+
+    const sectionHeaderStyle: React.CSSProperties = {
+      fontSize: 18,
+      fontWeight: 700,
+      color: COLOR_ACCENT,
+      borderBottom: `2px solid ${COLOR_ACCENT}`,
+      paddingBottom: 6,
+      margin: '28px 0 14px',
+    }
 
     return (
       <div
         ref={ref}
         style={{
           width: 800,
-          fontFamily: FONT_BODY,
-          lineHeight: 1.5,
-          overflow: 'hidden',
+          fontFamily: FONT,
+          lineHeight: 1.6,
           background: '#ffffff',
-          color: EBAY_TEXT,
+          color: COLOR_TEXT,
+          padding: '40px 44px',
+          fontSize: 14,
         }}
       >
         {storeIntroImage && (
-          <img src={storeIntroImage} alt="" style={{ width: '100%', display: 'block' }} />
+          <img src={storeIntroImage} alt="" style={{ width: '100%', display: 'block', marginBottom: 24 }} />
         )}
 
-        {/* 상단 셀러 띠 */}
-        <div
+        {/* SEO 타이틀 */}
+        <h1
           style={{
-            background: EBAY_BLUE,
-            color: '#fff',
-            padding: '10px 32px',
-            fontSize: 11,
-            letterSpacing: 2,
+            fontSize: 22,
             fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
+            color: COLOR_TEXT,
+            margin: '0 0 10px',
+            lineHeight: 1.35,
+            wordBreak: 'keep-all',
           }}
         >
-          <span>★ TRUSTED SELLER · SHIPS FROM SOUTH KOREA ★</span>
-          <span>FAST SHIPPING · 30-DAY RETURNS</span>
-        </div>
+          {content.product_name}
+        </h1>
 
-        {/* 헤더 — SEO 타이틀 */}
-        <div
-          style={{
-            padding: '36px 32px 24px',
-            borderBottom: `1px solid ${EBAY_BORDER}`,
-          }}
-        >
-          {/* Condition + Brand line */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            {content.condition && (
-              <span
-                style={{
-                  background: '#E8F4D8',
-                  color: '#3B7A14',
-                  border: '1px solid #A4D265',
-                  borderRadius: 4,
-                  padding: '4px 12px',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  letterSpacing: '0.02em',
-                }}
-              >
-                ✓ {content.condition.toUpperCase()}
-              </span>
-            )}
-            <span style={{ fontSize: 12, color: EBAY_GRAY, fontWeight: 600 }}>
-              {/* item_specifics에 Brand 있으면 표시 */}
-              {content.item_specifics?.find((s) => /brand|브랜드/i.test(s.key))?.value ?? ''}
+        {/* 부제 */}
+        {content.subtitle && (
+          <p style={{ fontSize: 14, color: COLOR_GRAY, margin: '0 0 16px', fontStyle: 'italic' }}>
+            {content.subtitle}
+          </p>
+        )}
+
+        {/* Condition + Price 라인 */}
+        <div style={{ margin: '0 0 24px', display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap' }}>
+          {content.condition && (
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: '#3B7A14',
+                background: '#E8F4D8',
+                border: '1px solid #A4D265',
+                padding: '3px 12px',
+                borderRadius: 3,
+              }}
+            >
+              ✓ {content.condition}
             </span>
-          </div>
-
-          {/* SEO Title (80자) */}
-          <h1
-            style={{
-              fontSize: 26,
-              fontWeight: 800,
-              color: EBAY_TEXT,
-              margin: '0 0 10px',
-              lineHeight: 1.3,
-              letterSpacing: '-0.01em',
-              wordBreak: 'keep-all',
-            }}
-          >
-            {content.product_name}
-          </h1>
-
-          {/* 부제 */}
-          {content.subtitle && (
-            <p style={{ fontSize: 14, color: EBAY_GRAY, margin: 0, lineHeight: 1.6 }}>
-              {content.subtitle}
-            </p>
           )}
-
-          {/* 가격 */}
           {usdPrice && (
-            <div style={{ marginTop: 22, display: 'flex', alignItems: 'baseline', gap: 12 }}>
-              <span style={{ fontSize: 32, fontWeight: 800, color: EBAY_RED, letterSpacing: '-0.02em' }}>
-                {usdPrice}
-              </span>
-              <span style={{ fontSize: 12, color: EBAY_GRAY, fontWeight: 600 }}>USD</span>
-              <span style={{ fontSize: 11, color: '#3B7A14', fontWeight: 700, marginLeft: 'auto' }}>
-                ✓ Free Shipping
-              </span>
-            </div>
+            <span style={{ fontSize: 26, fontWeight: 700, color: COLOR_PRICE }}>
+              {usdPrice} <span style={{ fontSize: 13, color: COLOR_GRAY, fontWeight: 600 }}>USD</span>
+            </span>
           )}
         </div>
 
         {/* 메인 이미지 */}
         {images[0] && (
-          <div style={{ background: EBAY_BG_ALT, padding: '24px 32px' }}>
-            <img
-              src={images[0]}
-              alt="Main product"
-              style={{
-                width: '100%',
-                height: 'auto',
-                display: 'block',
-                borderRadius: 4,
-                border: `1px solid ${EBAY_BORDER}`,
-              }}
-            />
-          </div>
+          <img
+            src={images[0]}
+            alt="Main product"
+            style={{ width: '100%', height: 'auto', display: 'block', margin: '0 0 24px' }}
+          />
         )}
 
-        {/* Key Features (Bullet Points) */}
+        {/* Key Features */}
         {content.bullet_points && content.bullet_points.length > 0 && (
-          <div style={{ padding: '32px 32px 28px', borderBottom: `1px solid ${EBAY_BORDER}` }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                marginBottom: 16,
-              }}
-            >
-              <div style={{ width: 4, height: 22, background: EBAY_BLUE, borderRadius: 2 }} />
-              <h2 style={{ fontSize: 17, fontWeight: 800, color: EBAY_TEXT, margin: 0 }}>
-                Key Features
-              </h2>
-            </div>
-            <ul style={{ margin: 0, paddingLeft: 18, listStyle: 'none' }}>
+          <>
+            <h2 style={sectionHeaderStyle}>★ Key Features</h2>
+            <ul style={{ margin: 0, paddingLeft: 22 }}>
               {content.bullet_points.slice(0, 7).map((bp, i) => (
                 <li
                   key={i}
                   style={{
                     fontSize: 14,
-                    color: EBAY_TEXT,
+                    color: COLOR_TEXT,
                     lineHeight: 1.7,
                     margin: '0 0 8px',
-                    position: 'relative',
-                    paddingLeft: 14,
                     wordBreak: 'keep-all',
                   }}
                 >
-                  <span
-                    style={{
-                      position: 'absolute',
-                      left: -2,
-                      top: 0,
-                      color: EBAY_BLUE,
-                      fontWeight: 800,
-                    }}
-                  >
-                    ▸
-                  </span>
                   {bp}
                 </li>
               ))}
             </ul>
-          </div>
+          </>
         )}
 
         {/* Description */}
         {descLines.length > 0 && (
-          <div style={{ padding: '32px 32px 28px', borderBottom: `1px solid ${EBAY_BORDER}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <div style={{ width: 4, height: 22, background: EBAY_BLUE, borderRadius: 2 }} />
-              <h2 style={{ fontSize: 17, fontWeight: 800, color: EBAY_TEXT, margin: 0 }}>
-                Description
-              </h2>
-            </div>
+          <>
+            <h2 style={sectionHeaderStyle}>Description</h2>
             {descLines.map((line, i) => (
               <p
                 key={i}
                 style={{
                   fontSize: 14,
-                  color: EBAY_TEXT,
+                  color: COLOR_TEXT,
                   lineHeight: 1.8,
                   margin: i === descLines.length - 1 ? 0 : '0 0 14px',
                   wordBreak: 'keep-all',
@@ -228,51 +156,42 @@ const EbayPreview = forwardRef<HTMLDivElement, EbayPreviewProps>(
                 {line}
               </p>
             ))}
-          </div>
+          </>
         )}
 
-        {/* Item Specifics 표 */}
+        {/* Item Specifics */}
         {content.item_specifics && content.item_specifics.length > 0 && (
-          <div style={{ padding: '32px 32px 28px', borderBottom: `1px solid ${EBAY_BORDER}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <div style={{ width: 4, height: 22, background: EBAY_BLUE, borderRadius: 2 }} />
-              <h2 style={{ fontSize: 17, fontWeight: 800, color: EBAY_TEXT, margin: 0 }}>
-                Item Specifics
-              </h2>
-            </div>
+          <>
+            <h2 style={sectionHeaderStyle}>Item Specifics</h2>
             <table
               style={{
                 width: '100%',
                 borderCollapse: 'collapse',
-                fontSize: 13,
+                fontSize: 14,
+                margin: 0,
               }}
             >
               <tbody>
                 {content.item_specifics.map((sp, i) => (
-                  <tr
-                    key={i}
-                    style={{
-                      background: i % 2 === 0 ? EBAY_BG_ALT : '#fff',
-                    }}
-                  >
+                  <tr key={i}>
                     <td
                       style={{
-                        padding: '10px 14px',
-                        color: EBAY_GRAY,
+                        padding: '8px 12px',
+                        color: COLOR_GRAY,
                         fontWeight: 700,
                         width: '34%',
-                        borderLeft: `3px solid ${EBAY_BLUE}`,
                         verticalAlign: 'top',
+                        borderBottom: '1px solid #E5E5E5',
                       }}
                     >
                       {sp.key}
                     </td>
                     <td
                       style={{
-                        padding: '10px 14px',
-                        color: EBAY_TEXT,
-                        fontWeight: 500,
+                        padding: '8px 12px',
+                        color: COLOR_TEXT,
                         wordBreak: 'keep-all',
+                        borderBottom: '1px solid #E5E5E5',
                       }}
                     >
                       {sp.value}
@@ -281,122 +200,83 @@ const EbayPreview = forwardRef<HTMLDivElement, EbayPreviewProps>(
                 ))}
               </tbody>
             </table>
-          </div>
+          </>
         )}
 
-        {/* 추가 이미지 + 캡션 */}
-        {images.slice(1).map((imgSrc, i) => {
-          const lineIdx = i + 1
-          return (
-            <div key={`img-${lineIdx}`} style={{ background: EBAY_BG_ALT, padding: '20px 32px' }}>
+        {/* 추가 이미지 */}
+        {images.slice(1).length > 0 && (
+          <div style={{ margin: '28px 0 0' }}>
+            {images.slice(1).map((imgSrc, i) => (
               <img
+                key={i}
                 src={imgSrc}
-                alt={`Product ${lineIdx + 1}`}
-                style={{
-                  width: '100%',
-                  display: 'block',
-                  borderRadius: 4,
-                  border: `1px solid ${EBAY_BORDER}`,
-                }}
+                alt={`Product ${i + 2}`}
+                style={{ width: '100%', display: 'block', margin: '0 0 16px' }}
               />
-            </div>
-          )
-        })}
-
-        {/* Shipping / Returns / Payment 3-박스 */}
-        {(content.shipping_policy || content.return_policy || content.payment_policy) && (
-          <div style={{ padding: '32px', borderBottom: `1px solid ${EBAY_BORDER}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-              <div style={{ width: 4, height: 22, background: EBAY_BLUE, borderRadius: 2 }} />
-              <h2 style={{ fontSize: 17, fontWeight: 800, color: EBAY_TEXT, margin: 0 }}>
-                Shipping, Returns & Payment
-              </h2>
-            </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: 12,
-              }}
-            >
-              {content.shipping_policy && (
-                <div
-                  style={{
-                    background: EBAY_BG_ALT,
-                    border: `1px solid ${EBAY_BORDER}`,
-                    borderRadius: 4,
-                    padding: '16px 14px',
-                  }}
-                >
-                  <p style={{ fontSize: 11, color: EBAY_BLUE, margin: '0 0 8px', fontWeight: 800, letterSpacing: 1 }}>
-                    🚚 SHIPPING
-                  </p>
-                  <p style={{ fontSize: 12, color: EBAY_TEXT, margin: 0, lineHeight: 1.7, wordBreak: 'keep-all' }}>
-                    {content.shipping_policy}
-                  </p>
-                </div>
-              )}
-              {content.return_policy && (
-                <div
-                  style={{
-                    background: EBAY_BG_ALT,
-                    border: `1px solid ${EBAY_BORDER}`,
-                    borderRadius: 4,
-                    padding: '16px 14px',
-                  }}
-                >
-                  <p style={{ fontSize: 11, color: EBAY_BLUE, margin: '0 0 8px', fontWeight: 800, letterSpacing: 1 }}>
-                    ↩ RETURNS
-                  </p>
-                  <p style={{ fontSize: 12, color: EBAY_TEXT, margin: 0, lineHeight: 1.7, wordBreak: 'keep-all' }}>
-                    {content.return_policy}
-                  </p>
-                </div>
-              )}
-              {content.payment_policy && (
-                <div
-                  style={{
-                    background: EBAY_BG_ALT,
-                    border: `1px solid ${EBAY_BORDER}`,
-                    borderRadius: 4,
-                    padding: '16px 14px',
-                  }}
-                >
-                  <p style={{ fontSize: 11, color: EBAY_BLUE, margin: '0 0 8px', fontWeight: 800, letterSpacing: 1 }}>
-                    💳 PAYMENT
-                  </p>
-                  <p style={{ fontSize: 12, color: EBAY_TEXT, margin: 0, lineHeight: 1.7, wordBreak: 'keep-all' }}>
-                    {content.payment_policy}
-                  </p>
-                </div>
-              )}
-            </div>
+            ))}
           </div>
         )}
 
-        {/* Specs (legal/standard 표) */}
+        {/* Shipping */}
+        {content.shipping_policy && (
+          <>
+            <h2 style={sectionHeaderStyle}>Shipping</h2>
+            <p style={{ fontSize: 14, color: COLOR_TEXT, lineHeight: 1.8, margin: 0, wordBreak: 'keep-all' }}>
+              {content.shipping_policy}
+            </p>
+          </>
+        )}
+
+        {/* Returns */}
+        {content.return_policy && (
+          <>
+            <h2 style={sectionHeaderStyle}>Returns</h2>
+            <p style={{ fontSize: 14, color: COLOR_TEXT, lineHeight: 1.8, margin: 0, wordBreak: 'keep-all' }}>
+              {content.return_policy}
+            </p>
+          </>
+        )}
+
+        {/* Payment */}
+        {content.payment_policy && (
+          <>
+            <h2 style={sectionHeaderStyle}>Payment</h2>
+            <p style={{ fontSize: 14, color: COLOR_TEXT, lineHeight: 1.8, margin: 0, wordBreak: 'keep-all' }}>
+              {content.payment_policy}
+            </p>
+          </>
+        )}
+
+        {/* Caution */}
+        {content.caution && (
+          <p
+            style={{
+              fontSize: 13,
+              color: '#7A5D00',
+              background: '#FFF8E1',
+              padding: '10px 14px',
+              borderLeft: '3px solid #FFC107',
+              margin: '24px 0 0',
+              lineHeight: 1.7,
+              wordBreak: 'keep-all',
+            }}
+          >
+            <strong>Note:</strong> {content.caution}
+          </p>
+        )}
+
+        {/* Additional Information (legal specs) */}
         {content.specs && content.specs.length > 0 && (
-          <div style={{ padding: '28px 32px', borderBottom: `1px solid ${EBAY_BORDER}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <div style={{ width: 4, height: 18, background: EBAY_GRAY, borderRadius: 2 }} />
-              <h3 style={{ fontSize: 13, fontWeight: 800, color: EBAY_GRAY, margin: 0, letterSpacing: 1 }}>
-                ADDITIONAL INFORMATION
-              </h3>
-            </div>
+          <div style={{ margin: '28px 0 0', paddingTop: 18, borderTop: `1px solid #E5E5E5` }}>
+            <h3 style={{ fontSize: 12, fontWeight: 700, color: COLOR_GRAY, letterSpacing: 1, margin: '0 0 10px' }}>
+              ADDITIONAL INFORMATION
+            </h3>
             {content.specs.map((sp, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex',
-                  fontSize: 12,
-                  padding: '7px 0',
-                  borderBottom: i === content.specs.length - 1 ? 'none' : `1px dashed ${EBAY_BORDER}`,
-                }}
-              >
-                <span style={{ color: EBAY_GRAY, width: 200, flexShrink: 0, fontWeight: 600 }}>
+              <div key={i} style={{ display: 'flex', fontSize: 12, padding: '4px 0' }}>
+                <span style={{ color: COLOR_GRAY, width: 220, flexShrink: 0, fontWeight: 600 }}>
                   {sp.key}
                 </span>
-                <span style={{ color: EBAY_TEXT, flex: 1, wordBreak: 'keep-all' }}>
+                <span style={{ color: COLOR_TEXT, flex: 1, wordBreak: 'keep-all' }}>
                   {sp.value}
                 </span>
               </div>
@@ -404,41 +284,15 @@ const EbayPreview = forwardRef<HTMLDivElement, EbayPreviewProps>(
           </div>
         )}
 
-        {/* 키워드 */}
+        {/* Tags */}
         {content.keywords.length > 0 && (
-          <div style={{ padding: '24px 32px', textAlign: 'center', background: EBAY_BG_ALT }}>
-            <p style={{ fontSize: 11, color: EBAY_GRAY, lineHeight: 1.9, margin: 0, fontWeight: 500 }}>
-              {content.keywords.map((k) => `#${k}`).join('  ·  ')}
-            </p>
-          </div>
+          <p style={{ fontSize: 12, color: COLOR_GRAY, margin: '24px 0 0', fontStyle: 'italic' }}>
+            {content.keywords.map((k) => `#${k}`).join('  ')}
+          </p>
         )}
-
-        {/* 하단 caution */}
-        {content.caution && (
-          <div style={{ padding: '20px 32px', background: '#FFF8E1', borderTop: `2px solid #FFC107` }}>
-            <p style={{ fontSize: 12, color: '#7A5D00', margin: 0, lineHeight: 1.7, fontWeight: 500 }}>
-              ⚠ {content.caution}
-            </p>
-          </div>
-        )}
-
-        {/* 푸터 */}
-        <div
-          style={{
-            padding: '20px 32px',
-            background: EBAY_TEXT,
-            color: '#fff',
-            textAlign: 'center',
-            fontSize: 11,
-            letterSpacing: 2,
-            fontWeight: 700,
-          }}
-        >
-          THANK YOU FOR SHOPPING WITH US ★
-        </div>
 
         {termsImage && (
-          <img src={termsImage} alt="" style={{ width: '100%', display: 'block' }} />
+          <img src={termsImage} alt="" style={{ width: '100%', display: 'block', marginTop: 24 }} />
         )}
       </div>
     )

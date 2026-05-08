@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
 import { useTranslate } from '@/hooks/useTranslate'
+import { useProductStore } from '@/stores/productStore'
+import { copyEbayToClipboard } from '@/lib/ebayHtml'
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false)
@@ -316,36 +318,23 @@ function LangSwitcher() {
   )
 }
 
-/** eBay 통합 텍스트 빌더 — Title / Bullets / Description / Item Specifics / Policies */
-function buildEbayFullText(c: import('@/types/ai').GeneratedContent): string {
-  const lines: string[] = []
-  if (c.product_name) lines.push(`Title: ${c.product_name}`, '')
-  if (c.condition) lines.push(`Condition: ${c.condition}`, '')
-  if (c.bullet_points && c.bullet_points.length > 0) {
-    lines.push('★ Key Features')
-    c.bullet_points.forEach((bp) => lines.push(`• ${bp}`))
-    lines.push('')
-  }
-  if (c.description) lines.push('Description', c.description, '')
-  if (c.item_specifics && c.item_specifics.length > 0) {
-    lines.push('Item Specifics')
-    c.item_specifics.forEach((sp) => lines.push(`${sp.key}: ${sp.value}`))
-    lines.push('')
-  }
-  if (c.shipping_policy) lines.push('Shipping', c.shipping_policy, '')
-  if (c.return_policy) lines.push('Returns', c.return_policy, '')
-  if (c.payment_policy) lines.push('Payment', c.payment_policy, '')
-  if (c.caution) lines.push('Note', c.caution)
-  return lines.join('\n').trim()
-}
-
+/**
+ * eBay 페이지를 rich text(HTML)로 클립보드에 복사
+ * - eBay 설명 에디터에 붙여넣으면 폰트 크기/색/굵기/표 그대로 보존
+ * - 메모장 등 plain text only는 text/plain fallback
+ */
 function FullTextCopy({ content }: { content: import('@/types/ai').GeneratedContent }) {
   const [copied, setCopied] = useState(false)
-  const handleCopy = () => {
-    navigator.clipboard.writeText(buildEbayFullText(content))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1800)
+  const { product } = useProductStore()
+
+  const handleCopy = async () => {
+    const ok = await copyEbayToClipboard(content, product.price)
+    if (ok) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    }
   }
+
   return (
     <button
       onClick={handleCopy}
@@ -354,9 +343,9 @@ function FullTextCopy({ content }: { content: import('@/types/ai').GeneratedCont
           ? 'border-green text-green bg-green/10'
           : 'border-accent text-accent hover:bg-accent hover:text-bg'
       }`}
-      title="eBay 설명창에 한 번에 붙여넣기"
+      title="eBay 설명창에 붙여넣으면 폰트/색/굵기 그대로 보존됩니다"
     >
-      {copied ? '✓ 전체 텍스트 복사됨' : '📋 eBay 전체 텍스트 복사'}
+      {copied ? '✓ 페이지 복사됨 — eBay에 붙여넣으세요' : '📋 eBay 페이지 통째로 복사 (서식 유지)'}
     </button>
   )
 }
