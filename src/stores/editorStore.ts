@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import type {
   GeneratedContent, GeneratedTitle, GeneratedTag, GeneratedAll, GeneratedByLang,
 } from '@/types/ai'
-import type { Lang } from '@/types/product'
+import type { Lang, Platform } from '@/types/product'
 
 type ActiveTab = 'copy' | 'title' | 'tags' | 'export'
 
@@ -24,6 +24,13 @@ interface EditorState {
    * AI 생성/번역으로 갱신되면 null. 사용자가 CopyPanel에서 편집하면 currentLang으로 세팅.
    */
   dirtyLang: Lang | null
+
+  /**
+   * 마지막 AI 생성 시점의 플랫폼 — 현재 product.platform과 다르면 콘텐츠가
+   * 새 플랫폼 톤과 안 맞는다는 신호 (재생성 권장 배너 표시용).
+   * AI 생성 시 useAIGenerate가 자동으로 기록.
+   */
+  generatedForPlatform: Platform | null
 
   activeTab: ActiveTab
 
@@ -69,6 +76,7 @@ interface EditorState {
   setActiveTab: (tab: ActiveTab) => void
   setIsGenerating: (loading: boolean) => void
   setGeneratingDraftId: (id: string | null) => void
+  setGeneratedForPlatform: (platform: Platform | null) => void
   setIsTranslating: (loading: boolean) => void
   setTranslatingDraftId: (id: string | null) => void
   setIsRenderingPng: (loading: boolean) => void
@@ -88,6 +96,7 @@ export const useEditorStore = create<EditorState>()(
       currentLang: 'ko',
       langCache: {},
       dirtyLang: null,
+      generatedForPlatform: null,
       renderedImageUrl: null,
       activeTab: 'copy',
 
@@ -168,7 +177,7 @@ export const useEditorStore = create<EditorState>()(
         return true
       },
 
-      clearLangCache: () => set({ langCache: {}, dirtyLang: null }),
+      clearLangCache: () => set({ langCache: {}, dirtyLang: null, generatedForPlatform: null }),
 
       cacheLang: (lang, all) =>
         set((state) => ({
@@ -189,6 +198,7 @@ export const useEditorStore = create<EditorState>()(
       setActiveTab: (tab) => set({ activeTab: tab }),
       setIsGenerating: (loading) => set({ isGenerating: loading }),
       setGeneratingDraftId: (id) => set({ generatingDraftId: id }),
+      setGeneratedForPlatform: (platform) => set({ generatedForPlatform: platform }),
       setIsTranslating: (loading) => set({ isTranslating: loading }),
       setTranslatingDraftId: (id) => set({ translatingDraftId: id }),
       setIsRenderingPng: (loading) => set({ isRenderingPng: loading }),
@@ -204,6 +214,7 @@ export const useEditorStore = create<EditorState>()(
           currentLang: 'ko',
           langCache: {},
           dirtyLang: null,
+          generatedForPlatform: null,
           renderedImageUrl: null,
           activeTab: 'copy',
           isGenerating: false,
@@ -230,6 +241,7 @@ export const useEditorStore = create<EditorState>()(
         currentLang: state.currentLang,
         langCache: state.langCache,
         dirtyLang: state.dirtyLang,
+        generatedForPlatform: state.generatedForPlatform,
         activeTab: state.activeTab,
       }),
     },

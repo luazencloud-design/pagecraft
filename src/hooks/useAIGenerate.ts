@@ -33,6 +33,7 @@ export function useAIGenerate() {
     clearLangCache,
     setIsGenerating,
     setGeneratingDraftId,
+    setGeneratedForPlatform,
     setLoadingMessage,
     setGenerateError,
     setActiveTab,
@@ -107,6 +108,9 @@ export function useAIGenerate() {
       // 모든 받은 언어를 캐시에 저장 + 활성 언어로 플랫폼 기본 lang 사용
       setGeneratedByLang(byLang, targetLang)
 
+      // 어느 플랫폼용으로 생성됐는지 기록 — 이후 플랫폼 변경 시 stale 배너 표시
+      setGeneratedForPlatform(product.platform)
+
       // 트렌딩 태그 마킹은 활성 언어 결과에 한해 (한국어 + 자동완성 있을 때만)
       const activeAll = byLang[targetLang]
       if (useAutocomplete && activeAll?.tags && activeAll.tags.length > 0) {
@@ -144,6 +148,7 @@ export function useAIGenerate() {
     clearLangCache,
     setIsGenerating,
     setGeneratingDraftId,
+    setGeneratedForPlatform,
     setLoadingMessage,
     setGenerateError,
     setActiveTab,

@@ -213,6 +213,24 @@ function SpecBlock({ specs, onUpdate }: { specs: { key: string; value: string }[
   )
 }
 
+/** 언어 코드 → 표시 라벨 (en/ja/ko 모두 처리) */
+function langDisplay(lang: 'ko' | 'ja' | 'en'): string {
+  switch (lang) {
+    case 'ja': return '🇯🇵 日本語'
+    case 'en': return '🇺🇸 English'
+    case 'ko':
+    default: return '🇰🇷 한국어'
+  }
+}
+function langLabelKR(lang: 'ko' | 'ja' | 'en'): string {
+  switch (lang) {
+    case 'ja': return '일본어'
+    case 'en': return '영어'
+    case 'ko':
+    default: return '한국어'
+  }
+}
+
 function LangSwitcher() {
   const { currentLang, isTranslating: rawIsTranslating, translatingDraftId, langCache } =
     useEditorStore()
@@ -223,16 +241,21 @@ function LangSwitcher() {
 
   if (!canTranslate) return null
 
-  const altLabel = altLang === 'ja' ? '🇯🇵 日本語' : '🇰🇷 한국어'
-  const currentLabel = currentLang === 'ja' ? '🇯🇵 日本語' : '🇰🇷 한국어'
-  const cachedLangs = Object.keys(langCache) as Array<'ko' | 'ja'>
+  // visibility 추가 조건: altLang에 캐시 있거나 (전환 가능), 또는 dirty 상태일 때만 표시
+  // → 쿠팡 콘텐츠로 eBay 전환 같은 경우 (en 캐시 없음, dirty 아님) → 토글 무의미하므로 숨김
+  const altCached = !!langCache[altLang]
+  const isDirty = dirtyLang !== null
+  if (!altCached && !isDirty) return null
+
+  const altLabel = langDisplay(altLang)
+  const currentLabel = langDisplay(currentLang)
+  const cachedLangs = Object.keys(langCache) as Array<'ko' | 'ja' | 'en'>
   const cacheCount = cachedLangs.length
 
   // dirty 상태: 한쪽 언어를 수정해서 다른 언어가 옛 데이터인 상황
-  const isDirty = dirtyLang !== null
-  const dirtyLabel = dirtyLang === 'ja' ? '일본어' : '한국어'
-  const targetLang: 'ko' | 'ja' = dirtyLang === 'ja' ? 'ko' : 'ja'
-  const targetLabel = targetLang === 'ja' ? '일본어' : '한국어'
+  const dirtyLabel = dirtyLang ? langLabelKR(dirtyLang) : '현재'
+  const targetLang = altLang
+  const targetLabel = langLabelKR(targetLang)
 
   return (
     <>
