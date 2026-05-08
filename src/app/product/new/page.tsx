@@ -82,12 +82,9 @@ export default function ProductNewPage() {
   }
 
   /**
-   * PNG 다운로드 — 미리보기 DOM을 html2canvas로 직접 캡처
-   *
-   * 이전: /api/render 서버 캔버스 (한국 템플릿 고정 → 큐텐 템플릿 무시 버그)
-   * 지금: 화면에 보이는 그대로 캡처하므로 어떤 템플릿이든 동일하게 동작
-   *
-   * 800px 고정 폭 미리보기 div를 그대로 캡처. 화면 zoom(0.825) 은 시각 변환이라
+   * PNG 다운로드 — 미리보기 DOM을 html-to-image로 직접 캡처
+   * 화면에 보이는 그대로 캡처하므로 어떤 템플릿이든 동일하게 동작.
+   * 800px 고정 폭 미리보기 div 그대로 캡처. 화면 zoom(0.825)은 시각 변환이라
    * DOM 자체는 800px이므로 캡처 결과도 800px 원본 해상도.
    */
   const handleDownload = async () => {

@@ -121,11 +121,6 @@ export function compressForBgRemoval(dataUrl: string) {
   return resizeForUpload(dataUrl, 2048, 0.92)
 }
 
-/** 서버 렌더링 전송용 — 780px, 품질 0.75 (Vercel 4.5MB 대응) */
-export function compressForRender(dataUrl: string) {
-  return resizeForUpload(dataUrl, 780, 0.75)
-}
-
 /**
  * 배경 제거 결과 후처리 — 연한 회색/흰색 배경을 순수 #FFFFFF로 강제
  * Gemini가 완벽한 흰색을 못 만드는 문제 해결

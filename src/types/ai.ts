@@ -96,14 +96,6 @@ export interface AIModelImageRequest {
   images: string[]
 }
 
-export interface RenderRequest {
-  data: GeneratedContent
-  price: string
-  images: string[]
-  storeIntroImage?: string
-  termsImage?: string
-}
-
 /** 번역(재작성) 요청 */
 export interface TranslateRequest {
   current: GeneratedAll

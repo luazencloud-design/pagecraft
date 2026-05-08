@@ -12,8 +12,8 @@ interface KoreanDefaultPreviewProps {
 }
 
 /**
- * 한국 (쿠팡·스마트스토어) 기본 템플릿
- * render.service.ts 레이아웃 1:1 복제 — 800px 고정, 서버 canvas와 동일한 결과
+ * 한국 (쿠팡·스마트스토어) 기본 템플릿 — 800px 고정 표준 레이아웃
+ * 헤더(검정/금색) + 메인이미지 + 셀링포인트 3컬럼 + 스펙 + 푸터
  */
 const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProps>(
   ({ content, price, images, storeIntroImage, termsImage }, ref) => {
