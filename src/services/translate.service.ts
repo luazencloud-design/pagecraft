@@ -1,5 +1,4 @@
 import type { GeneratedAll, TranslateRequest } from '@/types/ai'
-import { PLATFORM_META } from '@/types/product'
 import { buildCoupangRewritePrompt } from './prompts/coupang'
 import { buildQoo10RewritePrompt } from './prompts/qoo10'
 import { buildEbayRewriteToEnPrompt, buildEbayRewriteToKoPrompt } from './prompts/ebay'
@@ -76,21 +75,22 @@ export async function translateContent(req: TranslateRequest): Promise<Generated
     return req.current  // 같은 언어면 그대로 반환
   }
 
-  const targetMeta = PLATFORM_META[req.targetPlatform]
-  const isToJa = req.toLang === 'ja' || targetMeta?.market === 'jp'
-  const isToEn = req.toLang === 'en' || targetMeta?.market === 'us'
-  const isFromEn = req.fromLang === 'en'
-
+  /**
+   * 프롬프트 라우팅은 fromLang/toLang으로만 결정 — targetPlatform.market는 부적합 신호.
+   * (예: eBay 플랫폼에서 en→ko 동기화 시 market='us'라고 toEn으로 잘못 라우팅되던 버그 방지)
+   */
   let prompt: string
-  if (isToJa) {
+  if (req.toLang === 'ja') {
+    // KO → JA (큐텐 동기화)
     prompt = buildQoo10RewritePrompt(req.current)
-  } else if (isToEn) {
+  } else if (req.toLang === 'en') {
+    // KO → EN (eBay 동기화)
     prompt = buildEbayRewriteToEnPrompt(req.current)
-  } else if (isFromEn) {
-    // EN → KO (eBay 흐름의 한국어 동기화)
+  } else if (req.fromLang === 'en') {
+    // EN → KO (eBay 동기화)
     prompt = buildEbayRewriteToKoPrompt(req.current)
   } else {
-    // JA → KO (큐텐 흐름)
+    // JA → KO (큐텐 동기화) 또는 그 외 fallback
     prompt = buildCoupangRewritePrompt(req.current)
   }
 
