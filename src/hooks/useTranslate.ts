@@ -4,6 +4,7 @@ import { useCallback } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
 import { useProductStore } from '@/stores/productStore'
 import { useUsageStore } from '@/stores/usageStore'
+import { useDraftsStore } from '@/stores/draftsStore'
 import { api } from '@/lib/api'
 import { showToast } from '@/components/ui/Toast'
 import type { GeneratedAll, TranslateRequest } from '@/types/ai'
@@ -22,7 +23,7 @@ export function useTranslate() {
   const {
     currentLang, langCache, dirtyLang,
     generatedContent, generatedTitles, generatedTags,
-    setGeneratedAllForLang, switchLang, setIsTranslating,
+    setGeneratedAllForLang, switchLang, setIsTranslating, setTranslatingDraftId,
     cacheLang, setDirty,
   } = useEditorStore()
 
@@ -39,7 +40,9 @@ export function useTranslate() {
     }
 
     // 3. 캐시 miss → API 호출
+    const startDraftId = useDraftsStore.getState().currentId
     setIsTranslating(true)
+    setTranslatingDraftId(startDraftId)
     try {
       const fromAll: GeneratedAll = {
         content: generatedContent,
@@ -56,10 +59,18 @@ export function useTranslate() {
       }
 
       const result = await api.post<GeneratedAll>('/api/translate', payload)
+
+      // 결과 도착 — 드래프트 변경 시 폐기
+      if (useDraftsStore.getState().currentId !== startDraftId) {
+        showToast('다른 드래프트로 이동해서 번역 결과가 폐기됐습니다', 'error')
+        useUsageStore.getState().fetchUsage()
+        return false
+      }
+
       setGeneratedAllForLang(toLang, result)
       useUsageStore.getState().fetchUsage()
 
-      const langLabel = toLang === 'ja' ? '일본어' : '한국어'
+      const langLabel = toLang === 'ja' ? '일본어' : toLang === 'en' ? '영어' : '한국어'
       showToast(`${langLabel} 버전이 생성되었습니다`)
       return true
     } catch (err) {
@@ -69,10 +80,12 @@ export function useTranslate() {
       return false
     } finally {
       setIsTranslating(false)
+      setTranslatingDraftId(null)
     }
   }, [
     currentLang, generatedContent, generatedTitles, generatedTags,
-    switchLang, setGeneratedAllForLang, setIsTranslating,
+    switchLang, setGeneratedAllForLang, setIsTranslating, setTranslatingDraftId,
+    product.platform,
   ])
 
   /** 플랫폼 메타 + 페어 도출 */
@@ -102,7 +115,9 @@ export function useTranslate() {
     }
     const targetLang: Lang = langPair[0] === dirtyLang ? langPair[1] : langPair[0]
 
+    const startDraftId = useDraftsStore.getState().currentId
     setIsTranslating(true)
+    setTranslatingDraftId(startDraftId)
     try {
       const result = await api.post<GeneratedAll>('/api/translate', {
         current: source,
@@ -110,6 +125,14 @@ export function useTranslate() {
         toLang: targetLang,
         targetPlatform: product.platform,
       })
+
+      // 드래프트 변경 시 폐기
+      if (useDraftsStore.getState().currentId !== startDraftId) {
+        showToast('다른 드래프트로 이동해서 동기화 결과가 폐기됐습니다', 'error')
+        useUsageStore.getState().fetchUsage()
+        return false
+      }
+
       cacheLang(targetLang, result)
       setDirty(null)
       useUsageStore.getState().fetchUsage()
@@ -123,8 +146,9 @@ export function useTranslate() {
       return false
     } finally {
       setIsTranslating(false)
+      setTranslatingDraftId(null)
     }
-  }, [dirtyLang, langCache, cacheLang, setDirty, setIsTranslating, langPair, product.platform])
+  }, [dirtyLang, langCache, cacheLang, setDirty, setIsTranslating, setTranslatingDraftId, langPair, product.platform])
 
   /** "다른 언어 만들기" 가능 여부 — 페어가 있는 플랫폼만 */
   const canTranslate = !!generatedContent && !!langPair

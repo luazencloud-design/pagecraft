@@ -18,6 +18,7 @@ import Button from '@/components/ui/Button'
 import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
 import { useEditorStore } from '@/stores/editorStore'
+import { useDraftsStore } from '@/stores/draftsStore'
 import { useAIGenerate } from '@/hooks/useAIGenerate'
 import { showToast } from '@/components/ui/Toast'
 import { PLATFORM_META } from '@/types/product'
@@ -31,13 +32,17 @@ export default function ProductNewPage() {
   const { images, storeIntroImage, termsImage, setStoreIntroImage, setTermsImage } =
     useImageStore()
   const {
-    isGenerating,
+    isGenerating: rawIsGenerating,
+    generatingDraftId,
     generatedContent,
     loadingMessage,
     generateError,
     currentLang,
     langCache,
   } = useEditorStore()
+  const currentDraftId = useDraftsStore((s) => s.currentId)
+  // 다른 드래프트가 생성 중인 경우엔 이 화면에 로딩 표시 X
+  const isGenerating = rawIsGenerating && generatingDraftId === currentDraftId
   const { generateContent } = useAIGenerate()
 
   /**

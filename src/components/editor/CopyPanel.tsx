@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
+import { useDraftsStore } from '@/stores/draftsStore'
 import { useTranslate } from '@/hooks/useTranslate'
 import { useProductStore } from '@/stores/productStore'
 import { PLATFORM_META } from '@/types/product'
@@ -213,7 +214,11 @@ function SpecBlock({ specs, onUpdate }: { specs: { key: string; value: string }[
 }
 
 function LangSwitcher() {
-  const { currentLang, isTranslating, langCache } = useEditorStore()
+  const { currentLang, isTranslating: rawIsTranslating, translatingDraftId, langCache } =
+    useEditorStore()
+  const currentDraftId = useDraftsStore((s) => s.currentId)
+  // 다른 드래프트가 번역 중인 경우엔 이 화면에 로딩 표시 X
+  const isTranslating = rawIsTranslating && translatingDraftId === currentDraftId
   const { translateTo, syncFromDirty, canTranslate, altLang, isCached, dirtyLang } = useTranslate()
 
   if (!canTranslate) return null

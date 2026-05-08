@@ -5,9 +5,11 @@ import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
 import { useEditorStore } from '@/stores/editorStore'
 import { useUsageStore } from '@/stores/usageStore'
+import { useDraftsStore } from '@/stores/draftsStore'
 import { api } from '@/lib/api'
 import { compressForAI } from '@/lib/image'
 import { PLATFORM_META } from '@/types/product'
+import { showToast } from '@/components/ui/Toast'
 import type { GeneratedByLang, GeneratedTag } from '@/types/ai'
 import type { CoupangSuggestResponse } from '@/types/market'
 
@@ -30,6 +32,7 @@ export function useAIGenerate() {
     setGeneratedByLang,
     clearLangCache,
     setIsGenerating,
+    setGeneratingDraftId,
     setLoadingMessage,
     setGenerateError,
     setActiveTab,
@@ -39,7 +42,11 @@ export function useAIGenerate() {
   const generateContent = useCallback(async () => {
     if (images.length === 0) return
 
+    // 생성 시작 시점의 드래프트 ID 캡처 — 결과 도착 시 같은 드래프트인지 확인용
+    const startDraftId = useDraftsStore.getState().currentId
+
     setIsGenerating(true)
+    setGeneratingDraftId(startDraftId)
     setGenerateError('')
     setLoadingMessage(LOADING_MESSAGES[0])
     // 새 생성 시작 시 기존 언어 캐시 초기화 (이전 상품 결과 누수 방지)
@@ -88,6 +95,15 @@ export function useAIGenerate() {
         coupangSuggestions,
       })
 
+      // 결과 도착 — 사용자가 다른 드래프트로 이동했으면 폐기 (다른 드래프트 데이터 오염 방지)
+      const currentDraftAtCompletion = useDraftsStore.getState().currentId
+      if (currentDraftAtCompletion !== startDraftId) {
+        showToast('다른 드래프트로 이동해서 결과가 폐기됐습니다 (크레딧은 차감)', 'error')
+        // 크레딧 사용량은 갱신 (이미 소비됨)
+        useUsageStore.getState().fetchUsage()
+        return
+      }
+
       // 모든 받은 언어를 캐시에 저장 + 활성 언어로 플랫폼 기본 lang 사용
       setGeneratedByLang(byLang, targetLang)
 
@@ -115,6 +131,7 @@ export function useAIGenerate() {
     } finally {
       clearInterval(interval)
       setIsGenerating(false)
+      setGeneratingDraftId(null)
       setLoadingMessage('')
     }
   }, [
@@ -126,6 +143,7 @@ export function useAIGenerate() {
     setGeneratedByLang,
     clearLangCache,
     setIsGenerating,
+    setGeneratingDraftId,
     setLoadingMessage,
     setGenerateError,
     setActiveTab,

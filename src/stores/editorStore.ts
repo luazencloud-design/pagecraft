@@ -30,7 +30,11 @@ interface EditorState {
   // 세션 유지 안 됨 (blob URL, 로딩 상태)
   renderedImageUrl: string | null
   isGenerating: boolean
+  /** 어느 드래프트가 AI 생성 중인지 — 다른 드래프트 화면에 로딩 안 보이게 */
+  generatingDraftId: string | null
   isTranslating: boolean
+  /** 어느 드래프트가 번역 중인지 */
+  translatingDraftId: string | null
   isRenderingPng: boolean
   isGeneratingTitles: boolean
   isGeneratingTags: boolean
@@ -64,7 +68,9 @@ interface EditorState {
   setRenderedImageUrl: (url: string | null) => void
   setActiveTab: (tab: ActiveTab) => void
   setIsGenerating: (loading: boolean) => void
+  setGeneratingDraftId: (id: string | null) => void
   setIsTranslating: (loading: boolean) => void
+  setTranslatingDraftId: (id: string | null) => void
   setIsRenderingPng: (loading: boolean) => void
   setIsGeneratingTitles: (loading: boolean) => void
   setIsGeneratingTags: (loading: boolean) => void
@@ -86,7 +92,9 @@ export const useEditorStore = create<EditorState>()(
       activeTab: 'copy',
 
       isGenerating: false,
+      generatingDraftId: null,
       isTranslating: false,
+      translatingDraftId: null,
       isRenderingPng: false,
       isGeneratingTitles: false,
       isGeneratingTags: false,
@@ -180,7 +188,9 @@ export const useEditorStore = create<EditorState>()(
       setRenderedImageUrl: (url) => set({ renderedImageUrl: url }),
       setActiveTab: (tab) => set({ activeTab: tab }),
       setIsGenerating: (loading) => set({ isGenerating: loading }),
+      setGeneratingDraftId: (id) => set({ generatingDraftId: id }),
       setIsTranslating: (loading) => set({ isTranslating: loading }),
+      setTranslatingDraftId: (id) => set({ translatingDraftId: id }),
       setIsRenderingPng: (loading) => set({ isRenderingPng: loading }),
       setIsGeneratingTitles: (loading) => set({ isGeneratingTitles: loading }),
       setIsGeneratingTags: (loading) => set({ isGeneratingTags: loading }),
@@ -197,7 +207,9 @@ export const useEditorStore = create<EditorState>()(
           renderedImageUrl: null,
           activeTab: 'copy',
           isGenerating: false,
+          generatingDraftId: null,
           isTranslating: false,
+          translatingDraftId: null,
           isRenderingPng: false,
           isGeneratingTitles: false,
           isGeneratingTags: false,
