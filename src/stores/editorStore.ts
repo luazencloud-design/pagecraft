@@ -106,9 +106,9 @@ export const useEditorStore = create<EditorState>()(
                 ? { content, titles: state.generatedTitles, tags: state.generatedTags.map((t) => t.text) }
                 : undefined,
           }
-          // 다른 언어 버전이 캐시에 있을 때만 dirty 마킹 — 단일 언어면 동기화 대상 없음
-          const otherLang: Lang = lang === 'ko' ? 'ja' : 'ko'
-          const hasOther = !!state.langCache[otherLang]
+          // 다른 언어 버전이 하나라도 캐시에 있을 때 dirty 마킹 — 동기화 대상이 있다는 뜻
+          const cachedLangs = Object.keys(state.langCache) as Lang[]
+          const hasOther = cachedLangs.some((l) => l !== lang && state.langCache[l])
           return {
             generatedContent: content,
             langCache: nextCache,
@@ -132,10 +132,12 @@ export const useEditorStore = create<EditorState>()(
       setGeneratedByLang: (byLang, activeLang) =>
         set((state) => {
           const active = byLang[activeLang]
-          // activeLang 결과가 없으면 다른 언어 중 하나로 fallback
-          const fallback = active ?? byLang.ko ?? byLang.ja
-          if (!fallback) return state  // 둘 다 없으면 무변경
-          const resolvedLang: Lang = active ? activeLang : (byLang.ko ? 'ko' : 'ja')
+          // activeLang 결과가 없으면 다른 언어 중 하나로 fallback (어떤 lang이든)
+          const fallback = active ?? byLang.en ?? byLang.ja ?? byLang.ko
+          if (!fallback) return state  // 어느 언어도 없으면 무변경
+          const resolvedLang: Lang = active
+            ? activeLang
+            : byLang.en ? 'en' : byLang.ja ? 'ja' : 'ko'
           return {
             currentLang: resolvedLang,
             generatedContent: fallback.content,

@@ -39,13 +39,17 @@ export default function ProductNewPage() {
 
   /**
    * 큐텐 템플릿용 시각 필드 fallback —
-   * 활성 언어에 mood_callout / hashtags 가 비어있으면 다른 언어 캐시에서 가져옴.
-   * mood_callout은 양 언어 동일 (영문) 이라 fallback 안전. hashtags는 차선 (다른 언어로라도 표시).
+   * 활성 언어에 mood_callout / hashtags 가 비어있으면 다른 캐시에서 가져옴.
+   * mood_callout은 양 언어 동일 (영문) 이라 fallback 안전. hashtags는 차선.
+   * 캐시에 다른 언어가 있으면 자동으로 활용 (lang에 무관 — en/ja/ko 어느 쪽이든).
    */
   const previewContent = useMemo<GeneratedContent | null>(() => {
     if (!generatedContent) return null
-    const otherLang = currentLang === 'ko' ? 'ja' : 'ko'
-    const otherContent = langCache[otherLang]?.content
+    // currentLang 외에 캐시된 다른 언어 중 첫 번째에서 fallback
+    const otherLang = (Object.keys(langCache) as Array<keyof typeof langCache>).find(
+      (l) => l !== currentLang && langCache[l],
+    )
+    const otherContent = otherLang ? langCache[otherLang]?.content : undefined
     if (!otherContent) return generatedContent
 
     return {

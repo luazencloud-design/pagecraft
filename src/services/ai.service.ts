@@ -133,7 +133,10 @@ export async function generateAll(
   const apiKey = getApiKey()
   const systemPrompt = buildSystemPrompt(req, coupangSuggestions)
   const platform = req.platform as Platform
-  const isJpMarket = PLATFORM_META[platform]?.market === 'jp'
+  const market = PLATFORM_META[platform]?.market
+  const isJpMarket = market === 'jp'
+  const isUsMarket = market === 'us'
+  const isBilingual = isJpMarket || isUsMarket
 
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = []
 
@@ -147,7 +150,9 @@ export async function generateAll(
   parts.push({
     text: isJpMarket
       ? 'この商品画像を分析し、Qoo10ジャパン用の日本語コピーと쿠팡用の韓国語コピーを両方同時に生成してください。'
-      : '이 상품 이미지를 분석하고 상세페이지 콘텐츠, 최적화 상품명 5개, 검색 태그 20개를 한번에 생성해주세요.',
+      : isUsMarket
+        ? 'Analyze this product image and generate eBay listing content in both English and Korean simultaneously.'
+        : '이 상품 이미지를 분석하고 상세페이지 콘텐츠, 최적화 상품명 5개, 검색 태그 20개를 한번에 생성해주세요.',
   })
 
   const body = {
@@ -156,7 +161,7 @@ export async function generateAll(
     generationConfig: {
       responseMimeType: 'application/json',
       // 양 언어 동시 생성하려면 토큰 한도 상향
-      maxOutputTokens: isJpMarket ? 16384 : 8192,
+      maxOutputTokens: isBilingual ? 16384 : 8192,
     },
   }
 
@@ -174,14 +179,15 @@ export async function generateAll(
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) throw new Error('Gemini 응답에서 텍스트를 찾을 수 없습니다.')
 
-  if (isJpMarket) {
-    // 큐텐 — 바이링구얼 응답 { ja: {...}, ko: {...} }
-    const parsed = safeParseJSON<{ ja?: GeneratedAll; ko?: GeneratedAll }>(text)
+  if (isBilingual) {
+    // 큐텐(ja+ko) / eBay(en+ko) — 바이링구얼 응답
+    const parsed = safeParseJSON<{ ja?: GeneratedAll; ko?: GeneratedAll; en?: GeneratedAll }>(text)
     const result: GeneratedByLang = {}
     if (parsed.ja) result.ja = parsed.ja
     if (parsed.ko) result.ko = parsed.ko
-    if (!result.ja && !result.ko) {
-      throw new Error('큐텐 응답에서 ja/ko 어느 언어도 추출하지 못했습니다.')
+    if (parsed.en) result.en = parsed.en
+    if (!result.ja && !result.ko && !result.en) {
+      throw new Error(`${isJpMarket ? '큐텐' : 'eBay'} 응답에서 어떤 언어도 추출하지 못했습니다.`)
     }
     return result
   }
