@@ -19,6 +19,8 @@ import { useImageStore } from '@/stores/imageStore'
 import { useEditorStore } from '@/stores/editorStore'
 import { useAIGenerate } from '@/hooks/useAIGenerate'
 import { showToast } from '@/components/ui/Toast'
+import { PLATFORM_META } from '@/types/product'
+import { copyEbayToClipboard } from '@/lib/ebayHtml'
 import type { GeneratedContent } from '@/types/ai'
 
 export default function ProductNewPage() {
@@ -145,6 +147,43 @@ export default function ProductNewPage() {
     }
   }
 
+  /**
+   * 전체 텍스트/페이지 복사 — 플랫폼 분기
+   * - eBay (US): rich HTML + plain text 동시 복사 (설명창에 서식 보존)
+   * - 한국/큐텐: [상품명] [판매포인트] [상세설명] 라벨 박스 텍스트 (셀러 필드 정리용)
+   */
+  const handleCopyAll = async () => {
+    if (!generatedContent) return
+    const meta = PLATFORM_META[product.platform]
+
+    // eBay → rich HTML
+    if (meta?.market === 'us') {
+      const ok = await copyEbayToClipboard(generatedContent, product.price)
+      if (ok) showToast('eBay 페이지 복사됨 — 설명창에 붙여넣으세요')
+      return
+    }
+
+    // 한국/큐텐 등 → 라벨 박스 텍스트
+    const parts: string[] = []
+    parts.push(`[상품명] ${generatedContent.product_name}`)
+    parts.push(`[서브타이틀] ${generatedContent.subtitle}`)
+    parts.push(`[메인카피] ${generatedContent.main_copy}`)
+    parts.push('')
+    parts.push('[판매포인트]')
+    generatedContent.selling_points.forEach((sp, i) => parts.push(`${i + 1}. ${sp}`))
+    parts.push('')
+    parts.push('[상세설명]')
+    parts.push(generatedContent.description)
+    parts.push('')
+    parts.push('[스펙]')
+    generatedContent.specs.forEach((s) => parts.push(`${s.key}: ${s.value}`))
+    parts.push('')
+    parts.push(`[키워드] ${generatedContent.keywords.join(', ')}`)
+    if (generatedContent.caution) parts.push(`[주의사항] ${generatedContent.caution}`)
+    navigator.clipboard.writeText(parts.join('\n'))
+    showToast('전체 텍스트 복사됨')
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <Header />
@@ -231,14 +270,29 @@ export default function ProductNewPage() {
           <div style={{ width: '100%', maxWidth: 660, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
             <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginRight: 'auto' }}>preview.html</span>
             {generatedContent && (
-              <button
-                style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, background: 'var(--accent)', border: '1px solid var(--accent)', color: '#0c0c10', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.2s' }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent2)' }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)' }}
-                onClick={handleDownload}
-              >
-                ⬇ 이미지 저장
-              </button>
+              <>
+                <button
+                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border2)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text)' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text2)' }}
+                  onClick={handleCopyAll}
+                  title={
+                    PLATFORM_META[product.platform]?.market === 'us'
+                      ? 'eBay 설명창에 서식 그대로 붙여넣기 (HTML)'
+                      : '상품 정보 전체를 라벨 박스 텍스트로 복사'
+                  }
+                >
+                  📋 전체 복사
+                </button>
+                <button
+                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, background: 'var(--accent)', border: '1px solid var(--accent)', color: '#0c0c10', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent2)' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)' }}
+                  onClick={handleDownload}
+                >
+                  ⬇ 이미지 저장
+                </button>
+              </>
             )}
           </div>
 

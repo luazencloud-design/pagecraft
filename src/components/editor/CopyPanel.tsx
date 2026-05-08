@@ -3,8 +3,6 @@
 import { useState } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
 import { useTranslate } from '@/hooks/useTranslate'
-import { useProductStore } from '@/stores/productStore'
-import { copyEbayToClipboard } from '@/lib/ebayHtml'
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false)
@@ -318,37 +316,8 @@ function LangSwitcher() {
   )
 }
 
-/**
- * eBay 페이지를 rich text(HTML)로 클립보드에 복사
- * - eBay 설명 에디터에 붙여넣으면 폰트 크기/색/굵기/표 그대로 보존
- * - 메모장 등 plain text only는 text/plain fallback
- */
-function FullTextCopy({ content }: { content: import('@/types/ai').GeneratedContent }) {
-  const [copied, setCopied] = useState(false)
-  const { product } = useProductStore()
-
-  const handleCopy = async () => {
-    const ok = await copyEbayToClipboard(content, product.price)
-    if (ok) {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1800)
-    }
-  }
-
-  return (
-    <button
-      onClick={handleCopy}
-      className={`w-full mb-3 px-3 py-2.5 rounded-[8px] text-[12px] font-bold cursor-pointer transition-all duration-150 border ${
-        copied
-          ? 'border-green text-green bg-green/10'
-          : 'border-accent text-accent hover:bg-accent hover:text-bg'
-      }`}
-      title="eBay 설명창에 붙여넣으면 폰트/색/굵기 그대로 보존됩니다"
-    >
-      {copied ? '✓ 페이지 복사됨 — eBay에 붙여넣으세요' : '📋 eBay 페이지 통째로 복사 (서식 유지)'}
-    </button>
-  )
-}
+// eBay 전체 페이지 복사는 미리보기 헤더의 "📋 전체 복사" 버튼이 처리 (page.tsx).
+// CopyPanel은 개별 필드 편집/복사에 집중.
 
 export default function CopyPanel() {
   const { generatedContent, setGeneratedContent } = useEditorStore()
@@ -392,12 +361,10 @@ export default function CopyPanel() {
     generatedContent
   const { condition, bullet_points, item_specifics, shipping_policy, return_policy, payment_policy } =
     generatedContent
-  const isEbay = !!(bullet_points || item_specifics || condition || shipping_policy)
 
   return (
     <div className="space-y-0">
       <LangSwitcher />
-      {isEbay && <FullTextCopy content={generatedContent} />}
       <EditableBlock title="상품명" text={product_name} onSave={(v) => update('product_name', v)} />
       <EditableBlock title="서브타이틀" text={subtitle} onSave={(v) => update('subtitle', v)} />
       <EditableBlock title="메인 카피" text={main_copy} onSave={(v) => update('main_copy', v)} />
