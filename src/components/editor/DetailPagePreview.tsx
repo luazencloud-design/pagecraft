@@ -6,6 +6,7 @@ import type { Template } from '@/types/product'
 import KoreanDefaultPreview from './KoreanDefaultPreview'
 import Qoo10ModernPreview from './Qoo10ModernPreview'
 import Qoo10ClassicPreview from './Qoo10ClassicPreview'
+import EbayPreview from './EbayPreview'
 
 interface DetailPagePreviewProps {
   content: GeneratedContent
@@ -33,6 +34,8 @@ const DetailPagePreview = forwardRef<HTMLDivElement, DetailPagePreviewProps>(
         return <Qoo10ModernPreview ref={ref} {...rest} />
       case 'qoo10-classic':
         return <Qoo10ClassicPreview ref={ref} {...rest} />
+      case 'ebay-default':
+        return <EbayPreview ref={ref} {...rest} />
       case 'korean-default':
       default:
         return <KoreanDefaultPreview ref={ref} {...rest} />

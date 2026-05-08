@@ -13,6 +13,7 @@ import type { Platform } from '@/types/product'
 import { PLATFORM_META } from '@/types/product'
 import { buildCoupangSystemPrompt, buildCoupangTitlePrompt, buildCoupangTagPrompt } from './prompts/coupang'
 import { buildQoo10SystemPrompt } from './prompts/qoo10'
+import { buildEbaySystemPrompt } from './prompts/ebay'
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
@@ -102,13 +103,15 @@ function getImageModel(): string {
 
 /**
  * 플랫폼별 시스템 프롬프트 디스패처
- * - 한국 마켓 (coupang/smartstore/multi-kr/other) → 쿠팡 SEO 톤
- * - 일본 마켓 (qoo10-jp) → 큐텐 감성/무드 톤
+ * - 한국 마켓 (coupang/smartstore/multi-kr/other) → 쿠팡 SEO 톤 (KO만)
+ * - 일본 마켓 (qoo10-jp) → 큐텐 감성/무드 톤 (JA + KO 동시)
+ * - 미국 마켓 (ebay-us) → eBay 텍스트 위주 SEO + Item Specifics (EN + KO 동시)
  */
 function buildSystemPrompt(req: AIGenerateRequest, coupangSuggestions: string[] = []): string {
   const platform = req.platform as Platform
   const meta = PLATFORM_META[platform]
   if (meta?.market === 'jp') return buildQoo10SystemPrompt(req)
+  if (meta?.market === 'us') return buildEbaySystemPrompt(req)
   return buildCoupangSystemPrompt(req, coupangSuggestions)
 }
 

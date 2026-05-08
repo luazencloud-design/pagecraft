@@ -47,15 +47,12 @@ export function useTranslate() {
         tags: generatedTags.map((t) => t.text),
       }
 
-      // 타겟 플랫폼: toLang의 마켓에 맞는 기본 플랫폼 사용
-      // (qoo10 ↔ coupang 양방향 재작성)
-      const targetPlatform = toLang === 'ja' ? 'qoo10-jp' : 'coupang'
-
+      // 타겟 플랫폼: 현재 product.platform 그대로 — translate.service가 toLang 우선 분기
       const payload: TranslateRequest = {
         current: fromAll,
         fromLang: currentLang,
         toLang,
-        targetPlatform,
+        targetPlatform: product.platform,
       }
 
       const result = await api.post<GeneratedAll>('/api/translate', payload)
@@ -78,19 +75,32 @@ export function useTranslate() {
     switchLang, setGeneratedAllForLang, setIsTranslating,
   ])
 
+  /** 플랫폼 메타 + 페어 도출 */
+  const meta = PLATFORM_META[product.platform]
+  const langPair: [Lang, Lang] | undefined = meta?.langPair
+
+  /** 페어에서 currentLang의 반대편 언어 */
+  const altLang: Lang = (() => {
+    if (!langPair) return currentLang === 'ja' ? 'ko' : 'ja'  // fallback (단일 마켓)
+    return langPair[0] === currentLang ? langPair[1] : langPair[0]
+  })()
+
   /**
-   * dirty 언어 기준으로 다른 언어를 재작성 + 캐시 갱신
-   * 사용자가 한국어 편집 후 일본어 동기화 클릭하는 흐름.
-   * 활성 언어는 바뀌지 않음 (사용자가 보던 언어 그대로) — 같은 언어면 화면도 갱신.
+   * 동기화 — dirty 언어 → 페어의 다른 언어로 재작성/번역
+   * 활성 언어는 바뀌지 않음. dirty와 활성이 같으면 캐시만 업데이트, 다르면 화면도 갱신.
    */
   const syncFromDirty = useCallback(async (): Promise<boolean> => {
-    if (!dirtyLang) return true  // 동기화할 게 없음
+    if (!dirtyLang) return true
+    if (!langPair) {
+      showToast('이 플랫폼은 언어 동기화를 지원하지 않습니다', 'error')
+      return false
+    }
     const source = langCache[dirtyLang]
     if (!source) {
       showToast('동기화할 원본을 찾을 수 없습니다', 'error')
       return false
     }
-    const targetLang: Lang = dirtyLang === 'ja' ? 'ko' : 'ja'
+    const targetLang: Lang = langPair[0] === dirtyLang ? langPair[1] : langPair[0]
 
     setIsTranslating(true)
     try {
@@ -98,12 +108,12 @@ export function useTranslate() {
         current: source,
         fromLang: dirtyLang,
         toLang: targetLang,
-        targetPlatform: targetLang === 'ja' ? 'qoo10-jp' : 'coupang',
+        targetPlatform: product.platform,
       })
       cacheLang(targetLang, result)
       setDirty(null)
       useUsageStore.getState().fetchUsage()
-      const targetLabel = targetLang === 'ja' ? '일본어' : '한국어'
+      const targetLabel = targetLang === 'ja' ? '일본어' : targetLang === 'en' ? '영어' : '한국어'
       showToast(`${targetLabel} 동기화 완료`)
       return true
     } catch (err) {
@@ -114,14 +124,10 @@ export function useTranslate() {
     } finally {
       setIsTranslating(false)
     }
-  }, [dirtyLang, langCache, cacheLang, setDirty, setIsTranslating])
+  }, [dirtyLang, langCache, cacheLang, setDirty, setIsTranslating, langPair, product.platform])
 
-  /** 현재 플랫폼 기준 "다른 언어 만들기" 가능 여부 */
-  const meta = PLATFORM_META[product.platform]
-  const canTranslate = !!generatedContent && meta?.market === 'jp'
-
-  /** 다음 토글 대상 언어 (단순 양방향 토글) */
-  const altLang: Lang = currentLang === 'ja' ? 'ko' : 'ja'
+  /** "다른 언어 만들기" 가능 여부 — 페어가 있는 플랫폼만 */
+  const canTranslate = !!generatedContent && !!langPair
 
   return {
     translateTo,

@@ -2,6 +2,7 @@ import type { GeneratedAll, TranslateRequest } from '@/types/ai'
 import { PLATFORM_META } from '@/types/product'
 import { buildCoupangRewritePrompt } from './prompts/coupang'
 import { buildQoo10RewritePrompt } from './prompts/qoo10'
+import { buildEbayRewriteToEnPrompt, buildEbayRewriteToKoPrompt } from './prompts/ebay'
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
@@ -77,10 +78,21 @@ export async function translateContent(req: TranslateRequest): Promise<Generated
 
   const targetMeta = PLATFORM_META[req.targetPlatform]
   const isToJa = req.toLang === 'ja' || targetMeta?.market === 'jp'
+  const isToEn = req.toLang === 'en' || targetMeta?.market === 'us'
+  const isFromEn = req.fromLang === 'en'
 
-  const prompt = isToJa
-    ? buildQoo10RewritePrompt(req.current)
-    : buildCoupangRewritePrompt(req.current)
+  let prompt: string
+  if (isToJa) {
+    prompt = buildQoo10RewritePrompt(req.current)
+  } else if (isToEn) {
+    prompt = buildEbayRewriteToEnPrompt(req.current)
+  } else if (isFromEn) {
+    // EN → KO (eBay 흐름의 한국어 동기화)
+    prompt = buildEbayRewriteToKoPrompt(req.current)
+  } else {
+    // JA → KO (큐텐 흐름)
+    prompt = buildCoupangRewritePrompt(req.current)
+  }
 
   const apiKey = getApiKey()
   const body = {

@@ -5,21 +5,26 @@ import {
   PLATFORM_META,
   TEMPLATE_META,
   CATEGORY_GROUPS,
+  CURRENCY_SYMBOL,
   type Platform,
   type Template,
 } from '@/types/product'
 
-const PLATFORM_OPTIONS: Platform[] = ['coupang', 'smartstore', 'multi-kr', 'qoo10-jp', 'other']
+const PLATFORM_OPTIONS: Platform[] = ['coupang', 'smartstore', 'multi-kr', 'qoo10-jp', 'ebay-us', 'other']
 
 export default function ProductForm() {
   const { product, setProduct } = useProductStore()
   const platformMeta = PLATFORM_META[product.platform]
   const isJpMarket = platformMeta?.market === 'jp'
+  const isUsMarket = platformMeta?.market === 'us'
+  const currencySymbol = CURRENCY_SYMBOL[platformMeta?.currency ?? 'KRW']
 
-  // 일본 마켓 템플릿만 노출 / 한국은 default 하나
+  // 마켓별 템플릿 목록 (한국·미국은 default 1개, 큐텐만 2개)
   const availableTemplates: Template[] = isJpMarket
     ? ['qoo10-modern', 'qoo10-classic']
-    : ['korean-default']
+    : isUsMarket
+      ? ['ebay-default']
+      : ['korean-default']
 
   const inputCls = "w-full bg-surface2 border border-border rounded-lg px-[11px] py-2 text-[12.5px] text-text font-sans placeholder:text-text3 focus:outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-dim)] transition-[border-color,box-shadow] duration-150 appearance-none"
 
@@ -74,7 +79,17 @@ export default function ProductForm() {
         </select>
         {isJpMarket && (
           <p className="text-[10px] text-text3 mt-[5px] leading-[1.5]">
-            🇯🇵 일본어 콘텐츠가 자동 생성됩니다. 결과 패널에서 한국어 버전도 만들 수 있어요.
+            🇯🇵 일본어 + 한국어 동시 생성. 결과 패널에서 토글 가능.
+          </p>
+        )}
+        {isUsMarket && (
+          <p className="text-[10px] text-text3 mt-[5px] leading-[1.5]">
+            🇺🇸 영어 + 한국어 동시 생성. 가격은 USD ($) 기준으로 입력하세요.
+          </p>
+        )}
+        {currencySymbol && (
+          <p className="text-[10px] text-text3 mt-[3px] leading-[1.5]">
+            가격 단위: <b>{currencySymbol} ({platformMeta?.currency})</b>
           </p>
         )}
       </div>

@@ -20,6 +20,20 @@ export interface GeneratedContent {
   mood_callout?: string
   /** 해시태그 (예: ["#リップベース", "#密着リップ"]) */
   hashtags?: string[]
+
+  /* ─────────────── eBay 전용 옵션 필드 ─────────────── */
+  /** Condition: New / Used / Refurbished / For parts */
+  condition?: string
+  /** 5-7 핵심 불릿 — 미리보기는 <ul>, 텍스트 복사는 "• " 접두 */
+  bullet_points?: string[]
+  /** Item Specifics 표 (Brand, MPN, Color, Size, Material...) — eBay 표준 항목 */
+  item_specifics?: SpecItem[]
+  /** 배송 정책 — 짧은 안내 문구 */
+  shipping_policy?: string
+  /** 반품 정책 — 짧은 안내 문구 */
+  return_policy?: string
+  /** 결제 정책 — 짧은 안내 문구 */
+  payment_policy?: string
 }
 
 export interface GeneratedTitle {
@@ -43,10 +57,10 @@ export interface GeneratedAll {
 }
 
 /**
- * 언어별 결과 — Qoo10 플랫폼은 한 번 호출로 양 언어를 받아 캐시에 동시 저장
+ * 언어별 결과 — 큐텐(JA+KO), eBay(EN+KO)는 양 언어 동시 생성
  * 한국 마켓은 { ko: ... } 한쪽만 채워짐
  */
-export type GeneratedByLang = Partial<Record<'ko' | 'ja', GeneratedAll>>
+export type GeneratedByLang = Partial<Record<'ko' | 'ja' | 'en', GeneratedAll>>
 
 export interface AIGenerateRequest {
   images: string[]

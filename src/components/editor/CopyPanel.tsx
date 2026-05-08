@@ -316,6 +316,51 @@ function LangSwitcher() {
   )
 }
 
+/** eBay 통합 텍스트 빌더 — Title / Bullets / Description / Item Specifics / Policies */
+function buildEbayFullText(c: import('@/types/ai').GeneratedContent): string {
+  const lines: string[] = []
+  if (c.product_name) lines.push(`Title: ${c.product_name}`, '')
+  if (c.condition) lines.push(`Condition: ${c.condition}`, '')
+  if (c.bullet_points && c.bullet_points.length > 0) {
+    lines.push('★ Key Features')
+    c.bullet_points.forEach((bp) => lines.push(`• ${bp}`))
+    lines.push('')
+  }
+  if (c.description) lines.push('Description', c.description, '')
+  if (c.item_specifics && c.item_specifics.length > 0) {
+    lines.push('Item Specifics')
+    c.item_specifics.forEach((sp) => lines.push(`${sp.key}: ${sp.value}`))
+    lines.push('')
+  }
+  if (c.shipping_policy) lines.push('Shipping', c.shipping_policy, '')
+  if (c.return_policy) lines.push('Returns', c.return_policy, '')
+  if (c.payment_policy) lines.push('Payment', c.payment_policy, '')
+  if (c.caution) lines.push('Note', c.caution)
+  return lines.join('\n').trim()
+}
+
+function FullTextCopy({ content }: { content: import('@/types/ai').GeneratedContent }) {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = () => {
+    navigator.clipboard.writeText(buildEbayFullText(content))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1800)
+  }
+  return (
+    <button
+      onClick={handleCopy}
+      className={`w-full mb-3 px-3 py-2.5 rounded-[8px] text-[12px] font-bold cursor-pointer transition-all duration-150 border ${
+        copied
+          ? 'border-green text-green bg-green/10'
+          : 'border-accent text-accent hover:bg-accent hover:text-bg'
+      }`}
+      title="eBay 설명창에 한 번에 붙여넣기"
+    >
+      {copied ? '✓ 전체 텍스트 복사됨' : '📋 eBay 전체 텍스트 복사'}
+    </button>
+  )
+}
+
 export default function CopyPanel() {
   const { generatedContent, setGeneratedContent } = useEditorStore()
 
@@ -341,21 +386,54 @@ export default function CopyPanel() {
       }); break
       case 'keywords': updated.keywords = value.split(',').map(k => k.trim()).filter(Boolean); break
       case 'caution': updated.caution = value; break
+      case 'condition': updated.condition = value; break
+      case 'bullet_points': updated.bullet_points = value.split('\n').map((s) => s.replace(/^[•\-*\d.]\s*/, '').trim()).filter(Boolean); break
+      case 'item_specifics': updated.item_specifics = value.split('\n').map((line) => {
+        const [key, ...rest] = line.split(':')
+        return { key: key.trim(), value: rest.join(':').trim() }
+      }).filter((s) => s.key); break
+      case 'shipping_policy': updated.shipping_policy = value; break
+      case 'return_policy': updated.return_policy = value; break
+      case 'payment_policy': updated.payment_policy = value; break
     }
     setGeneratedContent(updated)
   }
 
   const { product_name, subtitle, main_copy, selling_points, description, specs, keywords, caution } =
     generatedContent
+  const { condition, bullet_points, item_specifics, shipping_policy, return_policy, payment_policy } =
+    generatedContent
+  const isEbay = !!(bullet_points || item_specifics || condition || shipping_policy)
 
   return (
     <div className="space-y-0">
       <LangSwitcher />
+      {isEbay && <FullTextCopy content={generatedContent} />}
       <EditableBlock title="상품명" text={product_name} onSave={(v) => update('product_name', v)} />
       <EditableBlock title="서브타이틀" text={subtitle} onSave={(v) => update('subtitle', v)} />
       <EditableBlock title="메인 카피" text={main_copy} onSave={(v) => update('main_copy', v)} />
+      {condition && <EditableBlock title="Condition" text={condition} onSave={(v) => update('condition', v)} />}
+      {bullet_points && (
+        <EditableBlock
+          title="Key Features (Bullet Points)"
+          text={bullet_points.map((b) => `• ${b}`).join('\n')}
+          multiline
+          onSave={(v) => update('bullet_points', v)}
+        />
+      )}
       <EditableBlock title="판매포인트" text={selling_points.map((sp, i) => `${i + 1}. ${sp}`).join('\n')} multiline onSave={(v) => update('selling_points', v)} />
       <EditableBlock title="상세설명" text={description} multiline onSave={(v) => update('description', v)} />
+      {item_specifics && item_specifics.length > 0 && (
+        <EditableBlock
+          title="Item Specifics"
+          text={item_specifics.map((s) => `${s.key}: ${s.value}`).join('\n')}
+          multiline
+          onSave={(v) => update('item_specifics', v)}
+        />
+      )}
+      {shipping_policy && <EditableBlock title="Shipping" text={shipping_policy} multiline onSave={(v) => update('shipping_policy', v)} />}
+      {return_policy && <EditableBlock title="Returns" text={return_policy} multiline onSave={(v) => update('return_policy', v)} />}
+      {payment_policy && <EditableBlock title="Payment" text={payment_policy} multiline onSave={(v) => update('payment_policy', v)} />}
       {/* 고시정보 — 항목별 인라인 복사 */}
       <SpecBlock specs={specs} onUpdate={(newSpecs) => {
         const updated = { ...generatedContent, specs: newSpecs }
