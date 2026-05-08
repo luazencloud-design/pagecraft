@@ -39,11 +39,19 @@ export default function ProductNewPage() {
     generateError,
     currentLang,
     langCache,
+    generatedForPlatform,
   } = useEditorStore()
   const currentDraftId = useDraftsStore((s) => s.currentId)
   // 다른 드래프트가 생성 중인 경우엔 이 화면에 로딩 표시 X
   const isGenerating = rawIsGenerating && generatingDraftId === currentDraftId
   const { generateContent } = useAIGenerate()
+
+  // 콘텐츠가 다른 플랫폼용으로 생성됐는지 판단 — 재생성 권장 배너 표시용
+  const isStale = !!(
+    generatedContent &&
+    generatedForPlatform &&
+    generatedForPlatform !== product.platform
+  )
 
   /**
    * 큐텐 템플릿용 시각 필드 fallback —
@@ -333,6 +341,34 @@ export default function ProductNewPage() {
                 <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.7 }}>
                   사진을 업로드하고 상품 정보를 입력한 뒤<br />AI 생성 버튼을 누르면 바로 만들어집니다.
                 </p>
+              </div>
+            )}
+
+            {/* 플랫폼 mismatch 배너 — 다른 플랫폼용으로 생성된 콘텐츠 + 현재 플랫폼 다름 */}
+            {!isGenerating && isStale && generatedForPlatform && (
+              <div
+                style={{
+                  width: '100%',
+                  maxWidth: 660,
+                  marginBottom: 16,
+                  padding: '12px 16px',
+                  background: 'rgba(255, 200, 60, 0.08)',
+                  border: '1px solid rgba(255, 200, 60, 0.4)',
+                  borderRadius: 10,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                }}
+              >
+                <span style={{ fontSize: 16, lineHeight: 1.4 }}>💡</span>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 13, color: 'var(--text)', margin: 0, lineHeight: 1.5, fontWeight: 600 }}>
+                    이 콘텐츠는 <b>{PLATFORM_META[generatedForPlatform]?.label}</b> 톤으로 생성됐어요.
+                  </p>
+                  <p style={{ fontSize: 12, color: 'var(--text2)', margin: '4px 0 0', lineHeight: 1.6 }}>
+                    {PLATFORM_META[product.platform]?.label} 에 맞는 카피가 필요하면 AI 다시 생성을 눌러주세요. 템플릿은 즉시 적용됐지만 텍스트는 그대로예요.
+                  </p>
+                </div>
               </div>
             )}
 

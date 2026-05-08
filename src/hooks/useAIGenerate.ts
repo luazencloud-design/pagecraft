@@ -33,6 +33,7 @@ export function useAIGenerate() {
     clearLangCache,
     setIsGenerating,
     setGeneratingDraftId,
+    setGeneratedForPlatform,
     setLoadingMessage,
     setGenerateError,
     setActiveTab,
@@ -95,17 +96,27 @@ export function useAIGenerate() {
         coupangSuggestions,
       })
 
-      // 결과 도착 — 사용자가 다른 드래프트로 이동했으면 폐기 (다른 드래프트 데이터 오염 방지)
+      // 결과 도착 — 사용자가 다른 드래프트로 이동했으면 백그라운드로 해당 드래프트에 적용 (폐기 X)
       const currentDraftAtCompletion = useDraftsStore.getState().currentId
       if (currentDraftAtCompletion !== startDraftId) {
-        showToast('다른 드래프트로 이동해서 결과가 폐기됐습니다 (크레딧은 차감)', 'error')
-        // 크레딧 사용량은 갱신 (이미 소비됨)
+        // 출발 드래프트의 스냅샷에 직접 기록 → 사용자가 그 드래프트로 돌아오면 결과 그대로 보임
+        useDraftsStore.getState().applyGeneratedToDraft(
+          startDraftId,
+          byLang,
+          targetLang,
+          product.platform,
+        )
+        const draftName = useDraftsStore.getState().drafts.find((d) => d.id === startDraftId)?.name
+        showToast(`'${draftName?.trim() || '드래프트'}' 생성 완료 — 해당 드래프트에서 확인하세요`)
         useUsageStore.getState().fetchUsage()
         return
       }
 
       // 모든 받은 언어를 캐시에 저장 + 활성 언어로 플랫폼 기본 lang 사용
       setGeneratedByLang(byLang, targetLang)
+
+      // 어느 플랫폼용으로 생성됐는지 기록 — 이후 플랫폼 변경 시 stale 배너 표시
+      setGeneratedForPlatform(product.platform)
 
       // 트렌딩 태그 마킹은 활성 언어 결과에 한해 (한국어 + 자동완성 있을 때만)
       const activeAll = byLang[targetLang]
@@ -144,6 +155,7 @@ export function useAIGenerate() {
     clearLangCache,
     setIsGenerating,
     setGeneratingDraftId,
+    setGeneratedForPlatform,
     setLoadingMessage,
     setGenerateError,
     setActiveTab,

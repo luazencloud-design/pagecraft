@@ -3,17 +3,25 @@
 import { useEffect, useRef, useState } from 'react'
 import { useDraftsStore } from '@/stores/draftsStore'
 import { useProductStore } from '@/stores/productStore'
+import { PLATFORM_META } from '@/types/product'
 import { showToast } from '@/components/ui/Toast'
 
 const PLACEHOLDER = '이름 없음'
+
+/** 드래프트 표시 이름 = "상품명 · 플랫폼" 또는 "이름 없음 · 플랫폼" */
+function buildDraftName(productName: string, platformLabel: string): string {
+  const namePart = productName.trim() || PLACEHOLDER
+  return `${namePart} · ${platformLabel}`
+}
 
 /**
  * 다중 드래프트 선택기 — 좌측 패널 상단
  *
  * 정책:
- * - 드래프트 이름 = 상품명 (product.name) 자동 동기화
- * - 상품명 비어있으면 "이름 없음" 표시
- * - 수동 편집 X — 상품명만 바꾸면 됨
+ * - 드래프트 이름 = "상품명 · 플랫폼명" 자동 동기화
+ *   같은 상품을 여러 플랫폼으로 만들어도 한눈에 구분
+ * - 상품명 비어있으면 "이름 없음 · 플랫폼"
+ * - 수동 편집 X — 상품명/플랫폼만 바꾸면 됨
  */
 export default function DraftSelector() {
   const { drafts, currentId, createDraft, switchDraft, deleteDraft, clearAllDrafts, touchCurrent } =
@@ -24,16 +32,17 @@ export default function DraftSelector() {
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const current = drafts.find((d) => d.id === currentId)
+  const platformLabel = PLATFORM_META[product.platform]?.label ?? '기타'
 
-  // 상품명 변경 시 드래프트 이름 자동 동기화 (항상)
+  // 상품명 / 플랫폼 변경 시 드래프트 이름 자동 동기화
   useEffect(() => {
     if (!current) return
-    const trimmed = product.name?.trim() || ''
-    if (current.name !== trimmed) {
-      touchCurrent(trimmed || PLACEHOLDER)
+    const newName = buildDraftName(product.name, platformLabel)
+    if (current.name !== newName) {
+      touchCurrent(newName)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product.name, currentId])
+  }, [product.name, product.platform, currentId])
 
   // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {

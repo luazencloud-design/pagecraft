@@ -5,11 +5,12 @@ import { useEditorStore } from './editorStore'
 import { useImageStore, setImageStoreDraftIdGetter } from './imageStore'
 import {
   saveImagesToDB,
-  loadImagesFromDB,
   clearImagesFromDB,
   loadLegacyImages,
   deleteLegacyImages,
 } from '@/lib/imageDB'
+import type { GeneratedAll, GeneratedByLang } from '@/types/ai'
+import type { Lang, Platform } from '@/types/product'
 
 /**
  * 다중 드래프트 시스템
@@ -69,6 +70,28 @@ interface DraftsState {
 
   /** 현재 드래프트 메타 업데이트 — 이름 = product.name 자동 동기화용 */
   touchCurrent: (name?: string) => void
+
+  /**
+   * 백그라운드로 다른 드래프트의 스냅샷에 AI 생성 결과 적용 (병렬 작업용)
+   * 사용자가 A에서 생성 시작 후 B로 이동했을 때, A 결과를 폐기하지 않고
+   * A의 localStorage 스냅샷에 직접 기록 → 사용자가 A로 돌아오면 결과 그대로.
+   */
+  applyGeneratedToDraft: (
+    draftId: string,
+    byLang: GeneratedByLang,
+    activeLang: Lang,
+    platform: Platform,
+  ) => void
+
+  /**
+   * 백그라운드로 다른 드래프트의 스냅샷에 번역/동기화 결과 적용 (병렬 작업용)
+   * 단일 언어 결과를 langCache에 추가하고, 그 lang이 currentLang이면 활성 콘텐츠도 갱신.
+   */
+  applyTranslationToDraft: (
+    draftId: string,
+    lang: Lang,
+    result: GeneratedAll,
+  ) => void
 }
 
 const productSnapshotKey = (id: string) => `pagecraft-product-${id}`
@@ -302,6 +325,90 @@ export const useDraftsStore = create<DraftsState>()(
             d.id === id
               ? { ...d, updatedAt: Date.now(), ...(name !== undefined ? { name } : {}) }
               : d,
+          ),
+        })
+      },
+
+      applyGeneratedToDraft: (draftId, byLang, activeLang, platform) => {
+        if (typeof window === 'undefined') return
+        // 드래프트가 사라졌으면(삭제 등) 결과 버림
+        if (!get().drafts.some((d) => d.id === draftId)) return
+
+        const editorKey = editorSnapshotKey(draftId)
+        let envelope: { state?: Record<string, unknown>; version?: number }
+        try {
+          const raw = localStorage.getItem(editorKey)
+          envelope = raw ? JSON.parse(raw) : { state: {}, version: 0 }
+        } catch {
+          envelope = { state: {}, version: 0 }
+        }
+        const prevState = (envelope.state || {}) as Record<string, unknown>
+        const prevCache = (prevState.langCache as GeneratedByLang) || {}
+
+        // setGeneratedByLang와 동일한 fallback 로직
+        const active = byLang[activeLang]
+        const fallback = active ?? byLang.en ?? byLang.ja ?? byLang.ko
+        if (!fallback) return
+        const resolvedLang: Lang = active
+          ? activeLang
+          : byLang.en ? 'en' : byLang.ja ? 'ja' : 'ko'
+
+        envelope.state = {
+          ...prevState,
+          currentLang: resolvedLang,
+          generatedContent: fallback.content,
+          generatedTitles: fallback.titles ?? [],
+          generatedTags: (fallback.tags ?? []).map((text: string) => ({ text, isTrending: false })),
+          // langCache: 기존 + 새로 받은 byLang을 병합 (새 생성이지만 기존 캐시 유지 안전)
+          langCache: { ...prevCache, ...byLang },
+          dirtyLang: null,
+          generatedForPlatform: platform,
+        }
+        localStorage.setItem(editorKey, JSON.stringify(envelope))
+
+        set({
+          drafts: get().drafts.map((d) =>
+            d.id === draftId ? { ...d, updatedAt: Date.now() } : d,
+          ),
+        })
+      },
+
+      applyTranslationToDraft: (draftId, lang, result) => {
+        if (typeof window === 'undefined') return
+        if (!get().drafts.some((d) => d.id === draftId)) return
+
+        const editorKey = editorSnapshotKey(draftId)
+        let envelope: { state?: Record<string, unknown>; version?: number }
+        try {
+          const raw = localStorage.getItem(editorKey)
+          envelope = raw ? JSON.parse(raw) : { state: {}, version: 0 }
+        } catch {
+          envelope = { state: {}, version: 0 }
+        }
+        const prevState = (envelope.state || {}) as Record<string, unknown>
+        const prevCache = (prevState.langCache as GeneratedByLang) || {}
+
+        envelope.state = {
+          ...prevState,
+          langCache: { ...prevCache, [lang]: result },
+          dirtyLang: null, // 동기화/번역 완료
+        }
+
+        // 해당 lang이 그 드래프트의 currentLang이면 활성 콘텐츠도 갱신
+        if (prevState.currentLang === lang) {
+          envelope.state = {
+            ...envelope.state,
+            generatedContent: result.content,
+            generatedTitles: result.titles ?? [],
+            generatedTags: (result.tags ?? []).map((text: string) => ({ text, isTrending: false })),
+          }
+        }
+
+        localStorage.setItem(editorKey, JSON.stringify(envelope))
+
+        set({
+          drafts: get().drafts.map((d) =>
+            d.id === draftId ? { ...d, updatedAt: Date.now() } : d,
           ),
         })
       },

@@ -6,7 +6,8 @@ import type { GeneratedContent } from '@/types/ai'
 interface EbayPreviewProps {
   content: GeneratedContent
   price: string
-  images: string[]
+  /** 다른 템플릿과 시그니처 통일을 위해 받지만 eBay에선 미사용 */
+  images?: string[]
   storeIntroImage?: string | null
   termsImage?: string | null
 }
@@ -17,10 +18,11 @@ interface EbayPreviewProps {
  * 미리보기 = 클립보드 HTML과 동일 구조 (WYSIWYG):
  * - 굵기 + 불릿 + <hr> 구분선 + 이모지만 사용
  * - 색상/폰트 변경 / <table> 사용 X — 모바일 80% 트래픽 대응
- * - 이미지는 미리보기에서만 보여주고 복사 HTML엔 미포함 (eBay 이미지는 별도 업로드)
+ * - 이미지 일절 미사용 (eBay는 갤러리에 별도 업로드, 설명창에 텍스트만 들어감)
+ *   storeIntro/terms도 동일하게 미렌더링
  */
 const EbayPreview = forwardRef<HTMLDivElement, EbayPreviewProps>(
-  ({ content, price, images, storeIntroImage, termsImage }, ref) => {
+  ({ content, price }, ref) => {
     const descLines = content.description ? content.description.split('\n').filter(Boolean) : []
     const usdPrice = price ? `$${Number(price.replace(/[^\d.]/g, '') || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''
 
@@ -51,9 +53,8 @@ const EbayPreview = forwardRef<HTMLDivElement, EbayPreviewProps>(
           fontSize: 14,
         }}
       >
-        {storeIntroImage && (
-          <img src={storeIntroImage} alt="" style={{ width: '100%', display: 'block', marginBottom: 24 }} />
-        )}
+        {/* eBay는 이미지를 별도 갤러리에 업로드 — 설명창에는 텍스트만 들어감.
+            상세페이지 미리보기에도 이미지 미포함 (storeIntro/terms/제품 이미지 모두). */}
 
         {/* 타이틀 — 가운데 굵게 */}
         <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 18, margin: '0 0 8px', lineHeight: 1.4, wordBreak: 'keep-all' }}>
@@ -85,15 +86,6 @@ const EbayPreview = forwardRef<HTMLDivElement, EbayPreviewProps>(
         )}
 
         <hr style={dividerStyle} />
-
-        {/* 메인 이미지 — 미리보기 시각용. 클립보드 HTML엔 미포함 */}
-        {images[0] && (
-          <img
-            src={images[0]}
-            alt="Main product"
-            style={{ width: '100%', height: 'auto', display: 'block', margin: '0 0 20px' }}
-          />
-        )}
 
         {/* Key Features */}
         {content.bullet_points && content.bullet_points.length > 0 && (
@@ -162,20 +154,6 @@ const EbayPreview = forwardRef<HTMLDivElement, EbayPreviewProps>(
           </>
         )}
 
-        {/* 추가 이미지 (시각용, 클립보드엔 미포함) */}
-        {images.slice(1).length > 0 && (
-          <>
-            {images.slice(1).map((imgSrc, i) => (
-              <img
-                key={i}
-                src={imgSrc}
-                alt={`Product ${i + 2}`}
-                style={{ width: '100%', display: 'block', margin: '0 0 16px' }}
-              />
-            ))}
-          </>
-        )}
-
         {/* Shipping */}
         {content.shipping_policy && (
           <>
@@ -221,10 +199,6 @@ const EbayPreview = forwardRef<HTMLDivElement, EbayPreviewProps>(
           <p style={{ fontSize: 13, fontStyle: 'italic', margin: 0, color: '#777' }}>
             {content.keywords.map((k) => `#${k}`).join(' ')}
           </p>
-        )}
-
-        {termsImage && (
-          <img src={termsImage} alt="" style={{ width: '100%', display: 'block', marginTop: 24 }} />
         )}
       </div>
     )

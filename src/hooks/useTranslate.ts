@@ -60,9 +60,12 @@ export function useTranslate() {
 
       const result = await api.post<GeneratedAll>('/api/translate', payload)
 
-      // 결과 도착 — 드래프트 변경 시 폐기
+      // 결과 도착 — 드래프트 변경 시 백그라운드로 해당 드래프트에 적용
       if (useDraftsStore.getState().currentId !== startDraftId) {
-        showToast('다른 드래프트로 이동해서 번역 결과가 폐기됐습니다', 'error')
+        useDraftsStore.getState().applyTranslationToDraft(startDraftId, toLang, result)
+        const draftName = useDraftsStore.getState().drafts.find((d) => d.id === startDraftId)?.name
+        const langLabel = toLang === 'ja' ? '일본어' : toLang === 'en' ? '영어' : '한국어'
+        showToast(`'${draftName?.trim() || '드래프트'}' ${langLabel} 생성 완료`)
         useUsageStore.getState().fetchUsage()
         return false
       }
@@ -126,9 +129,12 @@ export function useTranslate() {
         targetPlatform: product.platform,
       })
 
-      // 드래프트 변경 시 폐기
+      // 드래프트 변경 시 백그라운드로 해당 드래프트에 적용
       if (useDraftsStore.getState().currentId !== startDraftId) {
-        showToast('다른 드래프트로 이동해서 동기화 결과가 폐기됐습니다', 'error')
+        useDraftsStore.getState().applyTranslationToDraft(startDraftId, targetLang, result)
+        const draftName = useDraftsStore.getState().drafts.find((d) => d.id === startDraftId)?.name
+        const targetLabel = targetLang === 'ja' ? '일본어' : targetLang === 'en' ? '영어' : '한국어'
+        showToast(`'${draftName?.trim() || '드래프트'}' ${targetLabel} 동기화 완료`)
         useUsageStore.getState().fetchUsage()
         return false
       }
