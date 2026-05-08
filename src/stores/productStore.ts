@@ -22,7 +22,7 @@ const defaultProduct: Product = {
 
 /**
  * 기존 한글 platform 값('쿠팡', '스마트스토어' 등) → 새 영문 코드로 마이그레이션
- * sessionStorage에 저장된 옛 데이터를 읽을 때만 동작
+ * localStorage에 저장된 옛 데이터를 읽을 때만 동작
  */
 function migratePlatform(legacy: string): Platform {
   switch (legacy) {
@@ -59,7 +59,9 @@ export const useProductStore = create<ProductState>()(
     }),
     {
       name: 'pagecraft-product',
-      storage: createJSONStorage(() => sessionStorage),
+      // localStorage — 새 탭/브라우저 재시작에도 유지 (탭간 공유)
+      // 이미지(IndexedDB)와 함께 작업 영속성 보장
+      storage: createJSONStorage(() => localStorage),
       onRehydrateStorage: () => (state) => {
         if (!state) return
         // 옛 한글 platform 값 변환

@@ -207,7 +207,9 @@ export const useEditorStore = create<EditorState>()(
     }),
     {
       name: 'pagecraft-editor',
-      storage: createJSONStorage(() => sessionStorage),
+      // localStorage — 새 탭/브라우저 재시작에도 AI 생성 결과 유지
+      // langCache까지 보존되어 탭 닫았다 열면 토큰 재소비 없음
+      storage: createJSONStorage(() => localStorage),
       // blob URL과 로딩 상태는 저장하지 않음. langCache는 저장 (재방문 시 토큰 절약)
       partialize: (state) => ({
         generatedContent: state.generatedContent,
