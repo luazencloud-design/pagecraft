@@ -98,8 +98,8 @@ async function loadSnapshot(draftId: string) {
   if (!productSnap) useProductStore.getState().resetProduct()
   if (!editorSnap) useEditorStore.getState().resetEditor()
 
-  // 이미지 hydrate (타겟 드래프트의 IndexedDB 키에서 로드)
-  await useImageStore.getState()._hydrate(true)
+  // 이미지 hydrate — draftId 명시 전달 (currentId 업데이트 시점 무관)
+  await useImageStore.getState()._hydrate(true, draftId)
 }
 
 const generateName = (count: number) => `드래프트 ${count}`
@@ -158,11 +158,11 @@ export const useDraftsStore = create<DraftsState>()(
       },
 
       createDraft: async () => {
-        // 1. 현재 작업 스냅샷 저장
+        // 1. 현재 작업 스냅샷 저장 (옛 currentId)
         const currentId = get().currentId
         if (currentId) await snapshotCurrent(currentId)
 
-        // 2. 새 드래프트 생성
+        // 2. 새 드래프트 메타 생성
         const id = crypto.randomUUID()
         const meta: DraftMeta = {
           id,
@@ -171,7 +171,10 @@ export const useDraftsStore = create<DraftsState>()(
           updatedAt: Date.now(),
         }
 
-        // 3. 라이브 사본 비우기 + 스토어 reset
+        // 3. 드래프트 등록 + 활성화 (currentId 먼저 — 이후 모든 persist는 새 드래프트 키로)
+        set({ drafts: [...get().drafts, meta], currentId: id })
+
+        // 4. 라이브 사본 비우기 + 스토어 reset
         localStorage.removeItem('pagecraft-product')
         localStorage.removeItem('pagecraft-editor')
         useProductStore.getState().resetProduct()
@@ -182,9 +185,6 @@ export const useDraftsStore = create<DraftsState>()(
           bgSelectedIds: [],
         })
 
-        // 4. 드래프트 등록 + 활성화
-        set({ drafts: [...get().drafts, meta], currentId: id })
-
         return id
       },
 
@@ -192,14 +192,14 @@ export const useDraftsStore = create<DraftsState>()(
         const currentId = get().currentId
         if (targetId === currentId) return
 
-        // 1. 현재 작업 스냅샷
+        // 1. 현재 작업 스냅샷 (옛 currentId 사용)
         if (currentId) await snapshotCurrent(currentId)
 
-        // 2. 타겟 스냅샷 로드 (라이브 사본 + 스토어 rehydrate)
-        await loadSnapshot(targetId)
-
-        // 3. currentId 업데이트
+        // 2. currentId 업데이트 — 이후 persistImages 등이 새 드래프트 키로 저장
         set({ currentId: targetId })
+
+        // 3. 타겟 스냅샷 로드 (라이브 사본 + 스토어 rehydrate + 이미지)
+        await loadSnapshot(targetId)
       },
 
       deleteDraft: async (id) => {
@@ -230,10 +230,9 @@ export const useDraftsStore = create<DraftsState>()(
             useImageStore.setState({ images: [], thumbnailImageId: null, bgSelectedIds: [] })
             set({ drafts: [newMeta], currentId: newId })
           } else {
-            // 첫 번째 남은 드래프트로 전환
-            set({ drafts: remaining, currentId: '' })  // 임시 제거
+            // 첫 번째 남은 드래프트로 전환 — currentId 먼저 업데이트
+            set({ drafts: remaining, currentId: remaining[0].id })
             await loadSnapshot(remaining[0].id)
-            set({ currentId: remaining[0].id })
           }
         } else {
           // 현재 아닌 드래프트 삭제 → 단순 목록에서 제거

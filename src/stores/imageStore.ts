@@ -55,7 +55,12 @@ interface ImageState {
   setAiModelGender: (gender: 'male' | 'female') => void
   clearImages: () => void
   resetAll: () => void
-  _hydrate: (force?: boolean) => Promise<void>
+  /**
+   * IndexedDB에서 이미지 복원
+   * @param force 이미 hydrated여도 다시 로드 (드래프트 전환 시)
+   * @param draftId 명시적으로 드래프트 ID 지정 (currentId 업데이트 race condition 방지)
+   */
+  _hydrate: (force?: boolean, draftId?: string) => Promise<void>
 }
 
 // IndexedDB에 이미지 동기 저장 (fire-and-forget) — 현재 드래프트 ID로 namespace
@@ -173,11 +178,13 @@ export const useImageStore = create<ImageState>()((set, get) => ({
    * 드래프트별 이미지 복원
    * - 첫 hydration (앱 시작): _hydrated false → IndexedDB에서 현재 드래프트 이미지 로드
    * - 드래프트 전환: 외부에서 강제로 다시 호출 (force=true) → 새 드래프트 이미지 로드
+   * - draftId 인자가 있으면 그 값을 우선 사용 (currentId 업데이트 race 방지)
    */
-  _hydrate: async (force?: boolean) => {
+  _hydrate: async (force?: boolean, draftId?: string) => {
     if (get()._hydrated && !force) return
     try {
-      const images = await loadImagesFromDB(getCurrentDraftId())
+      const id = draftId ?? getCurrentDraftId()
+      const images = await loadImagesFromDB(id)
       const storeIntro = loadFromLocal(LS_STORE_INTRO)
       const terms = loadFromLocal(LS_TERMS)
       set({
