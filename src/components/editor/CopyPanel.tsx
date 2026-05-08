@@ -2,6 +2,13 @@
 
 import { useState } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
+import { useDraftsStore } from '@/stores/draftsStore'
+import { useTranslate } from '@/hooks/useTranslate'
+import { useProductStore } from '@/stores/productStore'
+import { PLATFORM_META } from '@/types/product'
+import { buildEbayPlainText } from '@/lib/ebayHtml'
+import { showToast } from '@/components/ui/Toast'
+import type { GeneratedContent } from '@/types/ai'
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false)
@@ -206,6 +213,186 @@ function SpecBlock({ specs, onUpdate }: { specs: { key: string; value: string }[
   )
 }
 
+function LangSwitcher() {
+  const { currentLang, isTranslating: rawIsTranslating, translatingDraftId, langCache } =
+    useEditorStore()
+  const currentDraftId = useDraftsStore((s) => s.currentId)
+  // 다른 드래프트가 번역 중인 경우엔 이 화면에 로딩 표시 X
+  const isTranslating = rawIsTranslating && translatingDraftId === currentDraftId
+  const { translateTo, syncFromDirty, canTranslate, altLang, isCached, dirtyLang } = useTranslate()
+
+  if (!canTranslate) return null
+
+  const altLabel = altLang === 'ja' ? '🇯🇵 日本語' : '🇰🇷 한국어'
+  const currentLabel = currentLang === 'ja' ? '🇯🇵 日本語' : '🇰🇷 한국어'
+  const cachedLangs = Object.keys(langCache) as Array<'ko' | 'ja'>
+  const cacheCount = cachedLangs.length
+
+  // dirty 상태: 한쪽 언어를 수정해서 다른 언어가 옛 데이터인 상황
+  const isDirty = dirtyLang !== null
+  const dirtyLabel = dirtyLang === 'ja' ? '일본어' : '한국어'
+  const targetLang: 'ko' | 'ja' = dirtyLang === 'ja' ? 'ko' : 'ja'
+  const targetLabel = targetLang === 'ja' ? '일본어' : '한국어'
+
+  return (
+    <>
+      {/* dirty 동기화 배너 — 양 언어 캐시 있고 한쪽이 수정됐을 때만 */}
+      {isDirty && (
+        <div
+          style={{
+            background: 'rgba(255, 200, 60, 0.1)',
+            border: '1px solid rgba(255, 200, 60, 0.4)',
+            borderRadius: 10,
+            padding: '11px 13px',
+            marginBottom: 10,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 14 }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <p className="text-[12px] font-semibold text-text" style={{ margin: 0, lineHeight: 1.5 }}>
+                {dirtyLabel} 수정사항이 {targetLabel}에 아직 반영되지 않았어요
+              </p>
+              <p className="text-[10px] text-text3" style={{ margin: '4px 0 0', lineHeight: 1.6 }}>
+                💡 여러 항목 한 번에 수정 후 동기화하세요 — <b>크레딧 1개 차감</b>
+              </p>
+            </div>
+          </div>
+          <button
+            disabled={isTranslating}
+            onClick={() => syncFromDirty()}
+            style={{
+              width: '100%',
+              padding: '7px 12px',
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: isTranslating ? 'wait' : 'pointer',
+              background: isTranslating ? 'var(--surface3)' : 'var(--accent)',
+              color: isTranslating ? 'var(--text3)' : '#0c0c10',
+              border: 'none',
+              transition: 'all 0.15s',
+            }}
+          >
+            {isTranslating ? '⏳ 동기화 중...' : `🔄 ${targetLabel} 다시 작성 (크레딧 1개)`}
+          </button>
+        </div>
+      )}
+
+      {/* 기존 토글 UI */}
+      <div className="bg-surface2 border border-border rounded-[10px] mb-3 overflow-hidden">
+        <div className="flex items-center justify-between px-[13px] py-[10px]">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-text2">현재 언어</span>
+            <span className="text-[11px] px-[8px] py-[2px] rounded-[4px] bg-accent-dim text-accent font-semibold">
+              {currentLabel}
+            </span>
+            {dirtyLang === currentLang && (
+              <span className="text-[9px] text-yellow font-semibold" title="이 언어 수정 중">
+                ✏️ 수정중
+              </span>
+            )}
+            {cacheCount > 1 && dirtyLang !== currentLang && (
+              <span className="text-[9px] text-text3" title="캐시된 언어 버전이 있어요">
+                {cacheCount}개 버전 보관 중
+              </span>
+            )}
+          </div>
+          <button
+            disabled={isTranslating}
+            onClick={() => translateTo(altLang)}
+            className={`px-[10px] py-[4px] rounded-[5px] text-[11px] cursor-pointer transition-all duration-150 border ${
+              isTranslating
+                ? 'border-border text-text3 cursor-wait'
+                : 'border-accent text-accent hover:bg-accent hover:text-bg'
+            }`}
+            title={
+              isCached
+                ? dirtyLang === currentLang
+                  ? '저장된 버전 (옛 데이터일 수 있음) 으로 전환'
+                  : '저장된 버전으로 즉시 전환'
+                : 'AI로 새로 작성 (크레딧 차감)'
+            }
+          >
+            {isTranslating
+              ? '⏳ 변환 중...'
+              : isCached
+                ? `${altLabel}로 전환 ↻`
+                : `${altLabel} 만들기 🌐`}
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+/**
+ * 전체 텍스트 복사 — 모든 플랫폼 공통 (CopyPanel 상단 마스터 버튼)
+ * - eBay: buildEbayPlainText (섹션별 평문, 메모장에서도 깔끔)
+ * - 그 외: [상품명] [판매포인트] [상세설명] 라벨 박스 (셀러 필드 정리용)
+ *
+ * 서식 유지 HTML 복사는 미리보기 헤더의 별도 버튼 (eBay 전용).
+ */
+function buildLabeledText(c: GeneratedContent): string {
+  const parts: string[] = []
+  parts.push(`[상품명] ${c.product_name}`)
+  parts.push(`[서브타이틀] ${c.subtitle}`)
+  parts.push(`[메인카피] ${c.main_copy}`)
+  parts.push('')
+  parts.push('[판매포인트]')
+  c.selling_points.forEach((sp, i) => parts.push(`${i + 1}. ${sp}`))
+  parts.push('')
+  parts.push('[상세설명]')
+  parts.push(c.description)
+  parts.push('')
+  parts.push('[스펙]')
+  c.specs.forEach((s) => parts.push(`${s.key}: ${s.value}`))
+  parts.push('')
+  parts.push(`[키워드] ${c.keywords.join(', ')}`)
+  if (c.caution) parts.push(`[주의사항] ${c.caution}`)
+  return parts.join('\n')
+}
+
+function CopyAllButton({ content }: { content: GeneratedContent }) {
+  const [copied, setCopied] = useState(false)
+  const { product } = useProductStore()
+  const meta = PLATFORM_META[product.platform]
+  const isUsMarket = meta?.market === 'us'
+
+  const handleCopy = async () => {
+    const text = isUsMarket
+      ? buildEbayPlainText(content, product.price)
+      : buildLabeledText(content)
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      showToast('전체 텍스트 복사됨')
+      setTimeout(() => setCopied(false), 1800)
+    } catch (err) {
+      console.error('복사 실패:', err)
+      showToast('복사 실패', 'error')
+    }
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      className={`w-full mb-3 px-3 py-2.5 rounded-[8px] text-[12px] font-bold cursor-pointer transition-all duration-150 border ${
+        copied
+          ? 'border-green text-green bg-green/10'
+          : 'border-border2 text-text2 hover:border-accent hover:text-accent'
+      }`}
+      title={
+        isUsMarket
+          ? '섹션별 평문으로 복사 — 메모장 등 어디든 깔끔하게 붙여집니다'
+          : '상품 정보 전체를 라벨 박스 텍스트로 복사 — 쿠팡/스토어 필드 정리용'
+      }
+    >
+      {copied ? '✓ 복사됨' : '📋 전체 복사'}
+    </button>
+  )
+}
+
 export default function CopyPanel() {
   const { generatedContent, setGeneratedContent } = useEditorStore()
 
@@ -231,20 +418,53 @@ export default function CopyPanel() {
       }); break
       case 'keywords': updated.keywords = value.split(',').map(k => k.trim()).filter(Boolean); break
       case 'caution': updated.caution = value; break
+      case 'condition': updated.condition = value; break
+      case 'bullet_points': updated.bullet_points = value.split('\n').map((s) => s.replace(/^[•\-*\d.]\s*/, '').trim()).filter(Boolean); break
+      case 'item_specifics': updated.item_specifics = value.split('\n').map((line) => {
+        const [key, ...rest] = line.split(':')
+        return { key: key.trim(), value: rest.join(':').trim() }
+      }).filter((s) => s.key); break
+      case 'shipping_policy': updated.shipping_policy = value; break
+      case 'return_policy': updated.return_policy = value; break
+      case 'payment_policy': updated.payment_policy = value; break
     }
     setGeneratedContent(updated)
   }
 
   const { product_name, subtitle, main_copy, selling_points, description, specs, keywords, caution } =
     generatedContent
+  const { condition, bullet_points, item_specifics, shipping_policy, return_policy, payment_policy } =
+    generatedContent
 
   return (
     <div className="space-y-0">
+      <LangSwitcher />
+      <CopyAllButton content={generatedContent} />
       <EditableBlock title="상품명" text={product_name} onSave={(v) => update('product_name', v)} />
       <EditableBlock title="서브타이틀" text={subtitle} onSave={(v) => update('subtitle', v)} />
       <EditableBlock title="메인 카피" text={main_copy} onSave={(v) => update('main_copy', v)} />
+      {condition && <EditableBlock title="Condition" text={condition} onSave={(v) => update('condition', v)} />}
+      {bullet_points && (
+        <EditableBlock
+          title="Key Features (Bullet Points)"
+          text={bullet_points.map((b) => `• ${b}`).join('\n')}
+          multiline
+          onSave={(v) => update('bullet_points', v)}
+        />
+      )}
       <EditableBlock title="판매포인트" text={selling_points.map((sp, i) => `${i + 1}. ${sp}`).join('\n')} multiline onSave={(v) => update('selling_points', v)} />
       <EditableBlock title="상세설명" text={description} multiline onSave={(v) => update('description', v)} />
+      {item_specifics && item_specifics.length > 0 && (
+        <EditableBlock
+          title="Item Specifics"
+          text={item_specifics.map((s) => `${s.key}: ${s.value}`).join('\n')}
+          multiline
+          onSave={(v) => update('item_specifics', v)}
+        />
+      )}
+      {shipping_policy && <EditableBlock title="Shipping" text={shipping_policy} multiline onSave={(v) => update('shipping_policy', v)} />}
+      {return_policy && <EditableBlock title="Returns" text={return_policy} multiline onSave={(v) => update('return_policy', v)} />}
+      {payment_policy && <EditableBlock title="Payment" text={payment_policy} multiline onSave={(v) => update('payment_policy', v)} />}
       {/* 고시정보 — 항목별 인라인 복사 */}
       <SpecBlock specs={specs} onUpdate={(newSpecs) => {
         const updated = { ...generatedContent, specs: newSpecs }

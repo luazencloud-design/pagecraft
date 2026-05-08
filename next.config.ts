@@ -4,7 +4,6 @@ const nextConfig: NextConfig = {
   devIndicators: {
     position: 'bottom-right',
   },
-  serverExternalPackages: ['@napi-rs/canvas'],
   experimental: {
     serverActions: {
       bodySizeLimit: '15mb',

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
@@ -13,12 +13,17 @@ import BgRemovalToggle from '@/components/image/BgRemovalToggle'
 import AiModelToggle from '@/components/image/AiModelToggle'
 import ResultTabs from '@/components/editor/ResultTabs'
 import DetailPagePreview from '@/components/editor/DetailPagePreview'
+import DraftSelector from '@/components/layout/DraftSelector'
 import Button from '@/components/ui/Button'
 import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
 import { useEditorStore } from '@/stores/editorStore'
+import { useDraftsStore } from '@/stores/draftsStore'
 import { useAIGenerate } from '@/hooks/useAIGenerate'
 import { showToast } from '@/components/ui/Toast'
+import { PLATFORM_META } from '@/types/product'
+import { copyEbayToClipboard } from '@/lib/ebayHtml'
+import type { GeneratedContent } from '@/types/ai'
 
 export default function ProductNewPage() {
   const { status } = useSession()
@@ -27,13 +32,44 @@ export default function ProductNewPage() {
   const { images, storeIntroImage, termsImage, setStoreIntroImage, setTermsImage } =
     useImageStore()
   const {
-    isGenerating,
+    isGenerating: rawIsGenerating,
+    generatingDraftId,
     generatedContent,
     loadingMessage,
     generateError,
+    currentLang,
+    langCache,
   } = useEditorStore()
+  const currentDraftId = useDraftsStore((s) => s.currentId)
+  // 다른 드래프트가 생성 중인 경우엔 이 화면에 로딩 표시 X
+  const isGenerating = rawIsGenerating && generatingDraftId === currentDraftId
   const { generateContent } = useAIGenerate()
+
+  /**
+   * 큐텐 템플릿용 시각 필드 fallback —
+   * 활성 언어에 mood_callout / hashtags 가 비어있으면 다른 캐시에서 가져옴.
+   * mood_callout은 양 언어 동일 (영문) 이라 fallback 안전. hashtags는 차선.
+   * 캐시에 다른 언어가 있으면 자동으로 활용 (lang에 무관 — en/ja/ko 어느 쪽이든).
+   */
+  const previewContent = useMemo<GeneratedContent | null>(() => {
+    if (!generatedContent) return null
+    // currentLang 외에 캐시된 다른 언어 중 첫 번째에서 fallback
+    const otherLang = (Object.keys(langCache) as Array<keyof typeof langCache>).find(
+      (l) => l !== currentLang && langCache[l],
+    )
+    const otherContent = otherLang ? langCache[otherLang]?.content : undefined
+    if (!otherContent) return generatedContent
+
+    return {
+      ...generatedContent,
+      mood_callout: generatedContent.mood_callout || otherContent.mood_callout,
+      hashtags: (generatedContent.hashtags?.length ? generatedContent.hashtags : otherContent.hashtags) ?? [],
+    }
+  }, [generatedContent, currentLang, langCache])
   const canGenerate = images.length > 0 && product.name.trim() !== ''
+
+  // 미리보기 DOM 캡처용 ref — DetailPagePreview의 wrapper div에 연결
+  const previewRef = useRef<HTMLDivElement>(null)
 
   const skipAuth = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
 
@@ -50,114 +86,78 @@ export default function ProductNewPage() {
     )
   }
 
-  // PNG 다운로드 — 본문은 서버, 상하단 이미지는 클라이언트에서 원본 이어붙이기
+  /**
+   * PNG 다운로드 — 미리보기 DOM을 html-to-image로 직접 캡처
+   * 화면에 보이는 그대로 캡처하므로 어떤 템플릿이든 동일하게 동작.
+   * 800px 고정 폭 미리보기 div 그대로 캡처. 화면 zoom(0.825)은 시각 변환이라
+   * DOM 자체는 800px이므로 캡처 결과도 800px 원본 해상도.
+   */
   const handleDownload = async () => {
     if (!generatedContent) return
+    const node = previewRef.current
+    if (!node) {
+      showToast('미리보기를 찾지 못했습니다', 'error')
+      return
+    }
+
     showToast('이미지 생성 중...')
-    const { compressForRender } = await import('@/lib/image')
-    const { api } = await import('@/lib/api')
-    const latestImages = useImageStore.getState().images
-    const renderImages = await Promise.all(
-      latestImages.map((img) => compressForRender(img.dataUrl))
-    )
-    // 상하단 이미지는 서버에 안 보냄 — 클라이언트에서 원본으로 이어붙임
     try {
-      const pngBlob = await api.post<Blob>('/api/render', {
-        data: generatedContent,
-        price: product.price,
-        images: renderImages,
-      })
-      if (!(pngBlob instanceof Blob)) return
-
-      const storeIntro = useImageStore.getState().storeIntroImage
-      const terms = useImageStore.getState().termsImage
-
-      // 상하단 이미지 없으면 본문 PNG 그대로 다운로드
-      if (!storeIntro && !terms) {
-        const url = URL.createObjectURL(pngBlob)
-        const a = document.createElement('a')
-        a.href = url
-        const safeName = (generatedContent.product_name || product.name || '상품').replace(/[/\\?%*:|"<>]/g, '')
-        a.download = `상세페이지_${safeName}.png`
-        a.click()
-        URL.revokeObjectURL(url)
-        showToast('이미지 다운로드 완료')
-        return
+      // 폰트 로드 완료까지 대기 — Pretendard/Noto Sans JP가 시스템 폰트로 떨어지면 자간·배치 깨짐
+      if (typeof document !== 'undefined' && document.fonts) {
+        try {
+          await Promise.all([
+            document.fonts.load('500 16px "Pretendard Variable"'),
+            document.fonts.load('700 12px "Pretendard Variable"'),
+            document.fonts.load('800 24px "Pretendard Variable"'),
+            document.fonts.load('900 64px "Pretendard Variable"'),
+            document.fonts.load('500 16px "Noto Sans JP"'),
+            document.fonts.load('800 24px "Noto Sans JP"'),
+            document.fonts.load('900 64px "Noto Sans JP"'),
+          ])
+          await document.fonts.ready
+        } catch {
+          // 폰트 로드 실패해도 진행
+        }
       }
 
-      // 클라이언트 canvas에서 원본 이미지 + 본문 PNG 세로 이어붙이기
-      const loadImg = (src: string): Promise<HTMLImageElement> =>
-        new Promise((resolve, reject) => {
-          const img = new Image()
-          img.onload = () => resolve(img)
-          img.onerror = reject
-          img.src = src
-        })
+      // html-to-image — html2canvas보다 web font / 한글·일본어 metric 처리가 안정적
+      const { toPng } = await import('html-to-image')
 
-      const bodyUrl = URL.createObjectURL(pngBlob)
-      const bodyImg = await loadImg(bodyUrl)
-      const WIDTH = bodyImg.width
+      // 1차: 폰트 임베딩 시도 (crossOrigin 설정된 link만 성공)
+      // 실패 시 (CORS 문제 등) skipFonts로 재시도 — 브라우저 캐시된 폰트로 그려짐
+      const captureOptions = {
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+        cacheBust: true,
+      }
+      let dataUrl: string
+      try {
+        dataUrl = await toPng(node, { ...captureOptions, skipFonts: false })
+      } catch (err) {
+        console.warn('폰트 임베딩 실패, skipFonts로 재시도:', err)
+        dataUrl = await toPng(node, { ...captureOptions, skipFonts: true })
+      }
 
-      const imgs: HTMLImageElement[] = []
-      if (storeIntro) imgs.push(await loadImg(storeIntro))
-      imgs.push(bodyImg)
-      if (terms) imgs.push(await loadImg(terms))
-
-      // 각 이미지를 WIDTH 기준으로 높이 계산
-      const heights = imgs.map((img) => Math.round((WIDTH / img.width) * img.height))
-      const totalHeight = heights.reduce((a, b) => a + b, 0)
-
-      const canvas = document.createElement('canvas')
-      canvas.width = WIDTH
-      canvas.height = totalHeight
-      const ctx = canvas.getContext('2d')!
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, WIDTH, totalHeight)
-
-      let y = 0
-      imgs.forEach((img, i) => {
-        ctx.drawImage(img, 0, y, WIDTH, heights[i])
-        y += heights[i]
-      })
-
-      URL.revokeObjectURL(bodyUrl)
-
-      canvas.toBlob((blob) => {
-        if (!blob) return
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        const safeName = (generatedContent.product_name || product.name || '상품').replace(/[/\\?%*:|"<>]/g, '')
-        a.download = `상세페이지_${safeName}.png`
-        a.click()
-        URL.revokeObjectURL(url)
-        showToast('이미지 다운로드 완료')
-      }, 'image/png')
-    } catch {
-      showToast('다운로드 실패 — 다시 시도해주세요')
+      const a = document.createElement('a')
+      a.href = dataUrl
+      const safeName = (generatedContent.product_name || product.name || '상품').replace(/[/\\?%*:|"<>]/g, '')
+      a.download = `상세페이지_${safeName}.png`
+      a.click()
+      showToast('이미지 다운로드 완료')
+    } catch (err) {
+      console.error('다운로드 실패:', err)
+      showToast('다운로드 실패 — 다시 시도해주세요', 'error')
     }
   }
 
-  const handleCopyAll = () => {
+  /**
+   * eBay 전용 — rich text(HTML)로 클립보드에 복사
+   * eBay 설명창에 그대로 붙여넣으면 굵기/불릿/구분선 보존
+   */
+  const handleCopyEbayHtml = async () => {
     if (!generatedContent) return
-    const parts: string[] = []
-    parts.push(`[상품명] ${generatedContent.product_name}`)
-    parts.push(`[서브타이틀] ${generatedContent.subtitle}`)
-    parts.push(`[메인카피] ${generatedContent.main_copy}`)
-    parts.push('')
-    parts.push('[판매포인트]')
-    generatedContent.selling_points.forEach((sp, i) => parts.push(`${i + 1}. ${sp}`))
-    parts.push('')
-    parts.push('[상세설명]')
-    parts.push(generatedContent.description)
-    parts.push('')
-    parts.push('[스펙]')
-    generatedContent.specs.forEach((s) => parts.push(`${s.key}: ${s.value}`))
-    parts.push('')
-    parts.push(`[키워드] ${generatedContent.keywords.join(', ')}`)
-    parts.push(`[주의사항] ${generatedContent.caution}`)
-    navigator.clipboard.writeText(parts.join('\n'))
-    showToast('전체 텍스트 복사됨')
+    const ok = await copyEbayToClipboard(generatedContent, product.price)
+    if (ok) showToast('eBay 페이지 복사됨 — 설명창에 붙여넣으세요')
   }
 
   return (
@@ -168,6 +168,11 @@ export default function ProductNewPage() {
 
         {/* ── LEFT PANEL ── */}
         <aside style={{ background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }} className="left-panel-scroll">
+
+          {/* 드래프트 선택기 — 최상단 */}
+          <DraftSelector />
+
+          <div className="divider" />
 
           {/* 상품 사진 */}
           <div className="panel-section">
@@ -247,14 +252,18 @@ export default function ProductNewPage() {
             <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginRight: 'auto' }}>preview.html</span>
             {generatedContent && (
               <>
-                <button
-                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border2)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text)' }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text2)' }}
-                  onClick={handleCopyAll}
-                >
-                  📋 전체 복사
-                </button>
+                {/* eBay 전용 — rich HTML 복사 (서식 그대로 eBay 설명창 붙여넣기) */}
+                {PLATFORM_META[product.platform]?.market === 'us' && (
+                  <button
+                    style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'; (e.currentTarget as HTMLButtonElement).style.color = '#0c0c10' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)' }}
+                    onClick={handleCopyEbayHtml}
+                    title="eBay 설명창에 굵기·불릿·구분선 그대로 붙여넣기 (HTML 서식 보존)"
+                  >
+                    🎨 eBay 서식 그대로 복사
+                  </button>
+                )}
                 <button
                   style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, background: 'var(--accent)', border: '1px solid var(--accent)', color: '#0c0c10', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.2s' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent2)' }}
@@ -328,12 +337,14 @@ export default function ProductNewPage() {
             )}
 
             {/* 실시간 HTML 미리보기 — generatedContent 변경 시 자동 리렌더링 */}
-            {!isGenerating && generatedContent && (
+            {!isGenerating && previewContent && (
               <div style={{ zoom: 0.825 }}>
                 <DetailPagePreview
-                  content={generatedContent}
+                  ref={previewRef}
+                  content={previewContent}
                   price={product.price}
                   images={images.map((img) => img.dataUrl)}
+                  template={product.template}
                   storeIntroImage={storeIntroImage}
                   termsImage={termsImage}
                 />

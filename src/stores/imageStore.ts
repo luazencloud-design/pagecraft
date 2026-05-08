@@ -3,6 +3,15 @@ import type { ProductImage } from '@/types/product'
 import { generateId } from '@/lib/image'
 import { saveImagesToDB, loadImagesFromDB, clearImagesFromDB } from '@/lib/imageDB'
 
+/**
+ * 현재 드래프트 ID 게터 — draftsStore에서 주입
+ * 직접 import하면 순환 의존이라 함수로 받음
+ */
+let getCurrentDraftId: () => string = () => 'default'
+export function setImageStoreDraftIdGetter(fn: () => string) {
+  getCurrentDraftId = fn
+}
+
 // localStorage 키 — 스토어 소개/약관 이미지는 세션과 무관하게 영구 보존
 const LS_STORE_INTRO = 'pagecraft-store-intro'
 const LS_TERMS = 'pagecraft-terms'
@@ -46,12 +55,17 @@ interface ImageState {
   setAiModelGender: (gender: 'male' | 'female') => void
   clearImages: () => void
   resetAll: () => void
-  _hydrate: () => Promise<void>
+  /**
+   * IndexedDB에서 이미지 복원
+   * @param force 이미 hydrated여도 다시 로드 (드래프트 전환 시)
+   * @param draftId 명시적으로 드래프트 ID 지정 (currentId 업데이트 race condition 방지)
+   */
+  _hydrate: (force?: boolean, draftId?: string) => Promise<void>
 }
 
-// IndexedDB에 이미지 동기 저장 (fire-and-forget)
+// IndexedDB에 이미지 동기 저장 (fire-and-forget) — 현재 드래프트 ID로 namespace
 function persistImages(images: ProductImage[]) {
-  saveImagesToDB(images).catch(() => {})
+  saveImagesToDB(images, getCurrentDraftId()).catch(() => {})
 }
 
 export const useImageStore = create<ImageState>()((set, get) => ({
@@ -141,7 +155,7 @@ export const useImageStore = create<ImageState>()((set, get) => ({
 
   clearImages: () => {
     set({ images: [], storeIntroImage: null, termsImage: null })
-    clearImagesFromDB().catch(() => {})
+    clearImagesFromDB(getCurrentDraftId()).catch(() => {})
   },
 
   // 새 작업: 상품 이미지 초기화, 스토어 소개/약관은 localStorage에서 복원
@@ -157,14 +171,20 @@ export const useImageStore = create<ImageState>()((set, get) => ({
       aiModelEnabled: false,
       aiModelGender: 'female',
     })
-    clearImagesFromDB().catch(() => {})
+    clearImagesFromDB(getCurrentDraftId()).catch(() => {})
   },
 
-  // IndexedDB + localStorage에서 복원
-  _hydrate: async () => {
-    if (get()._hydrated) return
+  /**
+   * 드래프트별 이미지 복원
+   * - 첫 hydration (앱 시작): _hydrated false → IndexedDB에서 현재 드래프트 이미지 로드
+   * - 드래프트 전환: 외부에서 강제로 다시 호출 (force=true) → 새 드래프트 이미지 로드
+   * - draftId 인자가 있으면 그 값을 우선 사용 (currentId 업데이트 race 방지)
+   */
+  _hydrate: async (force?: boolean, draftId?: string) => {
+    if (get()._hydrated && !force) return
     try {
-      const images = await loadImagesFromDB()
+      const id = draftId ?? getCurrentDraftId()
+      const images = await loadImagesFromDB(id)
       const storeIntro = loadFromLocal(LS_STORE_INTRO)
       const terms = loadFromLocal(LS_TERMS)
       set({
@@ -172,6 +192,9 @@ export const useImageStore = create<ImageState>()((set, get) => ({
         storeIntroImage: storeIntro,
         termsImage: terms,
         _hydrated: true,
+        // 드래프트 전환 시 임시 상태 초기화
+        thumbnailImageId: null,
+        bgSelectedIds: [],
       })
     } catch {
       set({ _hydrated: true })
@@ -179,7 +202,4 @@ export const useImageStore = create<ImageState>()((set, get) => ({
   },
 }))
 
-// 클라이언트에서 자동 hydration
-if (typeof window !== 'undefined') {
-  useImageStore.getState()._hydrate()
-}
+// 자동 hydration은 draftsStore가 초기화 후 트리거 (이전엔 자동이었음)

@@ -5,9 +5,12 @@ import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
 import { useEditorStore } from '@/stores/editorStore'
 import { useUsageStore } from '@/stores/usageStore'
+import { useDraftsStore } from '@/stores/draftsStore'
 import { api } from '@/lib/api'
 import { compressForAI } from '@/lib/image'
-import type { GeneratedAll, GeneratedTag } from '@/types/ai'
+import { PLATFORM_META } from '@/types/product'
+import { showToast } from '@/components/ui/Toast'
+import type { GeneratedByLang, GeneratedTag } from '@/types/ai'
 import type { CoupangSuggestResponse } from '@/types/market'
 
 const LOADING_MESSAGES = [
@@ -26,7 +29,10 @@ export function useAIGenerate() {
     setGeneratedContent,
     setGeneratedTitles,
     setGeneratedTags,
+    setGeneratedByLang,
+    clearLangCache,
     setIsGenerating,
+    setGeneratingDraftId,
     setLoadingMessage,
     setGenerateError,
     setActiveTab,
@@ -36,9 +42,15 @@ export function useAIGenerate() {
   const generateContent = useCallback(async () => {
     if (images.length === 0) return
 
+    // 생성 시작 시점의 드래프트 ID 캡처 — 결과 도착 시 같은 드래프트인지 확인용
+    const startDraftId = useDraftsStore.getState().currentId
+
     setIsGenerating(true)
+    setGeneratingDraftId(startDraftId)
     setGenerateError('')
     setLoadingMessage(LOADING_MESSAGES[0])
+    // 새 생성 시작 시 기존 언어 캐시 초기화 (이전 상품 결과 누수 방지)
+    clearLangCache()
 
     let msgIdx = 0
     const interval = setInterval(() => {
@@ -47,25 +59,31 @@ export function useAIGenerate() {
     }, 3000)
 
     try {
-      // 쿠팡 인기 검색어 가져오기 (실패해도 무시)
+      // 한국 마켓일 때만 쿠팡 인기 검색어 호출 (큐텐 등은 스킵)
+      const platformMeta = PLATFORM_META[product.platform]
+      const targetLang = platformMeta?.lang ?? 'ko'
+      const useAutocomplete = platformMeta?.hasAutocomplete ?? false
+
       let coupangSuggestions: string[] = []
-      try {
-        if (product.name) {
-          const suggest = await api.get<CoupangSuggestResponse>(
-            `/api/market/suggest?keyword=${encodeURIComponent(product.name)}`,
-          )
-          coupangSuggestions = suggest.suggestions || []
+      if (useAutocomplete) {
+        try {
+          if (product.name) {
+            const suggest = await api.get<CoupangSuggestResponse>(
+              `/api/market/suggest?keyword=${encodeURIComponent(product.name)}`,
+            )
+            coupangSuggestions = suggest.suggestions || []
+          }
+        } catch {
+          // 쿠팡 API 실패해도 계속 진행
         }
-      } catch {
-        // 쿠팡 API 실패해도 계속 진행
       }
 
       const aiImages = await Promise.all(
         images.slice(0, 5).map((img) => compressForAI(img.dataUrl))
       )
 
-      // 한번의 API 호출로 content + titles + tags 모두 생성
-      const result = await api.post<GeneratedAll>('/api/ai/copy', {
+      // 한번의 API 호출로 — 큐텐이면 양 언어 동시 생성, 한국이면 ko 단일
+      const byLang = await api.post<GeneratedByLang>('/api/ai/copy', {
         images: aiImages,
         brand: product.brand,
         productName: product.name,
@@ -77,27 +95,33 @@ export function useAIGenerate() {
         coupangSuggestions,
       })
 
-      // content 설정
-      setGeneratedContent(result.content)
-      // 크레딧 소비 후 UI 즉시 반영
-      useUsageStore.getState().fetchUsage()
-
-      // titles 설정
-      if (result.titles?.length > 0) {
-        setGeneratedTitles(result.titles)
+      // 결과 도착 — 사용자가 다른 드래프트로 이동했으면 폐기 (다른 드래프트 데이터 오염 방지)
+      const currentDraftAtCompletion = useDraftsStore.getState().currentId
+      if (currentDraftAtCompletion !== startDraftId) {
+        showToast('다른 드래프트로 이동해서 결과가 폐기됐습니다 (크레딧은 차감)', 'error')
+        // 크레딧 사용량은 갱신 (이미 소비됨)
+        useUsageStore.getState().fetchUsage()
+        return
       }
 
-      // tags 설정
-      if (result.tags?.length > 0) {
+      // 모든 받은 언어를 캐시에 저장 + 활성 언어로 플랫폼 기본 lang 사용
+      setGeneratedByLang(byLang, targetLang)
+
+      // 트렌딩 태그 마킹은 활성 언어 결과에 한해 (한국어 + 자동완성 있을 때만)
+      const activeAll = byLang[targetLang]
+      if (useAutocomplete && activeAll?.tags && activeAll.tags.length > 0) {
         const trendingSet = new Set(
           coupangSuggestions.map((s) => s.replace(/\s/g, '').toLowerCase()),
         )
-        const tags: GeneratedTag[] = result.tags.map((text) => ({
+        const tags: GeneratedTag[] = activeAll.tags.map((text) => ({
           text,
           isTrending: trendingSet.has(text.replace(/\s/g, '').toLowerCase()),
         }))
         setGeneratedTags(tags)
       }
+
+      // 크레딧 소비 후 UI 즉시 반영
+      useUsageStore.getState().fetchUsage()
 
       setActiveTab('copy')
     } catch (err) {
@@ -107,6 +131,7 @@ export function useAIGenerate() {
     } finally {
       clearInterval(interval)
       setIsGenerating(false)
+      setGeneratingDraftId(null)
       setLoadingMessage('')
     }
   }, [
@@ -115,7 +140,10 @@ export function useAIGenerate() {
     setGeneratedContent,
     setGeneratedTitles,
     setGeneratedTags,
+    setGeneratedByLang,
+    clearLangCache,
     setIsGenerating,
+    setGeneratingDraftId,
     setLoadingMessage,
     setGenerateError,
     setActiveTab,

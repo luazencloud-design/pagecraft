@@ -1,3 +1,10 @@
+import type { Lang, Platform } from './product'
+
+export interface SpecItem {
+  key: string
+  value: string
+}
+
 export interface GeneratedContent {
   product_name: string
   subtitle: string
@@ -7,11 +14,26 @@ export interface GeneratedContent {
   specs: SpecItem[]
   keywords: string[]
   caution: string
-}
 
-export interface SpecItem {
-  key: string
-  value: string
+  /* ─────────────── Qoo10 전용 옵션 필드 ─────────────── */
+  /** 큰 영문 무드 카피 (예: "NUDE BLUR STICK") — 헤더 보조 */
+  mood_callout?: string
+  /** 해시태그 (예: ["#リップベース", "#密着リップ"]) */
+  hashtags?: string[]
+
+  /* ─────────────── eBay 전용 옵션 필드 ─────────────── */
+  /** Condition: New / Used / Refurbished / For parts */
+  condition?: string
+  /** 5-7 핵심 불릿 — 미리보기는 <ul>, 텍스트 복사는 "• " 접두 */
+  bullet_points?: string[]
+  /** Item Specifics 표 (Brand, MPN, Color, Size, Material...) — eBay 표준 항목 */
+  item_specifics?: SpecItem[]
+  /** 배송 정책 — 짧은 안내 문구 */
+  shipping_policy?: string
+  /** 반품 정책 — 짧은 안내 문구 */
+  return_policy?: string
+  /** 결제 정책 — 짧은 안내 문구 */
+  payment_policy?: string
 }
 
 export interface GeneratedTitle {
@@ -34,13 +56,19 @@ export interface GeneratedAll {
   tags: string[]
 }
 
+/**
+ * 언어별 결과 — 큐텐(JA+KO), eBay(EN+KO)는 양 언어 동시 생성
+ * 한국 마켓은 { ko: ... } 한쪽만 채워짐
+ */
+export type GeneratedByLang = Partial<Record<'ko' | 'ja' | 'en', GeneratedAll>>
+
 export interface AIGenerateRequest {
   images: string[]
   brand: string
   productName: string
   price: string
   category: string
-  platform: string
+  platform: Platform | string  // 마이그레이션 호환을 위해 string도 허용
   memo: string
   features: string[]
 }
@@ -68,10 +96,11 @@ export interface AIModelImageRequest {
   images: string[]
 }
 
-export interface RenderRequest {
-  data: GeneratedContent
-  price: string
-  images: string[]
-  storeIntroImage?: string
-  termsImage?: string
+/** 번역(재작성) 요청 */
+export interface TranslateRequest {
+  current: GeneratedAll
+  fromLang: Lang
+  toLang: Lang
+  /** 재작성 톤 — 'coupang' | 'qoo10' 등 */
+  targetPlatform: Platform
 }
