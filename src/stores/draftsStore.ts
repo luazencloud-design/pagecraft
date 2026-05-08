@@ -52,10 +52,7 @@ interface DraftsState {
   /** 드래프트 삭제 — 현재 드래프트 삭제 시 다음 드래프트로 자동 전환 */
   deleteDraft: (id: string) => Promise<void>
 
-  /** 드래프트 이름 변경 (수동) */
-  renameDraft: (id: string, name: string) => void
-
-  /** 현재 드래프트 메타 자동 업데이트 (상품명 변경 시 등) */
+  /** 현재 드래프트 메타 업데이트 — 이름 = product.name 자동 동기화용 */
   touchCurrent: (name?: string) => void
 }
 
@@ -102,8 +99,6 @@ async function loadSnapshot(draftId: string) {
   await useImageStore.getState()._hydrate(true, draftId)
 }
 
-const generateName = (count: number) => `드래프트 ${count}`
-
 export const useDraftsStore = create<DraftsState>()(
   persist(
     (set, get) => ({
@@ -126,10 +121,11 @@ export const useDraftsStore = create<DraftsState>()(
         }
 
         // 첫 실행 — 기본 드래프트 생성 + 레거시 데이터 마이그레이션
+        // 이름은 빈 문자열 — useEffect가 product.name 따라 자동 채움
         const id = crypto.randomUUID()
         const meta: DraftMeta = {
           id,
-          name: '드래프트 1',
+          name: '',
           createdAt: Date.now(),
           updatedAt: Date.now(),
         }
@@ -162,11 +158,11 @@ export const useDraftsStore = create<DraftsState>()(
         const currentId = get().currentId
         if (currentId) await snapshotCurrent(currentId)
 
-        // 2. 새 드래프트 메타 생성
+        // 2. 새 드래프트 메타 생성 (이름은 빈 문자열, useEffect가 product.name 따라감)
         const id = crypto.randomUUID()
         const meta: DraftMeta = {
           id,
-          name: generateName(get().drafts.length + 1),
+          name: '',
           createdAt: Date.now(),
           updatedAt: Date.now(),
         }
@@ -215,11 +211,11 @@ export const useDraftsStore = create<DraftsState>()(
         if (id === get().currentId) {
           // 현재 드래프트 삭제 → 다음으로 전환 또는 새 드래프트 생성
           if (remaining.length === 0) {
-            // 마지막 드래프트 삭제 → 빈 새 드래프트 생성
+            // 마지막 드래프트 삭제 → 빈 새 드래프트 생성 (이름 빈 문자열)
             const newId = crypto.randomUUID()
             const newMeta: DraftMeta = {
               id: newId,
-              name: '드래프트 1',
+              name: '',
               createdAt: Date.now(),
               updatedAt: Date.now(),
             }
@@ -240,21 +236,13 @@ export const useDraftsStore = create<DraftsState>()(
         }
       },
 
-      renameDraft: (id, name) => {
-        set({
-          drafts: get().drafts.map((d) =>
-            d.id === id ? { ...d, name: name.trim() || d.name, updatedAt: Date.now() } : d,
-          ),
-        })
-      },
-
       touchCurrent: (name) => {
         const id = get().currentId
         if (!id) return
         set({
           drafts: get().drafts.map((d) =>
             d.id === id
-              ? { ...d, updatedAt: Date.now(), name: name?.trim() || d.name }
+              ? { ...d, updatedAt: Date.now(), ...(name !== undefined ? { name } : {}) }
               : d,
           ),
         })
