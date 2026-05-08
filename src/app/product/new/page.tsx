@@ -13,6 +13,7 @@ import BgRemovalToggle from '@/components/image/BgRemovalToggle'
 import AiModelToggle from '@/components/image/AiModelToggle'
 import ResultTabs from '@/components/editor/ResultTabs'
 import DetailPagePreview from '@/components/editor/DetailPagePreview'
+import DraftSelector from '@/components/layout/DraftSelector'
 import Button from '@/components/ui/Button'
 import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
@@ -165,6 +166,11 @@ export default function ProductNewPage() {
 
         {/* ── LEFT PANEL ── */}
         <aside style={{ background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }} className="left-panel-scroll">
+
+          {/* 드래프트 선택기 — 최상단 */}
+          <DraftSelector />
+
+          <div className="divider" />
 
           {/* 상품 사진 */}
           <div className="panel-section">
