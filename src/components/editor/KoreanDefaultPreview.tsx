@@ -188,7 +188,8 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           </div>
         )}
 
-        {/* 첫 설명 문단 — 한 번만 (이전엔 사이사이 반복) */}
+        {/* 첫 설명 문단 — 한 번만 (이전엔 사이사이 반복)
+            메인카피와 동일 크기(30px)지만 두께는 더 얇게(600) — 강약 구분 */}
         {descLines[0] && (
           <div
             style={{
@@ -199,14 +200,15 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           >
             <p
               style={{
-                fontSize: 19,
+                fontSize: 28,
                 color: '#0f0f0f',
-                lineHeight: 1.8,
+                lineHeight: 1.5,
                 margin: 0,
                 maxWidth: 700,
                 marginInline: 'auto',
                 wordBreak: 'keep-all',
-                fontWeight: 500,
+                fontWeight: 600,
+                letterSpacing: '-0.015em',
               }}
             >
               {descLines[0]}
