@@ -61,24 +61,34 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           <img src={storeIntroImage} alt="" style={{ width: '100%', display: 'block' }} />
         )}
 
-        {/* 헤더 — 더 넉넉하게 */}
+        {/* 헤더 — 미니멀 화이트 / 블랙 타이포 + 골드 미세 악센트 */}
         <div
           style={{
-            padding: '50px 40px 44px',
-            background: '#161616',
+            padding: '56px 40px 48px',
+            background: '#ffffff',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
+            borderBottom: '1px solid #ececec',
           }}
         >
+          {/* 상단 미세 골드 마크 — 브랜드 톤 유지 */}
+          <div
+            style={{
+              width: 28,
+              height: 2,
+              background: '#c8a050',
+              marginBottom: 20,
+            }}
+          />
           <p
             style={{
               fontSize: 30,
               fontWeight: 900,
-              color: '#c8a050',
+              color: '#0f0f0f',
               textAlign: 'center',
               margin: 0,
-              letterSpacing: '-0.02em',
+              letterSpacing: '-0.025em',
               wordBreak: 'keep-all',
               lineHeight: 1.25,
             }}
@@ -88,12 +98,13 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           {content.subtitle && (
             <p
               style={{
-                fontSize: 16,
-                color: '#b8b7c8',
+                fontSize: 15,
+                color: '#777788',
                 textAlign: 'center',
-                margin: '12px 0 0',
+                margin: '14px 0 0',
                 wordBreak: 'keep-all',
                 fontWeight: 400,
+                letterSpacing: '0.01em',
               }}
             >
               {content.subtitle}
