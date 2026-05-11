@@ -12,20 +12,46 @@ interface KoreanDefaultPreviewProps {
 }
 
 /**
- * 한국 (쿠팡·스마트스토어) 기본 템플릿 — 800px 고정 표준 레이아웃
- * 헤더(검정/금색) + 메인이미지 + 셀링포인트 3컬럼 + 스펙 + 푸터
+ * 첫 문장만 잘라서 짧은 임팩트 카피로 변환
+ * 너무 길면 잘라서 ... 추가
+ */
+function impactLine(text: string | undefined, maxLen: number = 28): string {
+  if (!text) return ''
+  // 한국어 문장 종결 (다. / 요. / . / ! / ?) 기준 첫 문장
+  const firstSentence = text.split(/[.!?。！？\n]/)[0]?.trim() || text.trim()
+  if (firstSentence.length > maxLen) return firstSentence.slice(0, maxLen).trim() + '…'
+  return firstSentence
+}
+
+/**
+ * 한국 (쿠팡·스마트스토어) 기본 템플릿 — 800px 표준 레이아웃
+ * 헤더(검정/금색) + 메인이미지 + 셀링포인트 + 본문 + 사이사이 임팩트 한 줄 + 스펙 + 푸터
+ *
+ * 디자인 원칙:
+ * - 글자 사이즈 전반적으로 키움 (모바일에서도 가독성 ↑)
+ * - 사진 사이 긴 설명 X — 짧은 임팩트 한 줄만 (selling_points 또는 description 첫 문장)
  */
 const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProps>(
   ({ content, price, images, storeIntroImage, termsImage }, ref) => {
     const descLines = content.description ? content.description.split('\n').filter(Boolean) : []
+    const additionalImages = images.slice(1)
+
+    // 사이사이 배너용 임팩트 한 줄 — selling_points 우선, 부족하면 description 짧게
+    const getBannerLine = (i: number): string => {
+      const sp = content.selling_points[i]
+      if (sp) return impactLine(sp, 32)
+      const dl = descLines[i + 1]
+      if (dl) return impactLine(dl, 32)
+      return ''
+    }
 
     return (
       <div
         ref={ref}
         style={{
           width: 800,
-          fontFamily: "'Noto Sans KR', sans-serif",
-          lineHeight: 1.4,
+          fontFamily: "'Pretendard Variable', 'Pretendard', 'Noto Sans KR', sans-serif",
+          lineHeight: 1.5,
           overflow: 'hidden',
           background: '#ffffff',
         }}
@@ -35,42 +61,58 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           <img src={storeIntroImage} alt="" style={{ width: '100%', display: 'block' }} />
         )}
 
-        {/* 헤더 — 110px, #161616 */}
+        {/* 헤더 — 미니멀 화이트 / 블랙 타이포 + 골드 미세 악센트 */}
         <div
           style={{
-            height: 110,
-            background: '#161616',
+            padding: '56px 40px 48px',
+            background: '#ffffff',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
+            borderBottom: '1px solid #ececec',
           }}
         >
+          {/* 상단 미세 골드 마크 — 브랜드 톤 유지 */}
+          <div
+            style={{
+              width: 28,
+              height: 2,
+              background: '#c8a050',
+              marginBottom: 20,
+            }}
+          />
           <p
             style={{
-              fontSize: 28,
+              fontSize: 30,
               fontWeight: 900,
-              color: '#c8a050',
+              color: '#0f0f0f',
               textAlign: 'center',
               margin: 0,
-              padding: '0 40px',
+              letterSpacing: '-0.025em',
+              wordBreak: 'keep-all',
+              lineHeight: 1.25,
             }}
           >
             {content.product_name}
           </p>
-          <p
-            style={{
-              fontSize: 16,
-              color: '#9998a8',
-              textAlign: 'center',
-              margin: '8px 0 0',
-            }}
-          >
-            {content.subtitle}
-          </p>
+          {content.subtitle && (
+            <p
+              style={{
+                fontSize: 15,
+                color: '#777788',
+                textAlign: 'center',
+                margin: '14px 0 0',
+                wordBreak: 'keep-all',
+                fontWeight: 400,
+                letterSpacing: '0.01em',
+              }}
+            >
+              {content.subtitle}
+            </p>
+          )}
         </div>
 
-        {/* 메인 이미지 — 가로 800px 맞춤, 세로는 원본 비율 유지 */}
+        {/* 메인 이미지 */}
         {images[0] && (
           <img
             src={images[0]}
@@ -79,29 +121,25 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           />
         )}
 
-        {/* 메인 카피 — 190px, #f8f7f4 */}
+        {/* 메인 카피 — 임팩트 강조 */}
         <div
           style={{
-            height: 190,
             background: '#f8f7f4',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0 40px',
+            padding: '60px 40px',
+            textAlign: 'center',
           }}
         >
-          {/* 금색 구분선 */}
-          <div style={{ width: 60, height: 2, background: '#c8a050', marginBottom: 20 }} />
+          <div style={{ width: 60, height: 3, background: '#c8a050', margin: '0 auto 24px' }} />
           <p
             style={{
-              fontSize: 22,
+              fontSize: 26,
               fontWeight: 900,
               color: '#0f0f0f',
-              textAlign: 'center',
-              lineHeight: '30px',
+              lineHeight: 1.45,
               margin: 0,
-              maxWidth: 720,
+              maxWidth: 700,
+              marginInline: 'auto',
+              letterSpacing: '-0.02em',
               wordBreak: 'keep-all',
             }}
           >
@@ -109,73 +147,79 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           </p>
         </div>
 
-        {/* 셀링포인트 — 270px, 3컬럼 */}
-        <div
-          style={{
-            height: 270,
-            background: '#ffffff',
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr',
-          }}
-        >
-          {content.selling_points.slice(0, 3).map((sp, i) => (
-            <div
-              key={i}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '0 20px',
-              }}
-            >
-              <p
+        {/* 셀링포인트 — 3컬럼, 글자 키움 */}
+        {content.selling_points.length > 0 && (
+          <div
+            style={{
+              background: '#ffffff',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              padding: '60px 24px',
+              gap: 16,
+            }}
+          >
+            {content.selling_points.slice(0, 3).map((sp, i) => (
+              <div
+                key={i}
                 style={{
-                  fontSize: 36,
-                  fontWeight: 900,
-                  color: '#c8a050',
-                  margin: '0 0 12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  padding: '0 12px',
                 }}
               >
-                {String(i + 1).padStart(2, '0')}
-              </p>
-              <p
-                style={{
-                  fontSize: 14,
-                  color: '#0f0f0f',
-                  textAlign: 'center',
-                  lineHeight: '22px',
-                  margin: 0,
-                  wordBreak: 'keep-all',
-                }}
-              >
-                {sp}
-              </p>
-            </div>
-          ))}
-        </div>
+                <p
+                  style={{
+                    fontSize: 38,
+                    fontWeight: 900,
+                    color: '#c8a050',
+                    margin: '0 0 14px',
+                    lineHeight: 1,
+                    letterSpacing: '-0.04em',
+                  }}
+                >
+                  {String(i + 1).padStart(2, '0')}
+                </p>
+                <div style={{ width: 30, height: 2, background: '#c8a050', margin: '0 0 14px' }} />
+                <p
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: '#0f0f0f',
+                    textAlign: 'center',
+                    lineHeight: 1.55,
+                    margin: 0,
+                    wordBreak: 'keep-all',
+                  }}
+                >
+                  {sp}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
 
-        {/* 설명 첫 문단 — 180px, #f8f7f4 */}
+        {/* 첫 설명 문단 — 한 번만 (이전엔 사이사이 반복)
+            메인카피와 동일 크기(30px)지만 두께는 더 얇게(600) — 강약 구분 */}
         {descLines[0] && (
           <div
             style={{
-              height: 180,
               background: '#f8f7f4',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0 40px',
+              padding: '60px 40px',
+              textAlign: 'center',
             }}
           >
             <p
               style={{
-                fontSize: 15,
+                fontSize: 24,
                 color: '#0f0f0f',
-                textAlign: 'center',
-                lineHeight: '24px',
+                lineHeight: 1.5,
                 margin: 0,
-                maxWidth: 720,
+                maxWidth: 700,
+                marginInline: 'auto',
                 wordBreak: 'keep-all',
+                fontWeight: 600,
+                letterSpacing: '-0.015em',
               }}
             >
               {descLines[0]}
@@ -183,72 +227,65 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           </div>
         )}
 
-        {/* 추가 이미지 + 설명 반복 */}
-        {images.slice(1).map((imgSrc, i) => (
-          <div key={`img-${i + 1}`}>
-            <img
-              src={imgSrc}
-              alt={`상품 이미지 ${i + 2}`}
-              style={{ width: '100%', display: 'block' }}
-            />
-            {descLines[i + 1] && (
-              <div
-                style={{
-                  height: 140,
-                  background: '#f8f7f4',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '0 40px',
-                }}
-              >
-                <p
+        {/* 추가 이미지 + 짧은 임팩트 한 줄 (긴 설명 X) */}
+        {additionalImages.map((imgSrc, i) => {
+          const banner = getBannerLine(i)
+          return (
+            <div key={`img-${i + 1}`}>
+              <img
+                src={imgSrc}
+                alt={`상품 이미지 ${i + 2}`}
+                style={{ width: '100%', display: 'block' }}
+              />
+              {banner && (
+                <div
                   style={{
-                    fontSize: 15,
-                    color: '#0f0f0f',
+                    background: i % 2 === 0 ? '#ffffff' : '#f8f7f4',
+                    padding: '40px 40px',
                     textAlign: 'center',
-                    lineHeight: '24px',
-                    margin: 0,
-                    maxWidth: 720,
-                    wordBreak: 'keep-all',
                   }}
                 >
-                  {descLines[i + 1]}
-                </p>
-              </div>
-            )}
-          </div>
-        ))}
+                  <p
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 800,
+                      color: '#0f0f0f',
+                      lineHeight: 1.4,
+                      margin: 0,
+                      letterSpacing: '-0.015em',
+                      wordBreak: 'keep-all',
+                    }}
+                  >
+                    {banner}
+                  </p>
+                </div>
+              )}
+            </div>
+          )
+        })}
 
         {/* 스펙 테이블 */}
         {content.specs.length > 0 && (
-          <div
-            style={{
-              background: '#ffffff',
-              padding: '40px 0',
-            }}
-          >
-            {/* 제목 */}
+          <div style={{ background: '#ffffff', padding: '52px 0' }}>
             <p
               style={{
-                fontSize: 18,
+                fontSize: 19,
                 fontWeight: 900,
                 color: '#c8a050',
                 textAlign: 'center',
-                margin: '0 0 8px',
+                margin: '0 0 10px',
+                letterSpacing: '0.04em',
               }}
             >
               SPECIFICATION
             </p>
-            <div style={{ width: 60, height: 2, background: '#c8a050', margin: '0 auto 24px' }} />
-
-            {/* 스펙 행 */}
+            <div style={{ width: 60, height: 2, background: '#c8a050', margin: '0 auto 28px' }} />
             {content.specs.map((spec, i) => (
               <div
                 key={i}
                 style={{
                   display: 'flex',
-                  padding: '8px 60px',
+                  padding: '11px 60px',
                   alignItems: 'flex-start',
                 }}
               >
@@ -257,9 +294,10 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
                     fontSize: 14,
                     color: '#9998a8',
                     textAlign: 'right',
-                    width: 160,
+                    width: 180,
                     flexShrink: 0,
-                    paddingRight: 20,
+                    paddingRight: 24,
+                    fontWeight: 500,
                   }}
                 >
                   {spec.key}
@@ -270,8 +308,9 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
                     color: '#0f0f0f',
                     textAlign: 'left',
                     flex: 1,
-                    lineHeight: '22px',
+                    lineHeight: 1.65,
                     wordBreak: 'keep-all',
+                    fontWeight: 500,
                   }}
                 >
                   {spec.value}
@@ -281,27 +320,25 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           </div>
         )}
 
-        {/* 키워드 — 120px, #f8f7f4 */}
+        {/* 키워드 */}
         {content.keywords.length > 0 && (
           <div
             style={{
-              height: 120,
               background: '#f8f7f4',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0 30px',
+              padding: '36px 30px',
+              textAlign: 'center',
             }}
           >
             <p
               style={{
                 fontSize: 13,
                 color: '#555568',
-                textAlign: 'center',
-                lineHeight: '22px',
+                lineHeight: 1.9,
                 margin: 0,
                 maxWidth: 740,
+                marginInline: 'auto',
                 wordBreak: 'keep-all',
+                fontWeight: 500,
               }}
             >
               {content.keywords.map((k) => `#${k}`).join('  ')}
@@ -309,24 +346,22 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           </div>
         )}
 
-        {/* 가격 푸터 — 90px, #161616 */}
+        {/* 가격 푸터 */}
         <div
           style={{
-            height: 90,
+            padding: '36px 40px',
             background: '#161616',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
+            textAlign: 'center',
           }}
         >
           {price && (
             <p
               style={{
-                fontSize: 24,
+                fontSize: 28,
                 fontWeight: 900,
                 color: '#c8a050',
-                margin: '0 0 6px',
+                margin: '0 0 8px',
+                letterSpacing: '-0.02em',
               }}
             >
               ₩{Number(price.replace(/[^\d]/g, '') || 0).toLocaleString()}
@@ -335,10 +370,12 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           {content.caution && (
             <p
               style={{
-                fontSize: 13,
+                fontSize: 14,
                 color: '#ffffff',
-                textAlign: 'center',
+                lineHeight: 1.6,
                 margin: 0,
+                wordBreak: 'keep-all',
+                fontWeight: 400,
               }}
             >
               {content.caution}
@@ -346,7 +383,7 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           )}
         </div>
 
-        {/* 약관 이미지 (선택) */}
+        {/* 약관 이미지 */}
         {termsImage && (
           <img src={termsImage} alt="" style={{ width: '100%', display: 'block' }} />
         )}
@@ -356,5 +393,4 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
 )
 
 KoreanDefaultPreview.displayName = 'KoreanDefaultPreview'
-
 export default KoreanDefaultPreview

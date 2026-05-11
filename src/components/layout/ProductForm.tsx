@@ -94,26 +94,33 @@ export default function ProductForm() {
         )}
       </div>
 
-      {/* Template — 일본 마켓일 때만 (한국은 단일이라 숨김) */}
-      {availableTemplates.length > 1 && (
-        <div className="field-group">
-          <div className={labelCls}>
-            <span className="w-[5px] h-[5px] rounded-full bg-accent opacity-70" />템플릿
+      {/* Template — 일본 마켓일 때만 (한국은 단일이라 숨김)
+          현재 template이 새 플랫폼 호환 안되면 첫 번째 옵션을 표시 (값 자체는 유지) */}
+      {availableTemplates.length > 1 && (() => {
+        const effectiveTemplate: Template =
+          product.template && availableTemplates.includes(product.template)
+            ? product.template
+            : availableTemplates[0]
+        return (
+          <div className="field-group">
+            <div className={labelCls}>
+              <span className="w-[5px] h-[5px] rounded-full bg-accent opacity-70" />템플릿
+            </div>
+            <select
+              className={inputCls}
+              value={effectiveTemplate}
+              onChange={(e) => setProduct({ template: e.target.value as Template })}
+            >
+              {availableTemplates.map((t) => (
+                <option key={t} value={t}>{TEMPLATE_META[t].label}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-text3 mt-[5px] leading-[1.5]">
+              {TEMPLATE_META[effectiveTemplate]?.description}
+            </p>
           </div>
-          <select
-            className={inputCls}
-            value={product.template ?? availableTemplates[0]}
-            onChange={(e) => setProduct({ template: e.target.value as Template })}
-          >
-            {availableTemplates.map((t) => (
-              <option key={t} value={t}>{TEMPLATE_META[t].label}</option>
-            ))}
-          </select>
-          <p className="text-[10px] text-text3 mt-[5px] leading-[1.5]">
-            {TEMPLATE_META[product.template ?? availableTemplates[0]]?.description}
-          </p>
-        </div>
-      )}
+        )
+      })()}
 
     </div>
   )

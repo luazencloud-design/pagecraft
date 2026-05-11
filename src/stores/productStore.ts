@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { Product, Platform, Template } from '@/types/product'
+import type { Product, Platform } from '@/types/product'
 import { PLATFORM_META } from '@/types/product'
 
 interface ProductState {
@@ -39,22 +39,13 @@ export const useProductStore = create<ProductState>()(
     (set) => ({
       product: { ...defaultProduct },
       setProduct: (partial) =>
-        set((state) => {
-          // 플랫폼 변경 시 template 자동 보정 (다른 마켓의 템플릿이 남아있으면 기본값으로)
-          let nextProduct: Product = { ...state.product, ...partial }
-          if (partial.platform && partial.platform !== state.product.platform) {
-            const meta = PLATFORM_META[nextProduct.platform]
-            const currentTemplate: Template = nextProduct.template ?? 'korean-default'
-            const isCompatibleTemplate = meta && (
-              (meta.market === 'kr' && currentTemplate === 'korean-default') ||
-              (meta.market === 'jp' && (currentTemplate === 'qoo10-modern' || currentTemplate === 'qoo10-classic'))
-            )
-            if (!isCompatibleTemplate) {
-              nextProduct.template = meta?.defaultTemplate ?? 'korean-default'
-            }
-          }
-          return { product: nextProduct }
-        }),
+        set((state) => ({
+          // 템플릿은 플랫폼 변경 시 자동 변경하지 않음 — 사용자가 생성된 미리보기를
+          // 그대로 유지하길 원함. 새 플랫폼에 맞춰지는 시점은:
+          //   1) AI 생성 (자동으로 platform's defaultTemplate 적용)
+          //   2) 사용자가 수동으로 ProductForm 템플릿 드롭다운에서 변경
+          product: { ...state.product, ...partial },
+        })),
       resetProduct: () => set({ product: { ...defaultProduct } }),
     }),
     {

@@ -23,7 +23,7 @@ const LOADING_MESSAGES = [
 ]
 
 export function useAIGenerate() {
-  const { product } = useProductStore()
+  const { product, setProduct } = useProductStore()
   const { images } = useImageStore()
   const {
     setGeneratedContent,
@@ -118,6 +118,23 @@ export function useAIGenerate() {
       // 어느 플랫폼용으로 생성됐는지 기록 — 이후 플랫폼 변경 시 stale 배너 표시
       setGeneratedForPlatform(product.platform)
 
+      // 템플릿 정렬 — 현재 템플릿이 새 플랫폼에 호환되지 않으면 기본 템플릿으로 변경
+      // (큐텐 Modern↔Classic 같이 호환되는 경우는 사용자 선택 보존)
+      const platformDefault = platformMeta?.defaultTemplate
+      if (platformDefault && product.template) {
+        const market = platformMeta.market
+        const isCompatible =
+          (market === 'kr' && product.template === 'korean-default') ||
+          (market === 'jp' && (product.template === 'qoo10-modern' || product.template === 'qoo10-classic')) ||
+          (market === 'us' && product.template === 'ebay-default')
+        if (!isCompatible) {
+          setProduct({ template: platformDefault })
+        }
+      } else if (platformDefault) {
+        // template 미설정 → 기본 적용
+        setProduct({ template: platformDefault })
+      }
+
       // 트렌딩 태그 마킹은 활성 언어 결과에 한해 (한국어 + 자동완성 있을 때만)
       const activeAll = byLang[targetLang]
       if (useAutocomplete && activeAll?.tags && activeAll.tags.length > 0) {
@@ -148,6 +165,7 @@ export function useAIGenerate() {
   }, [
     images,
     product,
+    setProduct,
     setGeneratedContent,
     setGeneratedTitles,
     setGeneratedTags,
