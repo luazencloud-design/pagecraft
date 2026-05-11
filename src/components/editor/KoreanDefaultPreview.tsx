@@ -73,7 +73,7 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
         >
           <p
             style={{
-              fontSize: 36,
+              fontSize: 30,
               fontWeight: 900,
               color: '#c8a050',
               textAlign: 'center',
@@ -88,7 +88,7 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           {content.subtitle && (
             <p
               style={{
-                fontSize: 18,
+                fontSize: 16,
                 color: '#b8b7c8',
                 textAlign: 'center',
                 margin: '12px 0 0',
@@ -121,7 +121,7 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           <div style={{ width: 60, height: 3, background: '#c8a050', margin: '0 auto 24px' }} />
           <p
             style={{
-              fontSize: 30,
+              fontSize: 26,
               fontWeight: 900,
               color: '#0f0f0f',
               lineHeight: 1.45,
@@ -159,7 +159,7 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
               >
                 <p
                   style={{
-                    fontSize: 44,
+                    fontSize: 38,
                     fontWeight: 900,
                     color: '#c8a050',
                     margin: '0 0 14px',
@@ -172,7 +172,7 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
                 <div style={{ width: 30, height: 2, background: '#c8a050', margin: '0 0 14px' }} />
                 <p
                   style={{
-                    fontSize: 17,
+                    fontSize: 15,
                     fontWeight: 600,
                     color: '#0f0f0f',
                     textAlign: 'center',
@@ -200,7 +200,7 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           >
             <p
               style={{
-                fontSize: 28,
+                fontSize: 24,
                 color: '#0f0f0f',
                 lineHeight: 1.5,
                 margin: 0,
@@ -236,7 +236,7 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
                 >
                   <p
                     style={{
-                      fontSize: 24,
+                      fontSize: 20,
                       fontWeight: 800,
                       color: '#0f0f0f',
                       lineHeight: 1.4,
@@ -258,7 +258,7 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           <div style={{ background: '#ffffff', padding: '52px 0' }}>
             <p
               style={{
-                fontSize: 22,
+                fontSize: 19,
                 fontWeight: 900,
                 color: '#c8a050',
                 textAlign: 'center',
@@ -280,7 +280,7 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
               >
                 <span
                   style={{
-                    fontSize: 16,
+                    fontSize: 14,
                     color: '#9998a8',
                     textAlign: 'right',
                     width: 180,
@@ -293,7 +293,7 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
                 </span>
                 <span
                   style={{
-                    fontSize: 16,
+                    fontSize: 14,
                     color: '#0f0f0f',
                     textAlign: 'left',
                     flex: 1,
@@ -320,7 +320,7 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           >
             <p
               style={{
-                fontSize: 15,
+                fontSize: 13,
                 color: '#555568',
                 lineHeight: 1.9,
                 margin: 0,
@@ -346,7 +346,7 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
           {price && (
             <p
               style={{
-                fontSize: 32,
+                fontSize: 28,
                 fontWeight: 900,
                 color: '#c8a050',
                 margin: '0 0 8px',
