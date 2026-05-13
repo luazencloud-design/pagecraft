@@ -50,7 +50,6 @@ const Qoo10ClassicPreview = forwardRef<HTMLDivElement, Qoo10ClassicPreviewProps>
             background: 'linear-gradient(180deg, #fdf3e7 0%, #fae5d2 100%)',
             padding: '80px 40px 60px',
             textAlign: 'center',
-            position: 'relative',
           }}
         >
           {/* 거대 영문 무드 — 코랄 액센트 */}
@@ -282,7 +281,6 @@ const Qoo10ClassicPreview = forwardRef<HTMLDivElement, Qoo10ClassicPreviewProps>
             background: 'linear-gradient(135deg, #c08770 0%, #a04030 100%)',
             padding: '52px 40px',
             textAlign: 'center',
-            position: 'relative',
           }}
         >
           {yenPrice && (
