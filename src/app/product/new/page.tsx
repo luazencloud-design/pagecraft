@@ -13,7 +13,6 @@ import BgRemovalToggle from '@/components/image/BgRemovalToggle'
 import AiModelToggle from '@/components/image/AiModelToggle'
 import ResultTabs from '@/components/editor/ResultTabs'
 import DetailPagePreview from '@/components/editor/DetailPagePreview'
-import ThumbnailPreview from '@/components/editor/ThumbnailPreview'
 import DraftSelector from '@/components/layout/DraftSelector'
 import Button from '@/components/ui/Button'
 import { useProductStore } from '@/stores/productStore'
@@ -80,8 +79,6 @@ export default function ProductNewPage() {
 
   // 미리보기 DOM 캡처용 ref — DetailPagePreview의 wrapper div에 연결
   const previewRef = useRef<HTMLDivElement>(null)
-  // 600×600 썸네일 캡처용 ref — 화면 밖 hidden mount
-  const thumbnailRef = useRef<HTMLDivElement>(null)
 
   const skipAuth = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
 
@@ -170,64 +167,6 @@ export default function ProductNewPage() {
     if (!generatedContent) return
     const ok = await copyEbayToClipboard(generatedContent, product.price)
     if (ok) showToast('eBay 페이지 복사됨 — 설명창에 붙여넣으세요')
-  }
-
-  /**
-   * 600×600 썸네일(대표 이미지) PNG 다운로드 — 전 플랫폼 공통
-   * 화면 밖 hidden ThumbnailPreview를 html-to-image로 캡처.
-   * 출력: 정확히 600×600 (pixelRatio: 1)
-   */
-  const handleDownloadThumbnail = async () => {
-    if (!generatedContent) return
-    const node = thumbnailRef.current
-    if (!node) {
-      showToast('썸네일 미리보기를 찾지 못했습니다', 'error')
-      return
-    }
-    showToast('썸네일 생성 중...')
-    try {
-      // 폰트 로드 보장 — 상세페이지 다운로드와 동일 패턴
-      if (typeof document !== 'undefined' && document.fonts) {
-        try {
-          await Promise.all([
-            document.fonts.load('700 13px "Pretendard Variable"'),
-            document.fonts.load('900 34px "Pretendard Variable"'),
-            document.fonts.load('900 34px "Noto Sans JP"'),
-          ])
-          await document.fonts.ready
-        } catch {
-          /* 폰트 실패해도 진행 */
-        }
-      }
-      const { toPng } = await import('html-to-image')
-      const captureOptions = {
-        backgroundColor: '#ffffff',
-        // 600×600 정확히 — pixelRatio 1
-        pixelRatio: 1,
-        cacheBust: true,
-        width: 600,
-        height: 600,
-      }
-      let dataUrl: string
-      try {
-        dataUrl = await toPng(node, { ...captureOptions, skipFonts: false })
-      } catch (err) {
-        console.warn('폰트 임베딩 실패, skipFonts로 재시도:', err)
-        dataUrl = await toPng(node, { ...captureOptions, skipFonts: true })
-      }
-      const a = document.createElement('a')
-      a.href = dataUrl
-      const safeName = (generatedContent.product_name || product.name || '상품').replace(
-        /[/\\?%*:|"<>]/g,
-        '',
-      )
-      a.download = `썸네일_${safeName}.png`
-      a.click()
-      showToast('썸네일 다운로드 완료')
-    } catch (err) {
-      console.error('썸네일 다운로드 실패:', err)
-      showToast('썸네일 다운로드 실패', 'error')
-    }
   }
 
   /**
@@ -355,16 +294,6 @@ export default function ProductNewPage() {
                     🎨 eBay 서식 그대로 복사
                   </button>
                 )}
-                {/* 600×600 썸네일(대표이미지) 다운로드 — 전 플랫폼 공통 */}
-                <button
-                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface3)' }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface2)' }}
-                  onClick={handleDownloadThumbnail}
-                  title="600×600 정사각 썸네일 — 검색결과 대표 이미지용"
-                >
-                  🖼 썸네일 저장
-                </button>
                 {/* HTML 다운로드 — 전 플랫폼 공통, 원본 화질 유지 + 브라우저에서 바로 열어볼 수 있음 */}
                 <button
                   style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
@@ -486,30 +415,6 @@ export default function ProductNewPage() {
                   template={product.template}
                   storeIntroImage={storeIntroImage}
                   termsImage={termsImage}
-                />
-              </div>
-            )}
-
-            {/* 썸네일 캡처용 hidden 마운트 — 화면 밖에 600×600 그대로 렌더링
-                다운로드 버튼 누르면 thumbnailRef로 캡처 */}
-            {previewContent && (
-              <div
-                style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: -9999,
-                  width: 600,
-                  height: 600,
-                  pointerEvents: 'none',
-                  opacity: 0,
-                }}
-                aria-hidden="true"
-              >
-                <ThumbnailPreview
-                  ref={thumbnailRef}
-                  content={previewContent}
-                  image={images[0]?.dataUrl}
-                  lang={currentLang}
                 />
               </div>
             )}
