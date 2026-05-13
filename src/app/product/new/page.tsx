@@ -24,6 +24,7 @@ import { showToast } from '@/components/ui/Toast'
 import { PLATFORM_META } from '@/types/product'
 import { copyEbayToClipboard } from '@/lib/ebayHtml'
 import { downloadHtmlSnapshot } from '@/lib/htmlExport'
+import { exportQoo10Zip } from '@/lib/qoo10Export'
 import type { GeneratedContent } from '@/types/ai'
 
 export default function ProductNewPage() {
@@ -170,6 +171,34 @@ export default function ProductNewPage() {
   }
 
   /**
+   * 큐텐 ZIP 다운로드 — 큐텐 전용
+   * 상세페이지를 1MB 미만 JPEG 청크 N장으로 슬라이스 + HTML placeholder + 사용법 패키징.
+   * 큐텐은 base64 인라인 이미지 차단 — 셀러가 이미지 따로 업로드 후 URL 박는 워크플로우 필요.
+   */
+  const handleDownloadQoo10Zip = async () => {
+    if (!generatedContent) return
+    const node = previewRef.current
+    if (!node) {
+      showToast('미리보기를 찾지 못했습니다', 'error')
+      return
+    }
+    try {
+      const lang: 'ja' | 'ko' = currentLang === 'ko' ? 'ko' : 'ja'
+      const result = await exportQoo10Zip(node, {
+        productName: generatedContent.product_name || product.name || '상품',
+        lang,
+        onProgress: (msg) => showToast(msg),
+      })
+      if (result.success) {
+        showToast(`큐텐 ZIP 다운로드 완료 — 이미지 ${result.chunkCount}장 / ${result.totalSizeKB}KB`)
+      }
+    } catch (err) {
+      console.error('큐텐 ZIP 익스포트 실패:', err)
+      showToast('큐텐 ZIP 다운로드 실패', 'error')
+    }
+  }
+
+  /**
    * HTML 파일로 다운로드 — 전 플랫폼 공통
    * 미리보기 DOM의 outerHTML을 standalone html 문서로 패키징.
    * 이미지는 dataUrl로 박혀있어서 인터넷 없어도 그대로 보임 (폰트만 CDN).
@@ -292,6 +321,18 @@ export default function ProductNewPage() {
                     title="eBay 설명창에 굵기·불릿·구분선 그대로 붙여넣기 (HTML 서식 보존)"
                   >
                     🎨 eBay 서식 그대로 복사
+                  </button>
+                )}
+                {/* 큐텐(JP) 전용 — 슬라이스 이미지 + placeholder HTML ZIP */}
+                {PLATFORM_META[product.platform]?.market === 'jp' && (
+                  <button
+                    style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'; (e.currentTarget as HTMLButtonElement).style.color = '#0c0c10' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)' }}
+                    onClick={handleDownloadQoo10Zip}
+                    title="큐텐 업로드용 ZIP — 1MB 미만 슬라이스 이미지 + HTML + 사용법"
+                  >
+                    📦 큐텐 ZIP
                   </button>
                 )}
                 {/* HTML 다운로드 — 전 플랫폼 공통, 원본 화질 유지 + 브라우저에서 바로 열어볼 수 있음 */}
