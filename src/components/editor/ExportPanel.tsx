@@ -6,7 +6,7 @@ import { useImageStore } from '@/stores/imageStore'
 import { useProductStore } from '@/stores/productStore'
 import { showToast } from '@/components/ui/Toast'
 
-/** 1000x1000 썸네일 크롭 편집기 */
+/** 600x600 썸네일 크롭 편집기 */
 function ThumbnailEditor() {
   const { images, thumbnailImageId, thumbnailDataUrl, setThumbnailDataUrl } = useImageStore()
   const sourceImage = images.find((img) => img.id === thumbnailImageId)
@@ -23,10 +23,10 @@ function ThumbnailEditor() {
     img.onload = () => {
       setImgEl(img)
       // 초기 오프셋: 중앙 맞춤
-      const scale = Math.max(1000 / img.width, 1000 / img.height)
+      const scale = Math.max(600 / img.width, 600 / img.height)
       const sw = img.width * scale
       const sh = img.height * scale
-      setOffset({ x: (1000 - sw) / 2, y: (1000 - sh) / 2 })
+      setOffset({ x: (600 - sw) / 2, y: (600 - sh) / 2 })
     }
     img.src = sourceImage.dataUrl
   }, [sourceImage])
@@ -35,11 +35,11 @@ function ThumbnailEditor() {
   const draw = useCallback(() => {
     if (!canvasRef.current || !imgEl) return
     const ctx = canvasRef.current.getContext('2d')!
-    const scale = Math.max(1000 / imgEl.width, 1000 / imgEl.height)
+    const scale = Math.max(600 / imgEl.width, 600 / imgEl.height)
     const sw = imgEl.width * scale
     const sh = imgEl.height * scale
     ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, 1000, 1000)
+    ctx.fillRect(0, 0, 600, 600)
     ctx.drawImage(imgEl, offset.x, offset.y, sw, sh)
   }, [imgEl, offset])
 
@@ -74,7 +74,7 @@ function ThumbnailEditor() {
       .replace(/[/\\?%*:|"<>]/g, '')
     const a = document.createElement('a')
     a.href = src
-    a.download = `${name}_1000x1000.jpg`
+    a.download = `${name}_600x600.jpg`
     a.click()
     showToast('썸네일 다운로드 시작')
   }
@@ -99,15 +99,15 @@ function ThumbnailEditor() {
       >
         <canvas
           ref={canvasRef}
-          width={1000}
-          height={1000}
+          width={600}
+          height={600}
           style={{ width: '100%', height: '100%' }}
         />
         {/* 가이드 */}
         <div style={{ position: 'absolute', inset: 0, border: '2px dashed var(--accent)', borderRadius: 8, pointerEvents: 'none', opacity: 0.4 }} />
       </div>
       <p style={{ fontSize: 10, color: 'var(--text3)', textAlign: 'center', marginTop: 6 }}>
-        드래그하여 위치 조절 · 1000×1000px
+        드래그하여 위치 조절 · 600×600px
       </p>
 
       {/* 버튼 */}
@@ -143,7 +143,7 @@ function ThumbnailEditor() {
 export default function ExportPanel() {
   return (
     <div className="space-y-2">
-      <p className="text-[10px] font-bold text-text3 uppercase tracking-[2px] mb-[14px]">썸네일 (1000×1000)</p>
+      <p className="text-[10px] font-bold text-text3 uppercase tracking-[2px] mb-[14px]">썸네일 (600×600)</p>
       <ThumbnailEditor />
     </div>
   )
