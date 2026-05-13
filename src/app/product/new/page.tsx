@@ -23,6 +23,7 @@ import { useAIGenerate } from '@/hooks/useAIGenerate'
 import { showToast } from '@/components/ui/Toast'
 import { PLATFORM_META } from '@/types/product'
 import { copyEbayToClipboard } from '@/lib/ebayHtml'
+import { downloadHtmlSnapshot } from '@/lib/htmlExport'
 import type { GeneratedContent } from '@/types/ai'
 
 export default function ProductNewPage() {
@@ -168,6 +169,27 @@ export default function ProductNewPage() {
     if (ok) showToast('eBay 페이지 복사됨 — 설명창에 붙여넣으세요')
   }
 
+  /**
+   * HTML 파일로 다운로드 — 전 플랫폼 공통
+   * 미리보기 DOM의 outerHTML을 standalone html 문서로 패키징.
+   * 이미지는 dataUrl로 박혀있어서 인터넷 없어도 그대로 보임 (폰트만 CDN).
+   */
+  const handleDownloadHtml = () => {
+    if (!generatedContent) return
+    const node = previewRef.current
+    if (!node) {
+      showToast('미리보기를 찾지 못했습니다', 'error')
+      return
+    }
+    const platformLang = PLATFORM_META[product.platform]?.lang ?? 'ko'
+    const ok = downloadHtmlSnapshot(node, {
+      productName: generatedContent.product_name || product.name || '상품',
+      lang: platformLang,
+    })
+    if (ok) showToast('HTML 다운로드 완료')
+    else showToast('HTML 다운로드 실패', 'error')
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <Header />
@@ -272,6 +294,16 @@ export default function ProductNewPage() {
                     🎨 eBay 서식 그대로 복사
                   </button>
                 )}
+                {/* HTML 다운로드 — 전 플랫폼 공통, 원본 화질 유지 + 브라우저에서 바로 열어볼 수 있음 */}
+                <button
+                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface3)' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface2)' }}
+                  onClick={handleDownloadHtml}
+                  title="원본 HTML 파일로 다운로드 — 브라우저에서 바로 열기 가능"
+                >
+                  📄 HTML 저장
+                </button>
                 <button
                   style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, background: 'var(--accent)', border: '1px solid var(--accent)', color: '#0c0c10', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.2s' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent2)' }}
