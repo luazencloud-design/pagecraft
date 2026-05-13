@@ -183,10 +183,8 @@ export default function ProductNewPage() {
       return
     }
     try {
-      const lang: 'ja' | 'ko' = currentLang === 'ko' ? 'ko' : 'ja'
       const result = await exportQoo10Zip(node, {
         productName: generatedContent.product_name || product.name || '상품',
-        lang,
         onProgress: (msg) => showToast(msg),
       })
       if (result.success) {
