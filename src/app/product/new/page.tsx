@@ -183,12 +183,17 @@ export default function ProductNewPage() {
       return
     }
     try {
-      const result = await exportQoo10Zip(node, {
+      const lang: 'ja' | 'ko' = currentLang === 'ko' ? 'ko' : 'ja'
+      const result = await exportQoo10Zip({
+        node,
         productName: generatedContent.product_name || product.name || '상품',
+        lang,
         onProgress: (msg) => showToast(msg),
       })
       if (result.success) {
-        showToast(`큐텐 ZIP 다운로드 완료 — 이미지 ${result.chunkCount}장 / ${result.totalSizeKB}KB`)
+        showToast(
+          `큐텐 ZIP 다운로드 완료 — 이미지 ${result.imageCount}장 (${result.totalSizeKB}KB)`,
+        )
       }
     } catch (err) {
       console.error('큐텐 ZIP 익스포트 실패:', err)
