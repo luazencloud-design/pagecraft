@@ -481,9 +481,17 @@ export default function ProductNewPage() {
               </div>
             )}
 
-            {/* 실시간 HTML 미리보기 — generatedContent 변경 시 자동 리렌더링 */}
+            {/* 실시간 HTML 미리보기 — generatedContent 변경 시 자동 리렌더링
+                템플릿 폭이 다르므로(쿠팡/이베이 800, 큐텐 820) 프레임 660px에 맞게 zoom 동적 계산 */}
             {!isGenerating && previewContent && (
-              <div style={{ zoom: 0.825 }}>
+              <div
+                style={{
+                  zoom:
+                    product.template === 'qoo10-modern' || product.template === 'qoo10-classic'
+                      ? 660 / 820
+                      : 660 / 800,
+                }}
+              >
                 <DetailPagePreview
                   ref={previewRef}
                   content={previewContent}
