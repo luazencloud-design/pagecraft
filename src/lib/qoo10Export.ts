@@ -195,26 +195,79 @@ export async function exportQoo10HybridZip({
  * 방식 B — Sliced (통째 슬라이스)
  * ───────────────────────────────────────────── */
 
-async function sliceCanvasToJpegs(
+/**
+ * 미리보기 root의 직계 자식 경계를 캔버스 Y 좌표로 변환해서 반환
+ *
+ * 직계 자식 = 헤더 / 메인이미지 / 메인카피 / 셀링포인트 / 스펙 / 푸터 등
+ * 이 경계에서만 자르면 사진 한가운데를 가로지르지 않고,
+ * Qoo10가 행간에 추가하는 여백도 자연스러운 섹션 사이에 들어감.
+ */
+function getSafeCutBoundaries(node: HTMLElement, canvasHeight: number): number[] {
+  const cssHeights: number[] = []
+  let runningCss = 0
+  const children = Array.from(node.children) as HTMLElement[]
+  for (const child of children) {
+    runningCss += child.offsetHeight
+    cssHeights.push(runningCss)
+  }
+  // zoom/transform 영향 무시: 누적 자식 높이 합 ≠ canvas height일 때 정규화
+  // (html-to-image는 natural CSS 사이즈로 캡처하지만 외부 zoom wrapper가 있을 수도 있음)
+  const totalCss = runningCss || canvasHeight
+  const scale = canvasHeight / totalCss
+  const safeYs = [0, ...cssHeights.map((y) => Math.round(y * scale))]
+  // 마지막 자식 합이 canvasHeight와 살짝 다를 경우 마지막은 canvasHeight로 고정
+  safeYs[safeYs.length - 1] = canvasHeight
+  return safeYs
+}
+
+/**
+ * 안전 경계점들 중에서 chunk size 제한에 맞춰 자를 위치를 선택
+ *
+ * 알고리즘:
+ *   - cursor부터 cursor + targetHeight 범위 안에 안전 경계가 있으면 그중 가장 큰 것 선택
+ *   - 범위 안에 안전 경계가 없으면 (= 한 섹션이 targetHeight보다 큼) 그 섹션 끝까지 통째 한 청크
+ */
+function planSafeCuts(safeYs: number[], targetHeight: number, totalHeight: number): number[] {
+  const cuts: number[] = []
+  let cursor = 0
+  while (cursor < totalHeight) {
+    const maxCut = cursor + targetHeight
+    const inRange = safeYs.filter((y) => y > cursor && y <= maxCut)
+    let chosenCut: number
+    if (inRange.length > 0) {
+      chosenCut = inRange[inRange.length - 1] // 범위 내 가장 큰 = 청크 최대 활용
+    } else {
+      // 범위 너머의 첫 안전 경계 (= 큰 섹션 통째)
+      const next = safeYs.find((y) => y > cursor)
+      chosenCut = next ?? totalHeight
+    }
+    if (chosenCut <= cursor) break
+    cuts.push(chosenCut)
+    cursor = chosenCut
+  }
+  return cuts
+}
+
+async function sliceCanvasByPlan(
   source: HTMLCanvasElement,
-  chunkHeight: number,
+  cuts: number[],
 ): Promise<Blob[]> {
   const out: Blob[] = []
-  const total = source.height
-  const width = source.width
-
-  for (let y = 0; y < total; y += chunkHeight) {
-    const h = Math.min(chunkHeight, total - y)
+  let prev = 0
+  for (const cut of cuts) {
+    const h = cut - prev
+    if (h <= 0) continue
     const c = document.createElement('canvas')
-    c.width = width
+    c.width = source.width
     c.height = h
     const ctx = c.getContext('2d')
     if (!ctx) continue
     ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, width, h)
-    ctx.drawImage(source, 0, y, width, h, 0, 0, width, h)
+    ctx.fillRect(0, 0, c.width, h)
+    ctx.drawImage(source, 0, prev, c.width, h, 0, 0, c.width, h)
     const blob = await canvasToJpegUnder1MB(c, 0.9)
     if (blob) out.push(blob)
+    prev = cut
   }
   return out
 }
@@ -281,11 +334,13 @@ export async function exportQoo10SlicedZip({
     cacheBust: true,
   })
 
-  const physicalChunkHeight = Math.round(chunkHeight * pixelRatio)
-  onProgress?.(
-    `이미지 슬라이싱 중... (총 ${Math.ceil(fullCanvas.height / physicalChunkHeight)}장)`,
-  )
-  const blobs = await sliceCanvasToJpegs(fullCanvas, physicalChunkHeight)
+  // 안전 경계(직계 자식 사이) 기반 스마트 컷 — 사진 한가운데 통과 X
+  const safeYs = getSafeCutBoundaries(node, fullCanvas.height)
+  const physicalTarget = Math.round(chunkHeight * pixelRatio)
+  const cuts = planSafeCuts(safeYs, physicalTarget, fullCanvas.height)
+
+  onProgress?.(`이미지 슬라이싱 중... (총 ${cuts.length}장 — 섹션 경계 기준)`)
+  const blobs = await sliceCanvasByPlan(fullCanvas, cuts)
 
   onProgress?.('ZIP 패키징 중...')
   const fileNames = blobs.map((_, i) => `상세_${String(i + 1).padStart(2, '0')}.jpg`)
