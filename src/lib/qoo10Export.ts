@@ -273,50 +273,16 @@ async function sliceCanvasByPlan(
 }
 
 /**
- * 슬라이스 이미지를 <table>로 stacked — 큐텐 에디터에서 이미지 사이 여백 없이 표시
- *
- * 핵심:
- *   - cellspacing="0" cellpadding="0" 의 HTML 속성으로 셀 간격 제거 (CSS strip에 안 죽음)
- *   - <img> 태그 사이에 공백/줄바꿈 없음 (text node로 인한 인라인 여백 방지)
- *   - 각 행마다 <tr><td><img></td></tr> — 한 줄 단위로 stacked
- */
-function buildSlicedTableHtml(
-  fileNames: string[],
-  productName: string,
-  lang: 'ja' | 'ko',
-): string {
-  const rows = fileNames
-    .map(
-      (name) =>
-        `<tr><td style="padding:0;font-size:0;line-height:0;"><img src="${name}" width="820" style="display:block;width:820px;height:auto;margin:0;padding:0;border:0;vertical-align:top;"></td></tr>`,
-    )
-    .join('')
-
-  return `<!doctype html>
-<html lang="${lang}">
-<head>
-<meta charset="utf-8">
-<title>${escapeHtml(productName)}</title>
-</head>
-<body style="margin:0;padding:0;text-align:center;">
-<table border="0" cellpadding="0" cellspacing="0" align="center" style="border-collapse:collapse;border-spacing:0;margin:0 auto;width:820px;">
-<tbody>${rows}</tbody>
-</table>
-</body>
-</html>`
-}
-
-/**
  * 방식 B — Sliced (통째 슬라이스) ZIP 익스포트
+ * HTML 없이 이미지만. 큐텐 에디터에서 상세_01.jpg ~ NN.jpg 순서대로 업로드하면 끝.
  */
 export async function exportQoo10SlicedZip({
   node,
   productName,
-  lang = 'ja',
   onProgress,
   chunkHeight = 1200,
   pixelRatio = 1.5,
-}: Qoo10ExportInput & {
+}: Omit<Qoo10ExportInput, 'lang'> & {
   chunkHeight?: number
   pixelRatio?: number
 }): Promise<{
@@ -344,11 +310,10 @@ export async function exportQoo10SlicedZip({
 
   onProgress?.('ZIP 패키징 중...')
   const fileNames = blobs.map((_, i) => `상세_${String(i + 1).padStart(2, '0')}.jpg`)
-  const html = buildSlicedTableHtml(fileNames, productName, lang)
 
+  // 슬라이스 방식은 큐텐 에디터에서 이미지만 순서대로 업로드하면 끝 — HTML 없음
   const JSZip = (await import('jszip')).default
   const zip = new JSZip()
-  zip.file(`${safeFileName(productName)}.html`, html)
   blobs.forEach((blob, i) => zip.file(fileNames[i], blob))
 
   const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'STORE' })

@@ -207,11 +207,9 @@ export default function ProductNewPage() {
     const node = previewRef.current
     if (!node) return showToast('미리보기를 찾지 못했습니다', 'error')
     try {
-      const lang: 'ja' | 'ko' = currentLang === 'ko' ? 'ko' : 'ja'
       const result = await exportQoo10SlicedZip({
         node,
         productName: generatedContent.product_name || product.name || '상품',
-        lang,
         onProgress: (msg) => showToast(msg),
       })
       if (result.success) {
