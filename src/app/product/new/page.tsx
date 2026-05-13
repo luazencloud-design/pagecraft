@@ -24,7 +24,7 @@ import { showToast } from '@/components/ui/Toast'
 import { PLATFORM_META } from '@/types/product'
 import { copyEbayToClipboard } from '@/lib/ebayHtml'
 import { downloadHtmlSnapshot } from '@/lib/htmlExport'
-import { exportQoo10Zip } from '@/lib/qoo10Export'
+import { exportQoo10HybridZip, exportQoo10SlicedZip } from '@/lib/qoo10Export'
 import type { GeneratedContent } from '@/types/ai'
 
 export default function ProductNewPage() {
@@ -171,33 +171,55 @@ export default function ProductNewPage() {
   }
 
   /**
-   * 큐텐 ZIP 다운로드 — 큐텐 전용
-   * 상세페이지를 1MB 미만 JPEG 청크 N장으로 슬라이스 + HTML placeholder + 사용법 패키징.
-   * 큐텐은 base64 인라인 이미지 차단 — 셀러가 이미지 따로 업로드 후 URL 박는 워크플로우 필요.
+   * 큐텐 ZIP — Hybrid 방식 (텍스트는 HTML, 이미지는 분리)
+   *   장점: 텍스트/스타일 보존, 이미지 위치만 교체
+   *   단점: placeholder 자리 → 이미지로 교체하는 수작업 N번
    */
-  const handleDownloadQoo10Zip = async () => {
+  const handleDownloadQoo10HybridZip = async () => {
     if (!generatedContent) return
     const node = previewRef.current
-    if (!node) {
-      showToast('미리보기를 찾지 못했습니다', 'error')
-      return
-    }
+    if (!node) return showToast('미리보기를 찾지 못했습니다', 'error')
     try {
       const lang: 'ja' | 'ko' = currentLang === 'ko' ? 'ko' : 'ja'
-      const result = await exportQoo10Zip({
+      const result = await exportQoo10HybridZip({
         node,
         productName: generatedContent.product_name || product.name || '상품',
         lang,
         onProgress: (msg) => showToast(msg),
       })
       if (result.success) {
-        showToast(
-          `큐텐 ZIP 다운로드 완료 — 이미지 ${result.imageCount}장 (${result.totalSizeKB}KB)`,
-        )
+        showToast(`큐텐 HTML ZIP 완료 — 이미지 ${result.imageCount}장 (${result.totalSizeKB}KB)`)
       }
     } catch (err) {
-      console.error('큐텐 ZIP 익스포트 실패:', err)
+      console.error('큐텐 Hybrid ZIP 실패:', err)
       showToast('큐텐 ZIP 다운로드 실패', 'error')
+    }
+  }
+
+  /**
+   * 큐텐 ZIP — Sliced 방식 (상세페이지 통째 슬라이스)
+   *   장점: HTML 안의 <img>를 한번에 큐텐 CDN URL로 교체하면 끝 (placeholder 작업 X)
+   *         이미지 사이 여백 없도록 <table> 래핑
+   *   단점: 텍스트 검색 안 됨 (이미지로 변환됨)
+   */
+  const handleDownloadQoo10SlicedZip = async () => {
+    if (!generatedContent) return
+    const node = previewRef.current
+    if (!node) return showToast('미리보기를 찾지 못했습니다', 'error')
+    try {
+      const lang: 'ja' | 'ko' = currentLang === 'ko' ? 'ko' : 'ja'
+      const result = await exportQoo10SlicedZip({
+        node,
+        productName: generatedContent.product_name || product.name || '상품',
+        lang,
+        onProgress: (msg) => showToast(msg),
+      })
+      if (result.success) {
+        showToast(`큐텐 슬라이스 ZIP 완료 — ${result.chunkCount}장 (${result.totalSizeKB}KB)`)
+      }
+    } catch (err) {
+      console.error('큐텐 Sliced ZIP 실패:', err)
+      showToast('큐텐 슬라이스 ZIP 실패', 'error')
     }
   }
 
@@ -326,17 +348,28 @@ export default function ProductNewPage() {
                     🎨 eBay 서식 그대로 복사
                   </button>
                 )}
-                {/* 큐텐(JP) 전용 — 슬라이스 이미지 + placeholder HTML ZIP */}
+                {/* 큐텐(JP) 전용 — 2가지 방식 ZIP */}
                 {PLATFORM_META[product.platform]?.market === 'jp' && (
-                  <button
-                    style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'; (e.currentTarget as HTMLButtonElement).style.color = '#0c0c10' }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)' }}
-                    onClick={handleDownloadQoo10Zip}
-                    title="큐텐 업로드용 ZIP — 1MB 미만 슬라이스 이미지 + HTML + 사용법"
-                  >
-                    📦 큐텐 ZIP
-                  </button>
+                  <>
+                    <button
+                      style={{ padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'; (e.currentTarget as HTMLButtonElement).style.color = '#0c0c10' }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)' }}
+                      onClick={handleDownloadQoo10HybridZip}
+                      title="텍스트는 HTML로, 이미지는 별도 N장. 큐텐 에디터에서 placeholder 박스 자리에 이미지 끼워넣기"
+                    >
+                      📦 HTML+이미지
+                    </button>
+                    <button
+                      style={{ padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'; (e.currentTarget as HTMLButtonElement).style.color = '#0c0c10' }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)' }}
+                      onClick={handleDownloadQoo10SlicedZip}
+                      title="상세페이지 통째 슬라이스. <table>로 묶어서 이미지 사이 여백 없음. HTML img src만 큐텐 URL로 일괄 교체하면 끝"
+                    >
+                      🖼 슬라이스
+                    </button>
+                  </>
                 )}
                 {/* HTML 다운로드 — 전 플랫폼 공통, 원본 화질 유지 + 브라우저에서 바로 열어볼 수 있음 */}
                 <button
