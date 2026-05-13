@@ -36,7 +36,7 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
       <div
         ref={ref}
         style={{
-          width: 800,
+          width: 820,
           fontFamily: FONT_BODY,
           lineHeight: 1.5,
           overflow: 'hidden',

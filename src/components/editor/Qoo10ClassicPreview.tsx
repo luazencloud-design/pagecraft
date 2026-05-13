@@ -31,7 +31,7 @@ const Qoo10ClassicPreview = forwardRef<HTMLDivElement, Qoo10ClassicPreviewProps>
       <div
         ref={ref}
         style={{
-          width: 800,
+          width: 820,
           fontFamily: "'Pretendard Variable', 'Pretendard', 'Noto Sans JP', 'Noto Sans KR', 'Hiragino Sans', sans-serif",
           lineHeight: 1.5,
           overflow: 'hidden',
