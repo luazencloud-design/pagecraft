@@ -23,6 +23,8 @@ import { useAIGenerate } from '@/hooks/useAIGenerate'
 import { showToast } from '@/components/ui/Toast'
 import { PLATFORM_META } from '@/types/product'
 import { copyEbayToClipboard } from '@/lib/ebayHtml'
+import { downloadHtmlSnapshot } from '@/lib/htmlExport'
+import { exportQoo10HybridZip, exportQoo10SlicedZip } from '@/lib/qoo10Export'
 import type { GeneratedContent } from '@/types/ai'
 
 export default function ProductNewPage() {
@@ -168,6 +170,78 @@ export default function ProductNewPage() {
     if (ok) showToast('eBay 페이지 복사됨 — 설명창에 붙여넣으세요')
   }
 
+  /**
+   * 큐텐 ZIP — Hybrid 방식 (텍스트는 HTML, 이미지는 분리)
+   *   장점: 텍스트/스타일 보존, 이미지 위치만 교체
+   *   단점: placeholder 자리 → 이미지로 교체하는 수작업 N번
+   */
+  const handleDownloadQoo10HybridZip = async () => {
+    if (!generatedContent) return
+    const node = previewRef.current
+    if (!node) return showToast('미리보기를 찾지 못했습니다', 'error')
+    try {
+      const lang: 'ja' | 'ko' = currentLang === 'ko' ? 'ko' : 'ja'
+      const result = await exportQoo10HybridZip({
+        node,
+        productName: generatedContent.product_name || product.name || '상품',
+        lang,
+        onProgress: (msg) => showToast(msg),
+      })
+      if (result.success) {
+        showToast(`큐텐 HTML ZIP 완료 — 이미지 ${result.imageCount}장 (${result.totalSizeKB}KB)`)
+      }
+    } catch (err) {
+      console.error('큐텐 Hybrid ZIP 실패:', err)
+      showToast('큐텐 ZIP 다운로드 실패', 'error')
+    }
+  }
+
+  /**
+   * 큐텐 ZIP — Sliced 방식 (상세페이지 통째 슬라이스)
+   *   장점: HTML 안의 <img>를 한번에 큐텐 CDN URL로 교체하면 끝 (placeholder 작업 X)
+   *         이미지 사이 여백 없도록 <table> 래핑
+   *   단점: 텍스트 검색 안 됨 (이미지로 변환됨)
+   */
+  const handleDownloadQoo10SlicedZip = async () => {
+    if (!generatedContent) return
+    const node = previewRef.current
+    if (!node) return showToast('미리보기를 찾지 못했습니다', 'error')
+    try {
+      const result = await exportQoo10SlicedZip({
+        node,
+        productName: generatedContent.product_name || product.name || '상품',
+        onProgress: (msg) => showToast(msg),
+      })
+      if (result.success) {
+        showToast(`큐텐 슬라이스 ZIP 완료 — ${result.chunkCount}장 (${result.totalSizeKB}KB)`)
+      }
+    } catch (err) {
+      console.error('큐텐 Sliced ZIP 실패:', err)
+      showToast('큐텐 슬라이스 ZIP 실패', 'error')
+    }
+  }
+
+  /**
+   * HTML 파일로 다운로드 — 전 플랫폼 공통
+   * 미리보기 DOM의 outerHTML을 standalone html 문서로 패키징.
+   * 이미지는 dataUrl로 박혀있어서 인터넷 없어도 그대로 보임 (폰트만 CDN).
+   */
+  const handleDownloadHtml = () => {
+    if (!generatedContent) return
+    const node = previewRef.current
+    if (!node) {
+      showToast('미리보기를 찾지 못했습니다', 'error')
+      return
+    }
+    const platformLang = PLATFORM_META[product.platform]?.lang ?? 'ko'
+    const ok = downloadHtmlSnapshot(node, {
+      productName: generatedContent.product_name || product.name || '상품',
+      lang: platformLang,
+    })
+    if (ok) showToast('HTML 다운로드 완료')
+    else showToast('HTML 다운로드 실패', 'error')
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <Header />
@@ -272,6 +346,39 @@ export default function ProductNewPage() {
                     🎨 eBay 서식 그대로 복사
                   </button>
                 )}
+                {/* 큐텐(JP) 전용 — 2가지 방식 ZIP */}
+                {PLATFORM_META[product.platform]?.market === 'jp' && (
+                  <>
+                    <button
+                      style={{ padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'; (e.currentTarget as HTMLButtonElement).style.color = '#0c0c10' }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)' }}
+                      onClick={handleDownloadQoo10HybridZip}
+                      title="텍스트는 HTML로, 이미지는 별도 N장. 큐텐 에디터에서 placeholder 박스 자리에 이미지 끼워넣기"
+                    >
+                      📦 HTML+이미지
+                    </button>
+                    <button
+                      style={{ padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'; (e.currentTarget as HTMLButtonElement).style.color = '#0c0c10' }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)' }}
+                      onClick={handleDownloadQoo10SlicedZip}
+                      title="상세페이지 통째 슬라이스. <table>로 묶어서 이미지 사이 여백 없음. HTML img src만 큐텐 URL로 일괄 교체하면 끝"
+                    >
+                      🖼 슬라이스
+                    </button>
+                  </>
+                )}
+                {/* HTML 다운로드 — 전 플랫폼 공통, 원본 화질 유지 + 브라우저에서 바로 열어볼 수 있음 */}
+                <button
+                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface3)' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface2)' }}
+                  onClick={handleDownloadHtml}
+                  title="원본 HTML 파일로 다운로드 — 브라우저에서 바로 열기 가능"
+                >
+                  📄 HTML 저장
+                </button>
                 <button
                   style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, background: 'var(--accent)', border: '1px solid var(--accent)', color: '#0c0c10', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.2s' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent2)' }}
@@ -372,9 +479,17 @@ export default function ProductNewPage() {
               </div>
             )}
 
-            {/* 실시간 HTML 미리보기 — generatedContent 변경 시 자동 리렌더링 */}
+            {/* 실시간 HTML 미리보기 — generatedContent 변경 시 자동 리렌더링
+                템플릿 폭이 다르므로(쿠팡/이베이 800, 큐텐 820) 프레임 660px에 맞게 zoom 동적 계산 */}
             {!isGenerating && previewContent && (
-              <div style={{ zoom: 0.825 }}>
+              <div
+                style={{
+                  zoom:
+                    product.template === 'qoo10-modern' || product.template === 'qoo10-classic'
+                      ? 660 / 820
+                      : 660 / 800,
+                }}
+              >
                 <DetailPagePreview
                   ref={previewRef}
                   content={previewContent}

@@ -36,7 +36,7 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
       <div
         ref={ref}
         style={{
-          width: 800,
+          width: 820,
           fontFamily: FONT_BODY,
           lineHeight: 1.5,
           overflow: 'hidden',
@@ -54,7 +54,6 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
           style={{
             background: '#fdf6ee',
             padding: '80px 40px 56px',
-            position: 'relative',
             overflow: 'hidden',
             textAlign: 'center',
           }}
@@ -133,26 +132,46 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
           <img src={images[0]} alt="メイン商品画像" style={{ width: '100%', height: 'auto', display: 'block' }} />
         )}
 
-        {/* 메인 카피 — 베이지 박스 + 장식 코너 */}
-        <div
-          style={{
-            background: '#fdf6ee',
-            padding: '70px 40px',
-            textAlign: 'center',
-            position: 'relative',
-          }}
+        {/* 메인 카피 — 베이지 박스 + 좌상단/우하단 코너 장식
+            큐텐 에디터가 position: absolute 제거 → 3×3 table 구조로 호환성 확보.
+            좌상단 셀에 ┌ (borderTop+borderLeft), 우하단 셀에 ┘ (borderBottom+borderRight). */}
+        <table
+          cellPadding={0}
+          cellSpacing={0}
+          style={{ width: '100%', background: '#fdf6ee', borderCollapse: 'collapse' }}
         >
-          {/* 좌상단/우하단 코너 장식 */}
-          <div style={{ position: 'absolute', top: 22, left: 22, width: 32, height: 32, borderTop: '2px solid #c08770', borderLeft: '2px solid #c08770' }} />
-          <div style={{ position: 'absolute', bottom: 22, right: 22, width: 32, height: 32, borderBottom: '2px solid #c08770', borderRight: '2px solid #c08770' }} />
-
-          <p style={{ fontSize: 12, letterSpacing: 6, color: '#a06850', margin: '0 0 24px', fontWeight: 600 }}>
-            ─── POINT ───
-          </p>
-          <p style={{ fontSize: 24, fontWeight: 600, color: '#3d3d3d', lineHeight: 1.7, margin: 0, wordBreak: 'keep-all', maxWidth: 620, marginInline: 'auto' }}>
-            {content.main_copy}
-          </p>
-        </div>
+          <tbody>
+            {/* 1행: 좌상단 코너 */}
+            <tr>
+              <td style={{ width: 54, padding: '22px 0 0 22px', verticalAlign: 'top' }}>
+                <div style={{ width: 32, height: 32, borderTop: '2px solid #c08770', borderLeft: '2px solid #c08770' }} />
+              </td>
+              <td style={{ height: 54 }} />
+              <td style={{ width: 54 }} />
+            </tr>
+            {/* 2행: 본문 (가운데 셀만 사용) */}
+            <tr>
+              <td />
+              <td style={{ padding: '0 18px', textAlign: 'center' }}>
+                <p style={{ fontSize: 12, letterSpacing: 6, color: '#a06850', margin: '0 0 24px', fontWeight: 600 }}>
+                  ─── POINT ───
+                </p>
+                <p style={{ fontSize: 24, fontWeight: 600, color: '#3d3d3d', lineHeight: 1.7, margin: 0, wordBreak: 'keep-all', maxWidth: 620, marginInline: 'auto' }}>
+                  {content.main_copy}
+                </p>
+              </td>
+              <td />
+            </tr>
+            {/* 3행: 우하단 코너 */}
+            <tr>
+              <td style={{ width: 54 }} />
+              <td style={{ height: 54 }} />
+              <td style={{ width: 54, padding: '0 22px 22px 0', verticalAlign: 'bottom', textAlign: 'right' }}>
+                <div style={{ width: 32, height: 32, borderBottom: '2px solid #c08770', borderRight: '2px solid #c08770', display: 'inline-block' }} />
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
         {/* 셀링포인트 — 카드 3개 */}
         <div style={{ background: 'linear-gradient(180deg, #fff 0%, #faf6f2 100%)', padding: '60px 32px' }}>
@@ -166,17 +185,15 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
                 style={{
                   background: '#fff',
                   borderRadius: 12,
-                  padding: '32px 18px 26px',
                   textAlign: 'center',
-                  position: 'relative',
                   boxShadow: '0 4px 14px rgba(160,104,80,0.08)',
                   border: '1px solid #f0e0d0',
                   overflow: 'hidden',
                 }}
               >
-                {/* 상단 컬러 스트라이프 */}
+                {/* 상단 컬러 스트라이프 — absolute 대신 자연 흐름의 첫 자식 */}
                 <div style={{
-                  position: 'absolute', top: 0, left: 0, right: 0, height: 4,
+                  height: 4,
                   background: i === 0
                     ? 'linear-gradient(90deg, #f5cfb4, #e8c5c5)'
                     : i === 1
@@ -184,24 +201,26 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
                       : 'linear-gradient(90deg, #d4a8b0, #c08770)',
                 }} />
 
-                {/* 큰 번호 */}
-                <div
-                  style={{
-                    fontSize: 56, fontWeight: 900,
-                    color: '#e0a890', lineHeight: 1, margin: '0 0 12px',
-                    letterSpacing: '-0.03em',
-                  }}
-                >
-                  {String(i + 1).padStart(2, '0')}
+                <div style={{ padding: '32px 18px 26px' }}>
+                  {/* 큰 번호 */}
+                  <div
+                    style={{
+                      fontSize: 56, fontWeight: 900,
+                      color: '#e0a890', lineHeight: 1, margin: '0 0 12px',
+                      letterSpacing: '-0.03em',
+                    }}
+                  >
+                    {String(i + 1).padStart(2, '0')}
+                  </div>
+
+                  {/* 구분선 */}
+                  <div style={{ width: 24, height: 2, background: '#c08770', margin: '0 auto 14px', borderRadius: 1 }} />
+
+                  {/* 본문 */}
+                  <p style={{ fontSize: 13, color: '#5a4a3a', lineHeight: 1.8, margin: 0, wordBreak: 'keep-all' }}>
+                    {sp}
+                  </p>
                 </div>
-
-                {/* 구분선 */}
-                <div style={{ width: 24, height: 2, background: '#c08770', margin: '0 auto 14px', borderRadius: 1 }} />
-
-                {/* 본문 */}
-                <p style={{ fontSize: 13, color: '#5a4a3a', lineHeight: 1.8, margin: 0, wordBreak: 'keep-all' }}>
-                  {sp}
-                </p>
               </div>
             ))}
           </div>
@@ -282,7 +301,6 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
             background: 'linear-gradient(135deg, #5a4a3a 0%, #3d3d3d 100%)',
             padding: '48px 40px',
             textAlign: 'center',
-            position: 'relative',
           }}
         >
           {/* 가격 카드 */}
