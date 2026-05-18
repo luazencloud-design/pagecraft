@@ -361,8 +361,13 @@ function getCameraFocus(category: string, productName: string): CameraFocus {
     ankle: 'a close-up of ankles and feet from calf down (NO upper body)',
     lipsMacro: 'a macro close-up of the lips only (NO eyes, NO body)',
     eyeMacro: 'a macro close-up of one eye and surrounding area (NO mouth, NO body)',
+    hatHead: 'a medium close-up of the head and shoulders, framed tight on the hat being worn (NO body below the shoulders visible)',
+    bagShot: 'a medium shot showing the upper body and the bag clearly, cropped at the hip (NO legs visible)',
+    feet: 'a low-angle close-up of the legs and feet only from knees to feet (NO upper body or face visible)',
+    upperBody: 'a medium shot showing only the upper body from head to waist (NO legs or lower body visible)',
   }
 
+  // 액세서리 (가장 구체적)
   if (earringPattern.test(name)) return { leadFraming: FN.sideHead, part: '귀', shot: '클로즈업', crop: '얼굴 측면', action: 'wearing', extraInstruction: '귀걸이 강조.' }
   if (necklacePattern.test(name)) return { leadFraming: FN.chestUp, part: '목/쇄골', shot: '미디엄 클로즈업', crop: '얼굴 하부~가슴', action: 'wearing', extraInstruction: '목걸이 강조. 하체 X.' }
   if (braceletPattern.test(name)) return { leadFraming: FN.wrist, part: '손목', shot: '클로즈업', crop: '손목', action: 'wearing', extraInstruction: '손목 클로즈업.' }
@@ -373,6 +378,27 @@ function getCameraFocus(category: string, productName: string): CameraFocus {
   if (lipPattern.test(name)) return { leadFraming: FN.lipsMacro, part: '입술', shot: '매크로', crop: '입술', action: 'with the lip product applied', extraInstruction: '입술 정밀 강조.' }
   if (mascaraPattern.test(name)) return { leadFraming: FN.eyeMacro, part: '눈', shot: '매크로', crop: '눈 주변', action: 'with the eye makeup applied', extraInstruction: '눈 정밀 강조.' }
   if (tonerPattern.test(name)) return { leadFraming: FN.faceOnly, part: '얼굴/볼', shot: '클로즈업', crop: '얼굴만', action: 'with smooth radiant skin', extraInstruction: '매끄러운 피부 클로즈업.' }
+
+  // 의류·잡화 — 카테고리 미선택해도 상품명만으로 잡힘
+  const hatPattern = /모자|hat|cap|beanie|버킷햇|페도라|볼캡/
+  const shoePattern = /신발|구두|운동화|슈즈|shoe|sneaker|boot|샌들/
+  const slipperPattern = /슬리퍼|slipper|쪼리/
+  const scarfPattern = /스카프|머플러|scarf|muffler/
+  const bagPattern = /가방|백|bag|clutch|tote|숄더백|크로스백|토트|배낭/
+  const pantsPattern = /바지|팬츠|진|jean|pants|trouser|레깅스|슬랙스|반바지|숏츠|short/
+  const topPattern = /티셔츠|맨투맨|후드|니트|셔츠|블라우스|탑|sweater|hoodie|tee|shirt/
+  const dressPattern = /원피스|드레스|dress/
+  const outerPattern = /자켓|코트|패딩|점퍼|아우터|jacket|coat|padding/
+
+  if (hatPattern.test(name)) return { leadFraming: FN.hatHead, part: '머리/얼굴 상부', shot: '미디엄 클로즈업', crop: '머리~어깨', action: 'wearing on head', extraInstruction: '얼굴+모자 중심. 어깨 아래 절대 X.' }
+  if (shoePattern.test(name)) return { leadFraming: FN.feet, part: '발', shot: '미디엄 로우앵글', crop: '무릎~발끝', action: 'wearing', extraInstruction: '신발 강조.' }
+  if (slipperPattern.test(name)) return { leadFraming: FN.feet, part: '발', shot: '미디엄 로우앵글', crop: '무릎~발끝', action: 'wearing', extraInstruction: '슬리퍼/샌들 강조.' }
+  if (scarfPattern.test(name)) return { leadFraming: FN.chestUp, part: '목/어깨', shot: '미디엄 클로즈업', crop: '얼굴 하부~가슴', action: 'wearing around neck', extraInstruction: '스카프 두른 모습. 허리 아래 X.' }
+  if (bagPattern.test(name)) return { leadFraming: FN.bagShot, part: '어깨/손/등', shot: '미디엄', crop: '상반신+가방', action: 'carrying', extraInstruction: '가방 강조, 다리 아래 X.' }
+  if (pantsPattern.test(name)) return { leadFraming: 'a low-angle medium shot of the lower body from waist to feet (NO face visible)', part: '하체', shot: '미디엄', crop: '허리~발', action: 'wearing', extraInstruction: '하체 강조.' }
+  if (topPattern.test(name)) return { leadFraming: FN.upperBody, part: '상반신', shot: '미디엄', crop: '머리~허리', action: 'wearing', extraInstruction: '상반신만. 하체 X.' }
+  if (dressPattern.test(name)) return { leadFraming: 'a full-body fashion shot from head to feet', part: '전신', shot: '풀샷', crop: '전신', action: 'wearing' }
+  if (outerPattern.test(name)) return { leadFraming: 'a medium-long shot from head to knees (cropped at knees)', part: '상반신~허벅지', shot: '미디엄~풀샷', crop: '머리~무릎', action: 'wearing', extraInstruction: '아우터 핏 강조.' }
 
   // ── 3) 카테고리 부분 매칭 (legacy / 자유 입력 대응) ──────────────────
   const catLower = (category || '').toLowerCase()
@@ -528,12 +554,75 @@ export async function removeBackgroundRecraft(imageDataUrl: string): Promise<str
  * }
  */
 
+/**
+ * 이미지 비전 검출 — Gemini Flash 에게 reference 이미지를 보여주고 카테고리 추론
+ *
+ * 카테고리 미선택 + 상품명 키워드도 매칭 안 될 때만 호출 (fallback).
+ * Gemini Flash 1회 호출 ≈ $0.001, 1~2s 추가 latency.
+ *
+ * 반환값은 CATEGORY_GROUPS의 정확 카테고리명 또는 빈 문자열 (검출 실패).
+ */
+async function detectProductCategoryFromImages(images: string[]): Promise<string> {
+  if (images.length === 0) return ''
+  try {
+    const apiKey = getApiKey()
+    const allowedCategories = [
+      '패딩/점퍼', '집업/후리스', '티셔츠/맨투맨', '바지/하의', '가방/배낭',
+      '모자/액세서리', '신발/부츠', '슬리퍼/샌들', '스카프/머플러', '기타 의류/잡화',
+      '스킨케어 (토너/세럼/크림)', '클렌징', '마스크팩/패드', '선케어',
+      '메이크업 베이스 (쿠션/파운데이션)', '메이크업 색조 (립/아이/치크)',
+      '향수/바디', '헤어케어', '기타 뷰티',
+    ]
+    const prompt = `Look at the product in the reference image(s). Identify what type of product it is.
+
+Return ONLY one of these exact category strings (no quotes, no extra text):
+${allowedCategories.map((c) => `- ${c}`).join('\n')}
+
+If you cannot determine clearly, return: 기타 의류/잡화
+
+Respond with ONLY the category name, nothing else.`
+
+    const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [{ text: prompt }]
+    for (const img of images.slice(0, 2)) {
+      const base64 = img.replace(/^data:image\/\w+;base64,/, '')
+      parts.push({ inlineData: { mimeType: 'image/jpeg', data: base64 } })
+    }
+    const body = {
+      contents: [{ role: 'user', parts }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 50 },
+    }
+    const res = await geminiRequest(
+      `${GEMINI_BASE}/${getTextModel()}:generateContent?key=${apiKey}`,
+      body,
+    )
+    if (!res.ok) return ''
+    const data = await res.json()
+    const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    const trimmed = text.trim()
+    // 응답이 카테고리 정확 일치 / 부분 포함 여부 검증
+    const matched = allowedCategories.find((c) => trimmed === c || trimmed.includes(c))
+    return matched || ''
+  } catch {
+    return ''
+  }
+}
+
 export async function generateModelImage(
   req: AIModelImageRequest,
 ): Promise<string> {
   const apiKey = getApiKey()
-  const focus = getCameraFocus(req.category, req.productName)
+  let focus = getCameraFocus(req.category, req.productName)
   const genderKo = req.gender === 'male' ? '남성' : '여성'
+
+  // 디폴트 결과로 떨어졌으면 (= 카테고리 + 상품명 모두 단서 약함)
+  // 이미지에서 직접 제품 타입 추론 → 더 정확한 framing 적용
+  const isDefaultFraming = focus.crop === '전신' && focus.shot === '풀샷' && !req.category
+  if (isDefaultFraming && req.images.length > 0) {
+    const detected = await detectProductCategoryFromImages(req.images)
+    if (detected) {
+      focus = getCameraFocus(detected, req.productName)
+    }
+  }
 
   // Gemini Image는 첫 문장의 framing 지시를 가장 강하게 따름.
   // "Generate a photo..." 같은 일반 도입부를 쓰면 모델 기본값(full body)으로 흐름.
