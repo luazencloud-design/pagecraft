@@ -8,6 +8,7 @@ import { useProductStore } from '@/stores/productStore'
 import { PLATFORM_META } from '@/types/product'
 import { buildEbayPlainText } from '@/lib/ebayHtml'
 import { showToast } from '@/components/ui/Toast'
+import { useFieldRegen } from '@/hooks/useFieldRegen'
 import type { GeneratedContent } from '@/types/ai'
 
 function CopyButton({ text, label }: { text: string; label: string }) {
@@ -39,11 +40,17 @@ function EditableBlock({
   text,
   multiline = false,
   onSave,
+  onRegen,
+  regenLoading = false,
 }: {
   title: string
   text: string
   multiline?: boolean
   onSave: (value: string) => void
+  /** 있으면 ↻ AI 재생성 버튼 노출 */
+  onRegen?: () => void
+  /** 재생성 진행 중 — 버튼 비활성 + 스피너 */
+  regenLoading?: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(text)
@@ -92,6 +99,16 @@ function EditableBlock({
             </>
           ) : (
             <>
+              {onRegen && (
+                <button
+                  className="px-[8px] py-[2px] rounded-[4px] text-[10px] cursor-pointer border border-accent/40 text-accent hover:bg-accent/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={onRegen}
+                  disabled={regenLoading}
+                  title="이 필드만 AI로 다시 생성 (크레딧 1개 소비)"
+                >
+                  {regenLoading ? '⏳ 생성 중' : '↻ 재생성'}
+                </button>
+              )}
               <button
                 className="px-[8px] py-[2px] rounded-[4px] text-[10px] cursor-pointer border border-border text-text3 hover:border-border2 hover:text-text2"
                 onClick={startEdit}
@@ -431,6 +448,7 @@ function CopyAllButton({ content }: { content: GeneratedContent }) {
 
 export default function CopyPanel() {
   const { generatedContent, setGeneratedContent } = useEditorStore()
+  const { regen, regeneratingField } = useFieldRegen()
 
   if (!generatedContent) {
     return (
@@ -476,9 +494,9 @@ export default function CopyPanel() {
     <div className="space-y-0">
       <LangSwitcher />
       <CopyAllButton content={generatedContent} />
-      <EditableBlock title="상품명" text={product_name} onSave={(v) => update('product_name', v)} />
-      <EditableBlock title="서브타이틀" text={subtitle} onSave={(v) => update('subtitle', v)} />
-      <EditableBlock title="메인 카피" text={main_copy} onSave={(v) => update('main_copy', v)} />
+      <EditableBlock title="상품명" text={product_name} onSave={(v) => update('product_name', v)} onRegen={() => regen('product_name')} regenLoading={regeneratingField === 'product_name'} />
+      <EditableBlock title="서브타이틀" text={subtitle} onSave={(v) => update('subtitle', v)} onRegen={() => regen('subtitle')} regenLoading={regeneratingField === 'subtitle'} />
+      <EditableBlock title="메인 카피" text={main_copy} onSave={(v) => update('main_copy', v)} onRegen={() => regen('main_copy')} regenLoading={regeneratingField === 'main_copy'} />
       {condition && <EditableBlock title="Condition" text={condition} onSave={(v) => update('condition', v)} />}
       {bullet_points && (
         <EditableBlock
@@ -488,8 +506,8 @@ export default function CopyPanel() {
           onSave={(v) => update('bullet_points', v)}
         />
       )}
-      <EditableBlock title="판매포인트" text={selling_points.map((sp, i) => `${i + 1}. ${sp}`).join('\n')} multiline onSave={(v) => update('selling_points', v)} />
-      <EditableBlock title="상세설명" text={description} multiline onSave={(v) => update('description', v)} />
+      <EditableBlock title="판매포인트" text={selling_points.map((sp, i) => `${i + 1}. ${sp}`).join('\n')} multiline onSave={(v) => update('selling_points', v)} onRegen={() => regen('selling_points')} regenLoading={regeneratingField === 'selling_points'} />
+      <EditableBlock title="상세설명" text={description} multiline onSave={(v) => update('description', v)} onRegen={() => regen('description')} regenLoading={regeneratingField === 'description'} />
       {item_specifics && item_specifics.length > 0 && (
         <EditableBlock
           title="Item Specifics"
@@ -506,8 +524,8 @@ export default function CopyPanel() {
         const updated = { ...generatedContent, specs: newSpecs }
         setGeneratedContent(updated)
       }} />
-      <EditableBlock title="키워드" text={keywords.join(', ')} onSave={(v) => update('keywords', v)} />
-      <EditableBlock title="주의사항" text={caution} onSave={(v) => update('caution', v)} />
+      <EditableBlock title="키워드" text={keywords.join(', ')} onSave={(v) => update('keywords', v)} onRegen={() => regen('keywords')} regenLoading={regeneratingField === 'keywords'} />
+      <EditableBlock title="주의사항" text={caution} onSave={(v) => update('caution', v)} onRegen={() => regen('caution')} regenLoading={regeneratingField === 'caution'} />
 
       <p className="text-[10px] text-text3 text-center mt-3 py-2">
         수정 내용은 미리보기에 실시간 반영됩니다

@@ -104,3 +104,25 @@ export interface TranslateRequest {
   /** 재작성 톤 — 'coupang' | 'qoo10' 등 */
   targetPlatform: Platform
 }
+
+/** AI 부분 재생성 — 단일 필드만 새로 뽑기 */
+export type RegenField =
+  | 'product_name'
+  | 'subtitle'
+  | 'main_copy'
+  | 'selling_points'
+  | 'description'
+  | 'keywords'
+  | 'caution'
+
+export interface AIRegenRequest {
+  field: RegenField
+  /** 컨텍스트 — 기존 카피 톤 유지 위해 같이 보냄 */
+  brand: string
+  productName: string
+  price: string
+  category: string
+  platform: Platform | string
+  /** 현재 콘텐츠 전체 — AI가 다른 필드 톤 참고용 */
+  currentContent: GeneratedContent
+}

@@ -4,10 +4,12 @@ import type {
   AITitleRequest,
   AITagRequest,
   AIModelImageRequest,
+  AIRegenRequest,
   GeneratedContent,
   GeneratedTitle,
   GeneratedAll,
   GeneratedByLang,
+  RegenField,
 } from '@/types/ai'
 import type { Platform } from '@/types/product'
 import { PLATFORM_META } from '@/types/product'
@@ -686,4 +688,122 @@ CRITICAL:
   }
 
   return `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`
+}
+
+/* ────────────────────────────────────────────────────────────
+ * AI 부분 재생성 — 단일 필드만 새로 뽑기
+ *
+ * 전체 재생성은 한 번에 모든 필드(상품명/메인카피/셀링포인트/...)를 다시 만들어서
+ * 마음에 들던 필드도 같이 날아감. regenerateField 는 컨텍스트(기존 콘텐츠 전체)는
+ * 참고용으로만 보내고 지정된 필드 한 개만 새로 뽑음.
+ * ──────────────────────────────────────────────────────────── */
+
+const FIELD_INSTRUCTIONS: Record<RegenField, { ko: string; ja?: string; en?: string }> = {
+  product_name: {
+    ko: '새로운 상품명 1개 (30자 이내, SEO 검색 키워드 자연스럽게 포함, 기존과 다른 표현)',
+    ja: '새로운 상품명 1개 (30자 이내, 일본어 쇼핑 검색 키워드 포함, 기존과 다른 표현)',
+    en: '새로운 상품 title 1개 (English, 80 chars 이내, eBay SEO 키워드 포함)',
+  },
+  subtitle: { ko: '새로운 부제 1개 (40자 이내, 상품명을 보완하는 한 줄)' },
+  main_copy: {
+    ko: '새로운 메인 카피 1개 (50자 이내, 임팩트 있게 한 줄로)',
+    ja: '새로운 メインコピー 1개 (40자 이내, 임팩트 있게)',
+    en: '새로운 main copy 1개 (under 80 chars, punchy one-liner)',
+  },
+  selling_points: {
+    ko: '새로운 셀링포인트 3개 (각 30~50자, 다른 관점/혜택 강조)',
+    ja: '새로운 셀링포인트 3개 (일본어, 각 30~50자)',
+    en: '새로운 selling points 3개 (English, each 30~60 chars)',
+  },
+  description: {
+    ko: '새로운 상품 핵심 설명 (1-2문장, 50자 내외, 임팩트 한 줄 요약 — 절대 문단 X)',
+    ja: '새로운 상품 설명 1-2 sentences in Japanese (총 60자 내외)',
+    en: '새로운 product description (1-2 sentences in English, ~100 chars)',
+  },
+  keywords: {
+    ko: '새로운 검색 키워드 10-15개 배열 (#없이 단어만)',
+    ja: '새로운 検索키워드 10-15개 (일본어, # 없이)',
+    en: '새로운 search keywords 10-15개 (English, no #)',
+  },
+  caution: {
+    ko: '새로운 주의사항/안내 1-2문장 (배송/세탁/유의사항 등)',
+    ja: '새로운 注意事項 1-2 sentences in Japanese',
+    en: '새로운 cautions/notes 1-2 sentences in English',
+  },
+}
+
+function buildRegenPrompt(req: AIRegenRequest): string {
+  const platformMeta = PLATFORM_META[req.platform as Platform]
+  const lang = platformMeta?.lang ?? 'ko'
+  const instr = FIELD_INSTRUCTIONS[req.field]
+  const fieldInstruction =
+    instr[lang as keyof typeof instr] || instr.ko
+
+  // 기존 콘텐츠를 컨텍스트로 보냄 — 다른 필드 톤/단어 일관성 유지
+  const c = req.currentContent
+  const ctx = [
+    `상품명: ${c.product_name || '없음'}`,
+    `부제: ${c.subtitle || '없음'}`,
+    `메인카피: ${c.main_copy || '없음'}`,
+    `셀링포인트: ${c.selling_points?.join(' / ') || '없음'}`,
+    `설명: ${c.description?.slice(0, 100) || '없음'}`,
+  ].join('\n')
+
+  return `당신은 한국 이커머스 카피라이터입니다.
+기존 콘텐츠 톤/일관성을 유지하면서 한 필드만 새로 작성하세요.
+
+【상품】
+- 브랜드: ${req.brand || '없음'}
+- 상품명: ${req.productName}
+- 가격: ${req.price}
+- 카테고리: ${req.category}
+- 플랫폼: ${req.platform}
+
+【기존 콘텐츠 (참고용 — 톤 유지)】
+${ctx}
+
+【작성할 필드】 ${req.field}
+${fieldInstruction}
+
+기존 표현은 사용하지 말고 다른 단어/구조로 변형하세요. 그러나 의미·강조점·톤은 일관되게.
+
+JSON으로만 응답 (다른 텍스트 X):
+${jsonExampleFor(req.field)}`
+}
+
+function jsonExampleFor(field: RegenField): string {
+  switch (field) {
+    case 'selling_points':
+      return '{"selling_points": ["...", "...", "..."]}'
+    case 'keywords':
+      return '{"keywords": ["...", "...", ...]}'
+    default:
+      return `{"${field}": "..."}`
+  }
+}
+
+export async function regenerateField(req: AIRegenRequest): Promise<Partial<GeneratedContent>> {
+  const apiKey = getApiKey()
+  const prompt = buildRegenPrompt(req)
+
+  const body = {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0.9, // 다양성 ↑ — 기존과 다른 표현 유도
+      responseMimeType: 'application/json',
+    },
+  }
+
+  const res = await geminiRequest(
+    `${GEMINI_BASE}/${getTextModel()}:generateContent?key=${apiKey}`,
+    body,
+  )
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`AI 재생성 오류: ${res.status} ${err}`)
+  }
+  const data = await res.json()
+  const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
+  const parsed = safeParseJSON(text) as Partial<GeneratedContent>
+  return parsed
 }
