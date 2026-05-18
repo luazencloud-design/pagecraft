@@ -257,12 +257,62 @@ export async function generateTags(req: AITagRequest): Promise<string[]> {
   return safeParseJSON(text) as string[]
 }
 
-function getCameraFocus(
-  category: string,
-  productName: string,
-): { part: string; shot: string; crop: string } {
-  const name = (productName || '').toLowerCase()
+/**
+ * 카테고리/상품명 기반 카메라 포커스 결정
+ *
+ * 핵심 원칙: AI가 "전신 풀샷" 으로 가지 않고, 제품이 실제로 보여야 하는 부위만 보이도록
+ * 명시적으로 컷/액션을 지정. 불필요한 신체 부위는 프레임에서 제외.
+ *
+ * 우선순위:
+ *   1. CATEGORY_GROUPS 의 정확 카테고리 일치 (사용자가 명시 선택했으므로 가장 신뢰)
+ *   2. 상품명 키워드 매칭 (귀걸이/반지 등 매우 구체적인 아이템)
+ *   3. 카테고리 키워드 부분 매칭 (legacy / 자유 입력 대응)
+ *   4. 디폴트 (전신)
+ */
+type CameraFocus = {
+  /** 카메라가 향하는 부위 — 프롬프트의 "focusing on" 절 */
+  part: string
+  /** 샷 타입 (클로즈업/미디엄/풀샷 등) */
+  shot: string
+  /** 프레임에 들어가는 범위 — 어디까지 보일지 명시 */
+  crop: string
+  /** 모델이 제품과 어떻게 인터랙션 하는지 — wearing / using / applying / carrying 등 */
+  action: string
+  /** AI에게 추가로 강제할 명령 — "절대 X 보이지 마세요" 류 */
+  extraInstruction?: string
+}
 
+function getCameraFocus(category: string, productName: string): CameraFocus {
+  // ── 1) 정확 카테고리 (CATEGORY_GROUPS) 우선 ──────────────────────────
+  const byExactCategory: Record<string, CameraFocus> = {
+    // 의류·잡화
+    '패딩/점퍼': { part: '상반신~허리', shot: '미디엄', crop: '머리~허벅지 상부', action: 'wearing', extraInstruction: '겉옷의 핏과 실루엣 강조. 다리 아래는 보이지 않게.' },
+    '집업/후리스': { part: '상반신', shot: '미디엄', crop: '머리~허리', action: 'wearing', extraInstruction: '상반신만 — 허리 아래(하체) 절대 보이지 마세요.' },
+    '티셔츠/맨투맨': { part: '상반신', shot: '미디엄', crop: '머리~허리', action: 'wearing', extraInstruction: '상반신만 — 허리 아래(하체) 절대 보이지 마세요.' },
+    '바지/하의': { part: '하반신', shot: '미디엄~풀샷', crop: '허리~발끝', action: 'wearing', extraInstruction: '하체 강조. 얼굴은 보이지 않거나 살짝만.' },
+    '가방/배낭': { part: '어깨/손/등', shot: '미디엄', crop: '상반신 + 가방', action: 'carrying', extraInstruction: '가방이 잘 보이도록. 다리 아래는 제외.' },
+    '모자/액세서리': { part: '머리/얼굴 상부', shot: '미디엄 클로즈업', crop: '머리~어깨', action: 'wearing on head', extraInstruction: '얼굴+모자 중심. 하체 절대 X.' },
+    '신발/부츠': { part: '발', shot: '미디엄 로우앵글', crop: '무릎~발끝', action: 'wearing', extraInstruction: '신발 정밀 강조. 상체는 살짝만 또는 제외.' },
+    '슬리퍼/샌들': { part: '발', shot: '미디엄 로우앵글', crop: '무릎~발끝', action: 'wearing', extraInstruction: '슬리퍼/샌들 + 발 강조. 상체 제외.' },
+    '스카프/머플러': { part: '목/어깨', shot: '미디엄 클로즈업', crop: '얼굴 하부~가슴', action: 'wearing around neck', extraInstruction: '스카프 두른 모습 중심. 허리 아래 절대 X.' },
+    '기타 의류/잡화': { part: '전신', shot: '풀샷', crop: '전신', action: 'wearing/using' },
+
+    // 화장품·뷰티 — 얼굴 중심
+    '스킨케어 (토너/세럼/크림)': { part: '얼굴/볼', shot: '클로즈업', crop: '얼굴만 (어깨 위)', action: 'with smooth radiant skin from using', extraInstruction: '매끄러운 피부 텍스처 강조. 얼굴 클로즈업, 신체 X.' },
+    '클렌징': { part: '얼굴', shot: '클로즈업', crop: '얼굴만', action: 'with clean fresh skin after using', extraInstruction: '깨끗한 맨얼굴 클로즈업. 거품/물방울 디테일 가능.' },
+    '마스크팩/패드': { part: '얼굴', shot: '클로즈업', crop: '얼굴만', action: 'with the mask sheet on face', extraInstruction: '눈 감고 마스크팩 얹은 상태 얼굴 클로즈업.' },
+    '선케어': { part: '얼굴/어깨', shot: '미디엄 클로즈업', crop: '얼굴~어깨', action: 'with healthy glowing skin under sunlight', extraInstruction: '야외 자연광. 윤기 있는 피부.' },
+    '메이크업 베이스 (쿠션/파운데이션)': { part: '얼굴', shot: '클로즈업', crop: '얼굴만', action: 'with flawless base makeup', extraInstruction: '깨끗한 베이스 메이크업, 모공 X. 얼굴 클로즈업.' },
+    '메이크업 색조 (립/아이/치크)': { part: '얼굴 (적용 부위)', shot: '클로즈업', crop: '얼굴만', action: 'with the makeup visibly applied', extraInstruction: '제품이 적용된 부위(입술/눈/볼) 정밀 강조 클로즈업.' },
+    '향수/바디': { part: '손목/목/어깨', shot: '클로즈업', crop: '손목 또는 목/쇄골', action: 'spraying/applying', extraInstruction: '향수 분사 모션 또는 손목 클로즈업.' },
+    '헤어케어': { part: '머리카락', shot: '미디엄 클로즈업', crop: '머리~어깨', action: 'with sleek glossy hair', extraInstruction: '윤기 있고 찰랑이는 머릿결 강조.' },
+    '기타 뷰티': { part: '얼굴', shot: '미디엄 클로즈업', crop: '얼굴만', action: 'using the beauty product' },
+  }
+
+  if (byExactCategory[category]) return byExactCategory[category]
+
+  // ── 2) 상품명 키워드 (매우 구체적인 아이템) ──────────────────────────
+  const name = (productName || '').toLowerCase()
   const earringPattern = /귀걸이|이어링|earring/
   const necklacePattern = /목걸이|넥클리스|necklace|펜던트/
   const braceletPattern = /팔찌|브레이슬릿|bracelet|뱅글/
@@ -270,45 +320,36 @@ function getCameraFocus(
   const glassesPattern = /안경|선글라스|glasses|sunglasses/
   const beltPattern = /벨트|belt/
   const sockPattern = /양말|sock/
-  const bagPattern = /가방|백|bag|clutch|tote|숄더백|크로스백|토트/
-  const hatPattern = /모자|hat|cap|beanie|버킷햇/
-  const shoePattern = /신발|구두|운동화|슈즈|shoe|sneaker|boot|샌들/
-  const scarfPattern = /스카프|머플러|scarf|muffler/
+  const lipPattern = /립스틱|틴트|립글로스|lipstick|lip tint|lip gloss|립밤/
+  const mascaraPattern = /마스카라|아이라이너|아이섀도|mascara|eyeliner|eyeshadow/
+  const tonerPattern = /토너|세럼|에센스|크림|로션|앰플|toner|serum|essence|cream|ampoule/
 
-  if (earringPattern.test(name))
-    return { part: '귀 주변', shot: '클로즈업', crop: '얼굴 측면 포커스' }
-  if (necklacePattern.test(name))
-    return { part: '목/쇄골', shot: '미디엄 클로즈업', crop: '상반신 상부' }
-  if (braceletPattern.test(name))
-    return { part: '손목', shot: '클로즈업', crop: '손목~손 포커스' }
-  if (ringPattern.test(name))
-    return { part: '손가락', shot: '매크로', crop: '손 클로즈업' }
-  if (glassesPattern.test(name))
-    return { part: '얼굴', shot: '미디엄', crop: '얼굴 정면' }
-  if (beltPattern.test(name))
-    return { part: '허리', shot: '미디엄', crop: '상반신~허리' }
-  if (sockPattern.test(name))
-    return { part: '발목~발', shot: '미디엄', crop: '하반신 하부' }
-  if (bagPattern.test(name))
-    return { part: '어깨/손', shot: '미디엄', crop: '상반신 + 가방 강조' }
-  if (hatPattern.test(name))
-    return { part: '머리', shot: '미디엄', crop: '상반신 상부' }
-  if (shoePattern.test(name))
-    return { part: '발', shot: '미디엄 로우앵글', crop: '하반신' }
-  if (scarfPattern.test(name))
-    return { part: '목/어깨', shot: '미디엄', crop: '상반신' }
+  if (earringPattern.test(name)) return { part: '귀 주변', shot: '클로즈업', crop: '얼굴 측면', action: 'wearing', extraInstruction: '귀걸이 강조. 얼굴 측면 클로즈업.' }
+  if (necklacePattern.test(name)) return { part: '목/쇄골', shot: '미디엄 클로즈업', crop: '얼굴 하부~가슴', action: 'wearing', extraInstruction: '목걸이 강조. 하체 X.' }
+  if (braceletPattern.test(name)) return { part: '손목', shot: '클로즈업', crop: '손목~손', action: 'wearing', extraInstruction: '손목 클로즈업, 신체 X.' }
+  if (ringPattern.test(name)) return { part: '손가락', shot: '매크로', crop: '손 클로즈업', action: 'wearing', extraInstruction: '반지 낀 손 매크로 샷.' }
+  if (glassesPattern.test(name)) return { part: '얼굴', shot: '미디엄 클로즈업', crop: '얼굴만', action: 'wearing', extraInstruction: '안경 쓴 얼굴 정면. 하체 X.' }
+  if (beltPattern.test(name)) return { part: '허리', shot: '미디엄', crop: '가슴~허벅지 상부', action: 'wearing', extraInstruction: '벨트 강조. 얼굴 안 보임.' }
+  if (sockPattern.test(name)) return { part: '발목', shot: '클로즈업', crop: '종아리~발', action: 'wearing', extraInstruction: '양말 신은 발 클로즈업.' }
+  if (lipPattern.test(name)) return { part: '입술', shot: '매크로', crop: '입술 중심', action: 'with the lip product applied', extraInstruction: '입술 정밀 강조. 입가 클로즈업.' }
+  if (mascaraPattern.test(name)) return { part: '눈', shot: '매크로', crop: '눈 주변', action: 'with the eye makeup applied', extraInstruction: '눈 정밀 강조. 눈매 클로즈업.' }
+  if (tonerPattern.test(name)) return { part: '얼굴/볼', shot: '클로즈업', crop: '얼굴만', action: 'with smooth radiant skin', extraInstruction: '매끄러운 피부 클로즈업.' }
 
+  // ── 3) 카테고리 부분 매칭 (legacy / 자유 입력 대응) ──────────────────
   const catLower = (category || '').toLowerCase()
   if (/상의|티셔츠|셔츠|블라우스|니트|탑/.test(catLower))
-    return { part: '상체', shot: '미디엄', crop: '상반신' }
+    return { part: '상체', shot: '미디엄', crop: '머리~허리', action: 'wearing', extraInstruction: '상반신만. 하체 X.' }
   if (/하의|팬츠|바지|스커트|치마/.test(catLower))
-    return { part: '하체', shot: '미디엄', crop: '전신 하반신 강조' }
+    return { part: '하체', shot: '미디엄', crop: '허리~발', action: 'wearing', extraInstruction: '하체 강조.' }
   if (/원피스|드레스/.test(catLower))
-    return { part: '전신', shot: '풀샷', crop: '전신' }
+    return { part: '전신', shot: '풀샷', crop: '전신', action: 'wearing' }
   if (/아우터|자켓|코트/.test(catLower))
-    return { part: '전신', shot: '풀샷', crop: '전신' }
+    return { part: '상반신~허벅지', shot: '미디엄~풀샷', crop: '머리~무릎', action: 'wearing', extraInstruction: '아우터 핏 강조.' }
+  if (/스킨|토너|세럼|크림|로션|마스크|선크림|클렌징|메이크업|화장품|뷰티/.test(catLower))
+    return { part: '얼굴', shot: '클로즈업', crop: '얼굴만', action: 'with the beauty product applied', extraInstruction: '얼굴 중심. 신체 X.' }
 
-  return { part: '전신', shot: '풀샷', crop: '전신' }
+  // ── 4) 디폴트 ─────────────────────────────────────────────────────
+  return { part: '전신', shot: '풀샷', crop: '전신', action: 'wearing/using' }
 }
 
 /**
@@ -455,17 +496,23 @@ export async function generateModelImage(
   const focus = getCameraFocus(req.category, req.productName)
   const genderKo = req.gender === 'male' ? '남성' : '여성'
 
-  const prompt = `Generate a photorealistic studio photograph of a Korean ${req.gender} model wearing/using "${req.productName}".
+  const prompt = `Generate a photorealistic studio photograph of a Korean ${req.gender} model ${focus.action} "${req.productName}".
 
-Camera: ${focus.shot} shot focusing on ${focus.part}
-Crop: ${focus.crop}
-Model: Korean ${genderKo}, natural pose, editorial style
+Framing (CRITICAL — strictly follow):
+- Shot type: ${focus.shot}
+- Focus on: ${focus.part}
+- Crop / what's visible: ${focus.crop}
+${focus.extraInstruction ? `- Constraint: ${focus.extraInstruction}` : ''}
+
+Model: Korean ${genderKo}, natural pose, editorial e-commerce style
 Background: clean white or light gray studio
 Lighting: professional studio, soft shadows
-Style: high-end fashion e-commerce product photo
+Style: high-end Korean beauty/fashion e-commerce, like Olive Young / Musinsa product photos
 
-The product must be the clear focal point. No text, watermark, or logo.
-Must look like a real photograph, not AI-generated.`
+The product must be the unmistakable focal point of the frame.
+Do NOT include any body part that the framing above excludes (no full body when only face/upper/lower is needed).
+No text, watermark, logo, or AI-generated artifacts.
+Must look like a real photograph taken on set.`
 
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [{ text: prompt }]
 
