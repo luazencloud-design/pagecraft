@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useProductStore } from '@/stores/productStore'
-import { useImageStore } from '@/stores/imageStore'
+import { useImageStore, MAX_IMAGES } from '@/stores/imageStore'
 import { useUsageStore } from '@/stores/usageStore'
 import { api, ApiError } from '@/lib/api'
 import { compressForImageGen } from '@/lib/image'
@@ -17,8 +17,17 @@ export default function AiModelToggle() {
   const [generating, setGenerating] = useState(false)
   const [generatingSet, setGeneratingSet] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-  // 풀세트 매수 (1~6, 모델 시착 1장 + 각도 컷 N-1장)
+  // 풀세트 매수 (모델 시착 1장 + 각도 컷 N-1장). 슬라이더로 선택.
   const [setCount, setSetCount] = useState(4)
+
+  // 남은 슬롯 — 10장 한도에서 현재 이미지 수 차감. 슬라이더 max로 사용.
+  const remainingSlots = Math.max(0, MAX_IMAGES - images.length)
+  // 실제 생성 가능 매수 (사용자가 골랐어도 남은 슬롯만큼만)
+  const effectiveCount = useMemo(
+    () => Math.max(0, Math.min(setCount, remainingSlots)),
+    [setCount, remainingSlots],
+  )
+  const sliderMax = Math.max(1, Math.min(10, remainingSlots || 1))
 
   const generate = useCallback(async () => {
     if (!product.name && images.length === 0) {
@@ -64,6 +73,10 @@ export default function AiModelToggle() {
       setErrorMsg('AI 풀세트 생성은 원본 사진 2장 이상이 필요합니다.')
       return
     }
+    if (effectiveCount === 0) {
+      setErrorMsg('이미지 슬롯이 가득 찼습니다.')
+      return
+    }
     setGeneratingSet(true)
     setErrorMsg('')
     try {
@@ -77,7 +90,7 @@ export default function AiModelToggle() {
           category: product.category,
           gender: aiModelGender,
           images: smallImages,
-          count: setCount,
+          count: effectiveCount,
         },
       )
       if (result.images?.length) {
@@ -105,7 +118,7 @@ export default function AiModelToggle() {
     } finally {
       setGeneratingSet(false)
     }
-  }, [images, product, aiModelGender, setCount, addImages, setAiOnlyMode])
+  }, [images, product, aiModelGender, effectiveCount, addImages, setAiOnlyMode])
 
   return (
     <div>
@@ -246,38 +259,55 @@ export default function AiModelToggle() {
                 <span style={{ color: 'var(--text2)' }}>원본 사진 2장 이상 필요</span>
               </p>
 
-              {/* 매수 선택 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <span style={{ fontSize: 10, color: 'var(--text2)', flex: 1 }}>
+              {/* 매수 선택 — 슬라이더, 남은 슬롯에 맞춰 max 동적 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 10, color: 'var(--text2)', flexShrink: 0 }}>
                   생성 매수
                 </span>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {[2, 3, 4, 5, 6].map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => setSetCount(n)}
-                      style={{
-                        width: 26,
-                        height: 24,
-                        borderRadius: 5,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        background: setCount === n ? 'var(--accent)' : 'var(--surface2)',
-                        color: setCount === n ? '#0c0c10' : 'var(--text3)',
-                        border: setCount === n ? '1px solid var(--accent)' : '1px solid var(--border)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={sliderMax}
+                  value={effectiveCount}
+                  onChange={(e) => setSetCount(Number(e.target.value))}
+                  disabled={remainingSlots === 0}
+                  style={{
+                    flex: 1,
+                    accentColor: 'var(--accent)',
+                    cursor: remainingSlots === 0 ? 'not-allowed' : 'pointer',
+                  }}
+                />
+                <span
+                  style={{
+                    minWidth: 26,
+                    textAlign: 'right',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color: 'var(--accent)',
+                    fontFamily: 'var(--mono, monospace)',
+                  }}
+                >
+                  {effectiveCount}장
+                </span>
               </div>
 
-              {/* 비용 안내 */}
-              <p style={{ fontSize: 9.5, color: 'var(--text3)', margin: '0 0 6px', textAlign: 'right' }}>
-                크레딧 <b style={{ color: 'var(--text2)' }}>{setCount * 5}</b>개 소비
-              </p>
+              {/* 보조 안내 — 남은 슬롯 / 크레딧 */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: 9.5,
+                  color: 'var(--text3)',
+                  margin: '0 0 8px',
+                }}
+              >
+                <span>
+                  슬롯 {images.length}/{MAX_IMAGES}장 (남음 {remainingSlots})
+                </span>
+                <span>
+                  크레딧 <b style={{ color: 'var(--text2)' }}>{effectiveCount * 5}</b>개
+                </span>
+              </div>
 
               {/* AI 전용 모드 토글 — AI 이미지 있을 때만 의미 있음 */}
               {images.some((i) => i.source === 'ai') && (
@@ -333,7 +363,12 @@ export default function AiModelToggle() {
 
               <button
                 onClick={generateSet}
-                disabled={generating || generatingSet || images.length < 2}
+                disabled={
+                  generating ||
+                  generatingSet ||
+                  images.length < 2 ||
+                  effectiveCount === 0
+                }
                 style={{
                   width: '100%',
                   padding: '8px',
@@ -341,22 +376,32 @@ export default function AiModelToggle() {
                   fontSize: 11,
                   fontWeight: 700,
                   background:
-                    generatingSet || images.length < 2 ? 'var(--surface3)' : 'var(--accent)',
+                    generatingSet || images.length < 2 || effectiveCount === 0
+                      ? 'var(--surface3)'
+                      : 'var(--accent)',
                   border: 'none',
                   color:
-                    generatingSet || images.length < 2 ? 'var(--text3)' : '#0c0c10',
+                    generatingSet || images.length < 2 || effectiveCount === 0
+                      ? 'var(--text3)'
+                      : '#0c0c10',
                   cursor:
-                    generating || generatingSet || images.length < 2 ? 'not-allowed' : 'pointer',
+                    generating || generatingSet || images.length < 2 || effectiveCount === 0
+                      ? 'not-allowed'
+                      : 'pointer',
                 }}
                 title={
                   images.length < 2
                     ? '원본 사진 2장 이상 업로드 후 사용 가능'
-                    : `${setCount}장 생성 (모델 1 + 각도 ${setCount - 1})`
+                    : effectiveCount === 0
+                      ? '슬롯이 가득 찼습니다 — 이미지를 삭제 후 다시 시도'
+                      : `${effectiveCount}장 생성 (모델 ${Math.min(1, effectiveCount)} + 각도 ${Math.max(0, effectiveCount - 1)})`
                 }
               >
                 {generatingSet
-                  ? `${setCount}장 생성 중...`
-                  : `✨ ${setCount}장 한번에 생성`}
+                  ? `${effectiveCount}장 생성 중...`
+                  : effectiveCount === 0
+                    ? '⛔ 슬롯 가득 참'
+                    : `✨ ${effectiveCount}장 한번에 생성`}
               </button>
             </div>
 

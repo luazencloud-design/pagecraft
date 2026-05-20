@@ -12,6 +12,9 @@ export function setImageStoreDraftIdGetter(fn: () => string) {
   getCurrentDraftId = fn
 }
 
+// 한 드래프트당 이미지 최대 매수 — UI에도 동일 노출
+export const MAX_IMAGES = 10
+
 // localStorage 키 — 스토어 소개/약관 이미지는 세션과 무관하게 영구 보존
 const LS_STORE_INTRO = 'pagecraft-store-intro'
 const LS_TERMS = 'pagecraft-terms'
@@ -90,7 +93,11 @@ export const useImageStore = create<ImageState>()((set, get) => ({
 
   addImages: (dataUrls, prepend, source = 'original') => {
     set((state) => {
-      const incoming: ProductImage[] = dataUrls.map((dataUrl) => ({
+      // 10장 초과 방지 — 남은 슬롯만큼만 받음
+      const remaining = Math.max(0, MAX_IMAGES - state.images.length)
+      const accepted = dataUrls.slice(0, remaining)
+      if (accepted.length === 0) return state
+      const incoming: ProductImage[] = accepted.map((dataUrl) => ({
         id: generateId(),
         dataUrl,
         bgRemoved: false,

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { useImageUpload } from '@/hooks/useImageUpload'
-import { useImageStore } from '@/stores/imageStore'
+import { useImageStore, MAX_IMAGES } from '@/stores/imageStore'
 
 export default function ImageUploader() {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -42,7 +42,7 @@ export default function ImageUploader() {
       </p>
       <p className="text-[11px] text-text2 leading-[1.5]">
         클릭 · 드래그 · <kbd className="px-[5px] py-[1px] rounded bg-surface3 border border-border text-[10px] font-mono">Ctrl+V</kbd> 붙여넣기<br />
-        JPG · PNG · {images.length > 0 ? `${images.length}/10장` : '최대 10장'}
+        JPG · PNG · {images.length > 0 ? `${images.length}/${MAX_IMAGES}장` : `최대 ${MAX_IMAGES}장`}
       </p>
     </div>
   )
