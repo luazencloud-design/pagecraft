@@ -70,8 +70,8 @@ function safeParseJSON<T>(text: string): T {
 }
 
 /**
- * Gemini API fetch with auto-retry (503 대응)
- * 최대 3회 재시도, 간격 2초/4초
+ * Gemini API fetch with auto-retry — 503 (overload) / 429 (rate limit) 대응
+ * 최대 3회 재시도. 429는 Retry-After 헤더 존중 (없으면 5s/10s/15s).
  */
 async function geminiRequest(url: string, body: object): Promise<Response> {
   const MAX_RETRIES = 3
@@ -81,11 +81,24 @@ async function geminiRequest(url: string, body: object): Promise<Response> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    if (res.status !== 503 || attempt === MAX_RETRIES) return res
-    // 503이면 재시도 전 대기
-    await new Promise((r) => setTimeout(r, attempt * 2000))
+    if (attempt === MAX_RETRIES) return res
+
+    if (res.status === 503) {
+      await new Promise((r) => setTimeout(r, attempt * 2000))
+      continue
+    }
+    if (res.status === 429) {
+      // Retry-After 헤더 존중 (초 단위). 없으면 attempt * 5초.
+      const retryAfter = res.headers.get('Retry-After')
+      const waitMs = retryAfter
+        ? Math.min(30_000, Number(retryAfter) * 1000)
+        : attempt * 5000
+      console.warn(`[gemini] 429 rate limited, ${waitMs}ms 후 재시도 (${attempt}/${MAX_RETRIES})`)
+      await new Promise((r) => setTimeout(r, waitMs))
+      continue
+    }
+    return res
   }
-  // unreachable but TS needs it
   throw new Error('Gemini API 재시도 실패')
 }
 
@@ -684,7 +697,9 @@ CRITICAL:
   )
 
   if (!imagePart?.inlineData) {
-    throw new Error('AI 모델 이미지 생성에 실패했습니다.')
+    const { reason } = extractGeminiImageFailureReason(data)
+    console.error(`[model-shot] no image returned:`, reason)
+    throw new Error(`AI 모델 이미지 실패: ${reason}`)
   }
 
   return `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`
@@ -699,35 +714,71 @@ CRITICAL:
  *   3. 병렬 호출 — 전체 latency ≈ 단일 이미지 생성과 비슷
  * ──────────────────────────────────────────────────────────── */
 
+// "EXACT SAME product" 강하게 박으면 Gemini가 reference에 없는 각도(예: 모자 뒷면)는
+// 만들지 못하고 safety/empty로 빠짐. 살짝 완화해서 "based on the product in the references" 톤으로.
 const ANGLE_VARIANTS = [
   {
     label: 'front',
-    framing: 'A studio product photograph of the EXACT SAME product shown in the reference images, photographed from the FRONT VIEW (centered, eye level, perfectly straight on). Pure product shot — NO model, NO hands, NO context. White or light gray studio background.',
+    framing: 'A studio product photograph of the product shown in the reference images, captured from the FRONT VIEW (centered, eye level). Pure product shot — NO model, NO hands. White or light gray studio background.',
   },
   {
     label: 'three-quarter',
-    framing: 'A studio product photograph of the EXACT SAME product shown in the reference images, photographed from a THREE-QUARTER ANGLE (approx 45 degrees from front, slight rotation showing depth). Pure product shot — NO model. White or light gray studio background.',
+    framing: 'A studio product photograph of the product shown in the reference images, captured from a THREE-QUARTER ANGLE (about 45 degrees, slight rotation showing depth). Pure product shot — NO model. White or light gray studio background.',
   },
   {
     label: 'side',
-    framing: 'A studio product photograph of the EXACT SAME product shown in the reference images, photographed from PURE SIDE PROFILE (90 degrees, full side view). Pure product shot — NO model. White or light gray studio background.',
+    framing: 'A studio product photograph of the product shown in the reference images, captured from the SIDE PROFILE. Pure product shot — NO model. White or light gray studio background.',
   },
   {
     label: 'back',
-    framing: 'A studio product photograph of the EXACT SAME product shown in the reference images, photographed from the BACK VIEW. Pure product shot — NO model. White or light gray studio background.',
+    framing: 'A studio product photograph showing the BACK SIDE of the product from the reference images. Imagine and render the back of this product consistent with the front shown. Pure product shot — NO model. White or light gray studio background.',
   },
   {
     label: 'top-down',
-    framing: 'A flat-lay product photograph of the EXACT SAME product shown in the reference images, photographed from a TOP-DOWN bird-eye view. Pure product shot, neatly arranged. Light gray or beige background.',
+    framing: 'A flat-lay TOP-DOWN photograph of the product from the reference images, neatly arranged on a clean light gray or beige surface. Pure product shot — NO model.',
   },
   {
     label: 'macro-detail',
-    framing: 'A macro close-up product photograph showing the texture, material, and fine details of the EXACT SAME product shown in the reference images. Extreme close-up, sharp detail. Soft natural lighting. NO model.',
+    framing: 'A macro close-up photograph showing the texture, material, and fine details of the product from the reference images. Sharp focused detail of the surface and craftsmanship. NO model, NO human skin in frame.',
   },
 ]
 
 /**
+ * Gemini Image 응답에서 차단/실패 사유 추출 + 사람이 읽을 수 있는 메시지로 변환
+ * — 응답이 HTTP 200이지만 image 파트 없는 경우 호출 (safety 차단 / finishReason 비정상 등)
+ */
+function extractGeminiImageFailureReason(data: unknown): {
+  reason: string
+  isDeterministic: boolean // safety 등 재시도해도 동일한 결과 = true
+} {
+  type GeminiData = {
+    candidates?: Array<{
+      finishReason?: string
+      safetyRatings?: unknown
+      content?: { parts?: Array<{ text?: string }> }
+    }>
+    promptFeedback?: { blockReason?: string }
+  }
+  const d = data as GeminiData
+  const finish = d.candidates?.[0]?.finishReason
+  const block = d.promptFeedback?.blockReason
+  const textPart = d.candidates?.[0]?.content?.parts?.find((p) => p.text)?.text
+
+  const SAFETY_REASONS = ['SAFETY', 'IMAGE_SAFETY', 'PROHIBITED_CONTENT', 'RECITATION', 'BLOCKLIST']
+  const isSafety = (s?: string) => !!s && SAFETY_REASONS.includes(s)
+  const isDeterministic = isSafety(finish) || isSafety(block)
+
+  const parts: string[] = []
+  if (block) parts.push(`promptBlock=${block}`)
+  if (finish) parts.push(`finish=${finish}`)
+  if (textPart) parts.push(`note="${textPart.slice(0, 120)}"`)
+  if (parts.length === 0) parts.push('empty-response')
+  return { reason: parts.join(' / '), isDeterministic }
+}
+
+/**
  * 1회 재시도 헬퍼 — 일시 에러(rate limit / 5xx / 네트워크 흔들림) 흡수
+ * 단 safety 차단(deterministic) 에러는 재시도 안 함 — 어차피 같은 결과
  */
 async function withRetry<T>(
   fn: () => Promise<T>,
@@ -741,6 +792,12 @@ async function withRetry<T>(
       return await fn()
     } catch (err) {
       lastErr = err
+      // safety 차단 같은 deterministic 에러는 재시도 무의미
+      const msg = err instanceof Error ? err.message : String(err)
+      if (/SAFETY|PROHIBITED|RECITATION|BLOCKLIST|IMAGE_SAFETY/i.test(msg)) {
+        console.warn(`[${label}] deterministic 차단, 재시도 스킵:`, msg)
+        break
+      }
       if (attempt < retries) {
         // 지수 백오프 + 약간의 jitter
         const delay = baseDelayMs * (attempt + 1) + Math.random() * 500
@@ -765,14 +822,14 @@ async function generateAngleShot(
 
 Product: "${product.productName}"
 
-CRITICAL RULES:
-- The product MUST be visually identical to the reference images (same color, shape, material, branding details).
-- Only the camera angle changes — this is the same product from a different perspective.
-- NO model, NO human hands, NO clothing context around the product.
-- Clean isolated product shot, like a high-end e-commerce catalog.
-- Professional studio lighting with soft shadows.
-- No text, watermark, logo overlays.
-- Photograph quality, NOT illustration or AI artifact.`
+RULES:
+- Preserve the product's color, material, branding, and overall design as shown in the references.
+- When the reference doesn't show this exact angle (e.g. back view of a hat), render a plausible, consistent extrapolation — keep style/materials matching.
+- NO model, NO human hands, NO clothing context.
+- Clean isolated product shot, high-end e-commerce catalog quality.
+- Soft professional studio lighting with subtle shadows.
+- No added text, watermark, or logo overlay.
+- Photograph realism, NOT illustration or 3D render.`
 
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
     { text: prompt },
@@ -802,7 +859,9 @@ CRITICAL RULES:
       p.inlineData?.mimeType?.startsWith('image/'),
   )
   if (!imagePart?.inlineData) {
-    throw new Error(`각도 컷 생성 실패 (${variant.label}): 이미지 없음`)
+    const { reason } = extractGeminiImageFailureReason(data)
+    console.error(`[angle-${variant.label}] no image returned:`, reason)
+    throw new Error(`각도 컷 실패 (${variant.label}): ${reason}`)
   }
   return `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`
 }
@@ -828,7 +887,8 @@ export async function generateImageSet(req: AIImageSetRequest): Promise<string[]
   const angleCount = count - 1
   const anglesToUse = ANGLE_VARIANTS.slice(0, angleCount)
 
-  const STAGGER_MS = 250
+  // RPM 한도 회피용 stagger — 0.6s 간격이면 6장 풀세트도 ~3.6s 안에 발사 (10 RPM 안전)
+  const STAGGER_MS = 600
   const promises: Array<Promise<string>> = []
   // 모델 시착 컷 — 기존 generateModelImage 재사용 + 재시도
   promises.push(withRetry(() => generateModelImage(req), 'model-shot'))
