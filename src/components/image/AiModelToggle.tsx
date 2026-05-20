@@ -6,6 +6,7 @@ import { useImageStore, MAX_IMAGES } from '@/stores/imageStore'
 import { useUsageStore } from '@/stores/usageStore'
 import { api, ApiError } from '@/lib/api'
 import { compressForImageGen } from '@/lib/image'
+import { showToast } from '@/components/ui/Toast'
 
 export default function AiModelToggle() {
   const { product } = useProductStore()
@@ -20,8 +21,16 @@ export default function AiModelToggle() {
   // 풀세트 매수 (모델 시착 1장 + 각도 컷 N-1장). 슬라이더로 선택.
   const [setCount, setSetCount] = useState(4)
 
-  // 남은 슬롯 — 10장 한도에서 현재 이미지 수 차감. 슬라이더 max로 사용.
-  const remainingSlots = Math.max(0, MAX_IMAGES - images.length)
+  // 한도는 "템플릿에 들어가는 이미지" 기준 — 모드에 따라 다르게 계산
+  //  - AI 전용 모드 ON: AI 이미지만 템플릿에 들어가니 AI count 만 한도
+  //  - mixed 모드: 모든 이미지가 템플릿에 들어가니 전체 count 한도
+  const aiImagesCount = images.filter((img) => img.source === 'ai').length
+  const remainingSlots = aiOnlyMode
+    ? Math.max(0, MAX_IMAGES - aiImagesCount)
+    : Math.max(0, MAX_IMAGES - images.length)
+  const slotUsed = aiOnlyMode ? aiImagesCount : images.length
+  const slotLabel = aiOnlyMode ? 'AI' : '전체'
+
   // 실제 생성 가능 매수 (사용자가 골랐어도 남은 슬롯만큼만)
   const effectiveCount = useMemo(
     () => Math.max(0, Math.min(setCount, remainingSlots)),
@@ -291,7 +300,7 @@ export default function AiModelToggle() {
                 </span>
               </div>
 
-              {/* 보조 안내 — 남은 슬롯 / 크레딧 */}
+              {/* 보조 안내 — 템플릿 슬롯 (모드별) / 크레딧 */}
               <div
                 style={{
                   display: 'flex',
@@ -301,65 +310,87 @@ export default function AiModelToggle() {
                   margin: '0 0 8px',
                 }}
               >
-                <span>
-                  슬롯 {images.length}/{MAX_IMAGES}장 (남음 {remainingSlots})
+                <span title={aiOnlyMode ? 'AI 전용 모드 — AI 이미지만 템플릿에 사용' : '모든 이미지가 템플릿에 사용됨'}>
+                  {slotLabel} 슬롯 {slotUsed}/{MAX_IMAGES} (남음 {remainingSlots})
                 </span>
                 <span>
                   크레딧 <b style={{ color: 'var(--text2)' }}>{effectiveCount * 5}</b>개
                 </span>
               </div>
 
-              {/* AI 전용 모드 토글 — AI 이미지 있을 때만 의미 있음 */}
-              {images.some((i) => i.source === 'ai') && (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '6px 0 10px',
-                    borderTop: '1px solid rgba(200,160,80,0.18)',
-                    marginTop: 4,
-                    marginBottom: 8,
-                  }}
-                >
-                  <button
-                    onClick={() => setAiOnlyMode(!aiOnlyMode)}
+              {/* AI 전용 모드 토글 — AI 이미지 있을 때만 의미 있음
+                  잠긴 상태: AI 전용 ON + 전체 > 10 → 토글 OFF 못 함 (시각 hint) */}
+              {images.some((i) => i.source === 'ai') && (() => {
+                const wouldExceedIfOff = aiOnlyMode && images.length > MAX_IMAGES
+                return (
+                  <div
                     style={{
-                      width: 28,
-                      height: 16,
-                      borderRadius: 8,
-                      background: aiOnlyMode ? 'var(--accent)' : 'var(--surface3)',
-                      border: `1px solid ${aiOnlyMode ? 'var(--accent)' : 'var(--border2)'}`,
-                      cursor: 'pointer',
-                      position: 'relative',
-                      flexShrink: 0,
-                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '6px 0 10px',
+                      borderTop: '1px solid rgba(200,160,80,0.18)',
+                      marginTop: 4,
+                      marginBottom: 8,
                     }}
-                    title={aiOnlyMode ? 'AI 이미지만 템플릿에 사용 중' : '원본+AI 모두 사용 중'}
                   >
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '1px',
-                        left: '1px',
-                        width: 12,
-                        height: 12,
-                        borderRadius: '50%',
-                        background: aiOnlyMode ? '#0c0c10' : 'var(--text2)',
-                        transition: 'all 0.2s',
-                        transform: aiOnlyMode ? 'translateX(12px)' : 'translateX(0)',
+                    <button
+                      onClick={() => {
+                        const result = setAiOnlyMode(!aiOnlyMode)
+                        if (!result.ok && result.excess) {
+                          showToast(
+                            `원본+AI 합쳐서 ${images.length}장이라 일반 모드 전환 불가 — ${result.excess}장 삭제 후 다시 시도`,
+                            'error',
+                          )
+                        }
                       }}
-                    />
-                  </button>
-                  <span style={{ fontSize: 10, color: 'var(--text2)', flex: 1, lineHeight: 1.4 }}>
-                    AI 이미지만 템플릿에 사용
-                    <br />
-                    <span style={{ color: 'var(--text3)' }}>
-                      {aiOnlyMode ? '원본은 그리드에서 참고용' : '원본+AI 모두 템플릿에 포함'}
+                      style={{
+                        width: 28,
+                        height: 16,
+                        borderRadius: 8,
+                        background: aiOnlyMode ? 'var(--accent)' : 'var(--surface3)',
+                        border: `1px solid ${aiOnlyMode ? 'var(--accent)' : 'var(--border2)'}`,
+                        cursor: 'pointer',
+                        position: 'relative',
+                        flexShrink: 0,
+                        padding: 0,
+                      }}
+                      title={
+                        wouldExceedIfOff
+                          ? `원본+AI ${images.length}장 — 일반 모드 전환 불가`
+                          : aiOnlyMode
+                            ? 'AI 이미지만 템플릿에 사용 중'
+                            : '원본+AI 모두 사용 중'
+                      }
+                    >
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '1px',
+                          left: '1px',
+                          width: 12,
+                          height: 12,
+                          borderRadius: '50%',
+                          background: aiOnlyMode ? '#0c0c10' : 'var(--text2)',
+                          transition: 'all 0.2s',
+                          transform: aiOnlyMode ? 'translateX(12px)' : 'translateX(0)',
+                        }}
+                      />
+                    </button>
+                    <span style={{ fontSize: 10, color: 'var(--text2)', flex: 1, lineHeight: 1.4 }}>
+                      AI 이미지만 템플릿에 사용
+                      <br />
+                      <span style={{ color: wouldExceedIfOff ? 'var(--red)' : 'var(--text3)' }}>
+                        {wouldExceedIfOff
+                          ? `🔒 원본+AI ${images.length}장 — ${images.length - MAX_IMAGES}장 삭제 후 끄기 가능`
+                          : aiOnlyMode
+                            ? '원본은 그리드에서 참고용'
+                            : '원본+AI 모두 템플릿에 포함'}
+                      </span>
                     </span>
-                  </span>
-                </div>
-              )}
+                  </div>
+                )
+              })()}
 
               <button
                 onClick={generateSet}

@@ -62,7 +62,12 @@ interface ImageState {
   deselectAllForBg: () => void
   setAiModelEnabled: (enabled: boolean) => void
   setAiModelGender: (gender: 'male' | 'female') => void
-  setAiOnlyMode: (enabled: boolean) => void
+  /**
+   * AI 전용 모드 토글.
+   * 끄려는데 원본+AI 합산이 MAX_IMAGES 초과면 변경 거부 + false 반환.
+   * → caller가 사용자에게 안내 (몇 장 삭제해야 하는지)
+   */
+  setAiOnlyMode: (enabled: boolean) => { ok: boolean; excess?: number }
   clearImages: () => void
   resetAll: () => void
   /**
@@ -93,8 +98,19 @@ export const useImageStore = create<ImageState>()((set, get) => ({
 
   addImages: (dataUrls, prepend, source = 'original') => {
     set((state) => {
-      // 10장 초과 방지 — 남은 슬롯만큼만 받음
-      const remaining = Math.max(0, MAX_IMAGES - state.images.length)
+      // 한도 정책:
+      //  - AI 전용 모드 ON: 각 source 별 독립 (AI는 AI끼리, 원본은 원본끼리 10장)
+      //  - mixed 모드: 전체 합산 10장
+      const { aiOnlyMode, images } = state
+      let remaining: number
+      if (aiOnlyMode) {
+        const sameSourceCount = images.filter(
+          (i) => (i.source ?? 'original') === source,
+        ).length
+        remaining = Math.max(0, MAX_IMAGES - sameSourceCount)
+      } else {
+        remaining = Math.max(0, MAX_IMAGES - images.length)
+      }
       const accepted = dataUrls.slice(0, remaining)
       if (accepted.length === 0) return state
       const incoming: ProductImage[] = accepted.map((dataUrl) => ({
@@ -168,7 +184,17 @@ export const useImageStore = create<ImageState>()((set, get) => ({
   deselectAllForBg: () => set({ bgSelectedIds: [] }),
   setAiModelEnabled: (enabled) => set({ aiModelEnabled: enabled }),
   setAiModelGender: (gender) => set({ aiModelGender: gender }),
-  setAiOnlyMode: (enabled) => set({ aiOnlyMode: enabled }),
+  setAiOnlyMode: (enabled) => {
+    // 끄는 방향: 전체 합산이 한도 초과면 거부
+    if (!enabled) {
+      const total = get().images.length
+      if (total > MAX_IMAGES) {
+        return { ok: false, excess: total - MAX_IMAGES }
+      }
+    }
+    set({ aiOnlyMode: enabled })
+    return { ok: true }
+  },
 
   clearImages: () => {
     set({ images: [], storeIntroImage: null, termsImage: null })
