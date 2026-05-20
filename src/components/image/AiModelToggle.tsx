@@ -15,7 +15,10 @@ export default function AiModelToggle() {
   } = useImageStore()
 
   const [generating, setGenerating] = useState(false)
+  const [generatingSet, setGeneratingSet] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  // 풀세트 매수 (1~6, 모델 시착 1장 + 각도 컷 N-1장)
+  const [setCount, setSetCount] = useState(4)
 
   const generate = useCallback(async () => {
     if (!product.name && images.length === 0) {
@@ -55,6 +58,52 @@ export default function AiModelToggle() {
       setGenerating(false)
     }
   }, [product, images, aiModelGender, addImages])
+
+  const generateSet = useCallback(async () => {
+    if (images.length < 2) {
+      setErrorMsg('AI 풀세트 생성은 원본 사진 2장 이상이 필요합니다.')
+      return
+    }
+    setGeneratingSet(true)
+    setErrorMsg('')
+    try {
+      const smallImages = await Promise.all(
+        images.slice(0, 5).map((img) => compressForImageGen(img.dataUrl)),
+      )
+      const result = await api.post<{ images: string[]; generated: number; requested: number }>(
+        '/api/image/generate-set',
+        {
+          productName: product.name,
+          category: product.category,
+          gender: aiModelGender,
+          images: smallImages,
+          count: setCount,
+        },
+      )
+      if (result.images?.length) {
+        addImages(result.images, true)
+        useUsageStore.getState().fetchUsage()
+        if (result.generated < result.requested) {
+          setErrorMsg(
+            `${result.generated}/${result.requested}장 생성 (${result.requested - result.generated}장 실패) — 모자란 만큼 크레딧 환불됨`,
+          )
+        }
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        try {
+          const body = JSON.parse(err.message)
+          setErrorMsg(body.error || '풀세트 생성에 실패했습니다.')
+        } catch {
+          setErrorMsg(err.message || '풀세트 생성에 실패했습니다.')
+        }
+      } else {
+        setErrorMsg('풀세트 생성 중 오류가 발생했습니다.')
+      }
+    } finally {
+      setGeneratingSet(false)
+    }
+  }, [images, product, aiModelGender, setCount, addImages])
 
   return (
     <div>
@@ -160,7 +209,7 @@ export default function AiModelToggle() {
           <div style={{ padding: '4px 18px 8px' }}>
             <button
               onClick={generate}
-              disabled={generating}
+              disabled={generating || generatingSet}
               style={{
                 width: '100%',
                 padding: '8px',
@@ -170,11 +219,92 @@ export default function AiModelToggle() {
                 background: generating ? 'var(--surface3)' : 'var(--green)',
                 border: 'none',
                 color: generating ? 'var(--text3)' : '#fff',
-                cursor: generating ? 'not-allowed' : 'pointer',
+                cursor: generating || generatingSet ? 'not-allowed' : 'pointer',
               }}
             >
-              {generating ? '생성 중...' : '🧑 이미지 생성'}
+              {generating ? '생성 중...' : '🧑 한 장 생성'}
             </button>
+
+            {/* ── 풀세트 영역 ── */}
+            <div
+              style={{
+                marginTop: 10,
+                padding: '10px 12px',
+                borderRadius: 8,
+                background: 'rgba(200, 160, 80, 0.06)',
+                border: '1px solid rgba(200, 160, 80, 0.25)',
+              }}
+            >
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', marginBottom: 6, letterSpacing: 0.5 }}>
+                ✨ AI 이미지 풀세트
+              </div>
+              <p style={{ fontSize: 10, color: 'var(--text3)', lineHeight: 1.5, margin: '0 0 8px' }}>
+                모델 시착 1장 + 다양한 각도 제품 컷 N-1장.
+                <br />
+                <span style={{ color: 'var(--text2)' }}>원본 사진 2장 이상 필요</span>
+              </p>
+
+              {/* 매수 선택 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 10, color: 'var(--text2)', flex: 1 }}>
+                  생성 매수
+                </span>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {[2, 3, 4, 5, 6].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => setSetCount(n)}
+                      style={{
+                        width: 26,
+                        height: 24,
+                        borderRadius: 5,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: setCount === n ? 'var(--accent)' : 'var(--surface2)',
+                        color: setCount === n ? '#0c0c10' : 'var(--text3)',
+                        border: setCount === n ? '1px solid var(--accent)' : '1px solid var(--border)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 비용 안내 */}
+              <p style={{ fontSize: 9.5, color: 'var(--text3)', margin: '0 0 6px', textAlign: 'right' }}>
+                크레딧 <b style={{ color: 'var(--text2)' }}>{setCount * 5}</b>개 소비
+              </p>
+
+              <button
+                onClick={generateSet}
+                disabled={generating || generatingSet || images.length < 2}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  borderRadius: 6,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  background:
+                    generatingSet || images.length < 2 ? 'var(--surface3)' : 'var(--accent)',
+                  border: 'none',
+                  color:
+                    generatingSet || images.length < 2 ? 'var(--text3)' : '#0c0c10',
+                  cursor:
+                    generating || generatingSet || images.length < 2 ? 'not-allowed' : 'pointer',
+                }}
+                title={
+                  images.length < 2
+                    ? '원본 사진 2장 이상 업로드 후 사용 가능'
+                    : `${setCount}장 생성 (모델 1 + 각도 ${setCount - 1})`
+                }
+              >
+                {generatingSet
+                  ? `${setCount}장 생성 중...`
+                  : `✨ ${setCount}장 한번에 생성`}
+              </button>
+            </div>
 
             {/* Error message */}
             {errorMsg && (

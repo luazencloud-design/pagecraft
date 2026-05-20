@@ -691,6 +691,143 @@ CRITICAL:
 }
 
 /* ────────────────────────────────────────────────────────────
+ * AI 이미지 풀세트 — 모델 시착 컷 1장 + 다양한 각도 제품 컷 N-1장
+ *
+ * 흐름:
+ *   1. 첫 장: generateModelImage 재사용 (카테고리별 framing 자동)
+ *   2. 나머지: 정면/3-4/측면/뒷면/탑다운/디테일 각도 순환
+ *   3. 병렬 호출 — 전체 latency ≈ 단일 이미지 생성과 비슷
+ * ──────────────────────────────────────────────────────────── */
+
+const ANGLE_VARIANTS = [
+  {
+    label: 'front',
+    framing: 'A studio product photograph of the EXACT SAME product shown in the reference images, photographed from the FRONT VIEW (centered, eye level, perfectly straight on). Pure product shot — NO model, NO hands, NO context. White or light gray studio background.',
+  },
+  {
+    label: 'three-quarter',
+    framing: 'A studio product photograph of the EXACT SAME product shown in the reference images, photographed from a THREE-QUARTER ANGLE (approx 45 degrees from front, slight rotation showing depth). Pure product shot — NO model. White or light gray studio background.',
+  },
+  {
+    label: 'side',
+    framing: 'A studio product photograph of the EXACT SAME product shown in the reference images, photographed from PURE SIDE PROFILE (90 degrees, full side view). Pure product shot — NO model. White or light gray studio background.',
+  },
+  {
+    label: 'back',
+    framing: 'A studio product photograph of the EXACT SAME product shown in the reference images, photographed from the BACK VIEW. Pure product shot — NO model. White or light gray studio background.',
+  },
+  {
+    label: 'top-down',
+    framing: 'A flat-lay product photograph of the EXACT SAME product shown in the reference images, photographed from a TOP-DOWN bird-eye view. Pure product shot, neatly arranged. Light gray or beige background.',
+  },
+  {
+    label: 'macro-detail',
+    framing: 'A macro close-up product photograph showing the texture, material, and fine details of the EXACT SAME product shown in the reference images. Extreme close-up, sharp detail. Soft natural lighting. NO model.',
+  },
+]
+
+/**
+ * 제품 단독 각도 컷 1장 생성 (모델 없음)
+ */
+async function generateAngleShot(
+  product: { productName: string; images: string[] },
+  variant: (typeof ANGLE_VARIANTS)[number],
+): Promise<string> {
+  const apiKey = getApiKey()
+
+  const prompt = `Photograph: ${variant.framing}
+
+Product: "${product.productName}"
+
+CRITICAL RULES:
+- The product MUST be visually identical to the reference images (same color, shape, material, branding details).
+- Only the camera angle changes — this is the same product from a different perspective.
+- NO model, NO human hands, NO clothing context around the product.
+- Clean isolated product shot, like a high-end e-commerce catalog.
+- Professional studio lighting with soft shadows.
+- No text, watermark, logo overlays.
+- Photograph quality, NOT illustration or AI artifact.`
+
+  const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
+    { text: prompt },
+  ]
+  for (const img of product.images.slice(0, 5)) {
+    const base64 = img.replace(/^data:image\/\w+;base64,/, '')
+    parts.push({ inlineData: { mimeType: 'image/jpeg', data: base64 } })
+  }
+
+  const body = {
+    contents: [{ role: 'user', parts }],
+    generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
+  }
+
+  const res = await geminiRequest(
+    `${GEMINI_BASE}/${getImageModel()}:generateContent?key=${apiKey}`,
+    body,
+  )
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`각도 컷 생성 실패 (${variant.label}): ${res.status} ${err}`)
+  }
+  const data = await res.json()
+  const responseParts = data.candidates?.[0]?.content?.parts || []
+  const imagePart = responseParts.find(
+    (p: { inlineData?: { mimeType: string; data: string } }) =>
+      p.inlineData?.mimeType?.startsWith('image/'),
+  )
+  if (!imagePart?.inlineData) {
+    throw new Error(`각도 컷 생성 실패 (${variant.label}): 이미지 없음`)
+  }
+  return `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`
+}
+
+interface AIImageSetRequest extends AIModelImageRequest {
+  /** 생성할 총 매수 (모델 시착 1장 + 각도 컷 N-1장) — 1~6 */
+  count: number
+}
+
+/**
+ * AI 이미지 풀세트 생성
+ * - 첫 장: 모델 시착 컷 (카테고리 framing 자동)
+ * - 나머지: 다양한 각도 제품 컷 (병렬)
+ */
+export async function generateImageSet(req: AIImageSetRequest): Promise<string[]> {
+  const count = Math.min(6, Math.max(1, Math.floor(req.count || 1)))
+  if (req.images.length < 2) {
+    throw new Error('이미지 풀세트 생성은 원본 사진 2장 이상이 필요합니다.')
+  }
+
+  // 1) 모델 시착 컷 + 각도 컷들을 병렬 호출
+  const angleCount = count - 1
+  const anglesToUse = ANGLE_VARIANTS.slice(0, angleCount)
+
+  const promises: Array<Promise<string>> = []
+  // 모델 시착 컷 — 기존 generateModelImage 재사용
+  promises.push(generateModelImage(req))
+  // 각도 컷들
+  for (const variant of anglesToUse) {
+    promises.push(generateAngleShot({ productName: req.productName, images: req.images }, variant))
+  }
+
+  // Promise.allSettled 로 부분 실패 허용 — 4장 요청했는데 1장 실패면 3장이라도 반환
+  const results = await Promise.allSettled(promises)
+  const images: string[] = []
+  const errors: string[] = []
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      images.push(r.value)
+    } else {
+      const label = i === 0 ? '모델 시착 컷' : anglesToUse[i - 1].label
+      errors.push(`${label}: ${r.reason?.message || r.reason}`)
+    }
+  })
+  if (images.length === 0) {
+    throw new Error(`이미지 세트 생성 전체 실패: ${errors.join('; ')}`)
+  }
+  return images
+}
+
+/* ────────────────────────────────────────────────────────────
  * AI 부분 재생성 — 단일 필드만 새로 뽑기
  *
  * 전체 재생성은 한 번에 모든 필드(상품명/메인카피/셀링포인트/...)를 다시 만들어서
