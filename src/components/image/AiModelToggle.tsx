@@ -10,8 +10,8 @@ import { compressForImageGen } from '@/lib/image'
 export default function AiModelToggle() {
   const { product } = useProductStore()
   const {
-    images, aiModelEnabled, aiModelGender,
-    setAiModelEnabled, setAiModelGender, addImages,
+    images, aiModelEnabled, aiModelGender, aiOnlyMode,
+    setAiModelEnabled, setAiModelGender, setAiOnlyMode, addImages,
   } = useImageStore()
 
   const [generating, setGenerating] = useState(false)
@@ -40,7 +40,7 @@ export default function AiModelToggle() {
         images: smallImages,
       })
       if (result.image) {
-        addImages([result.image], true)
+        addImages([result.image], true, 'ai')
         useUsageStore.getState().fetchUsage()
       }
     } catch (err) {
@@ -81,7 +81,9 @@ export default function AiModelToggle() {
         },
       )
       if (result.images?.length) {
-        addImages(result.images, true)
+        addImages(result.images, true, 'ai')
+        // 풀세트 성공 시 자동으로 AI 전용 모드 활성화 — 사용자가 끄고 싶으면 토글
+        setAiOnlyMode(true)
         useUsageStore.getState().fetchUsage()
         if (result.generated < result.requested) {
           setErrorMsg(
@@ -103,7 +105,7 @@ export default function AiModelToggle() {
     } finally {
       setGeneratingSet(false)
     }
-  }, [images, product, aiModelGender, setCount, addImages])
+  }, [images, product, aiModelGender, setCount, addImages, setAiOnlyMode])
 
   return (
     <div>
@@ -276,6 +278,58 @@ export default function AiModelToggle() {
               <p style={{ fontSize: 9.5, color: 'var(--text3)', margin: '0 0 6px', textAlign: 'right' }}>
                 크레딧 <b style={{ color: 'var(--text2)' }}>{setCount * 5}</b>개 소비
               </p>
+
+              {/* AI 전용 모드 토글 — AI 이미지 있을 때만 의미 있음 */}
+              {images.some((i) => i.source === 'ai') && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '6px 0 10px',
+                    borderTop: '1px solid rgba(200,160,80,0.18)',
+                    marginTop: 4,
+                    marginBottom: 8,
+                  }}
+                >
+                  <button
+                    onClick={() => setAiOnlyMode(!aiOnlyMode)}
+                    style={{
+                      width: 28,
+                      height: 16,
+                      borderRadius: 8,
+                      background: aiOnlyMode ? 'var(--accent)' : 'var(--surface3)',
+                      border: `1px solid ${aiOnlyMode ? 'var(--accent)' : 'var(--border2)'}`,
+                      cursor: 'pointer',
+                      position: 'relative',
+                      flexShrink: 0,
+                      padding: 0,
+                    }}
+                    title={aiOnlyMode ? 'AI 이미지만 템플릿에 사용 중' : '원본+AI 모두 사용 중'}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '1px',
+                        left: '1px',
+                        width: 12,
+                        height: 12,
+                        borderRadius: '50%',
+                        background: aiOnlyMode ? '#0c0c10' : 'var(--text2)',
+                        transition: 'all 0.2s',
+                        transform: aiOnlyMode ? 'translateX(12px)' : 'translateX(0)',
+                      }}
+                    />
+                  </button>
+                  <span style={{ fontSize: 10, color: 'var(--text2)', flex: 1, lineHeight: 1.4 }}>
+                    AI 이미지만 템플릿에 사용
+                    <br />
+                    <span style={{ color: 'var(--text3)' }}>
+                      {aiOnlyMode ? '원본은 그리드에서 참고용' : '원본+AI 모두 템플릿에 포함'}
+                    </span>
+                  </span>
+                </div>
+              )}
 
               <button
                 onClick={generateSet}

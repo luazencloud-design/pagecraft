@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { useImageStore } from '@/stores/imageStore'
+import type { ProductImage } from '@/types/product'
 import Modal from '@/components/ui/Modal'
 import CropEditor from '@/components/image/CropEditor'
 
@@ -10,10 +11,17 @@ export default function ImageGrid() {
     images, removeImage, reorderImages,
     thumbnailImageId, setThumbnailSource,
     bgRemoveEnabled, bgSelectedIds, toggleBgSelect,
+    aiOnlyMode,
   } = useImageStore()
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [previewIdx, setPreviewIdx] = useState<number | null>(null)
   const [cropIdx, setCropIdx] = useState<number | null>(null)
+
+  // AI 전용 모드일 때 시각 분리 — 원본은 dimmed, AI는 강조
+  const hasAiImages = images.some((img) => img.source === 'ai')
+  const splitMode = aiOnlyMode && hasAiImages
+  const originalImages = images.filter((img) => img.source !== 'ai')
+  const aiImages = images.filter((img) => img.source === 'ai')
 
   // 뷰어 열려있을 때 키보드 방향키로 이동
   useEffect(() => {
@@ -50,100 +58,184 @@ export default function ImageGrid() {
 
   if (images.length === 0) return null
 
+  /**
+   * 단일 이미지 카드 — split mode 에서도 동일 카드 재사용
+   * @param img ProductImage 객체
+   * @param idx 전체 images 배열 기준 인덱스 (드래그 reorder / preview 모달용)
+   * @param dimmed AI 전용 모드에서 원본을 흐릿하게 표시할 때 true
+   */
+  const renderCard = (img: ProductImage, idx: number, dimmed = false) => (
+    <div
+      key={img.id}
+      style={{
+        position: 'relative',
+        aspectRatio: '1',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        border: `1px solid ${dragIdx === idx ? 'var(--accent)' : 'var(--border)'}`,
+        cursor: 'pointer',
+        transition: 'border-color 0.15s, opacity 0.15s',
+        opacity: dragIdx === idx ? 0.4 : dimmed ? 0.4 : 1,
+      }}
+      className="group"
+      draggable
+      onDragStart={() => handleDragStart(idx)}
+      onDragOver={(e) => handleDragOver(e, idx)}
+      onDragEnd={() => setDragIdx(null)}
+      onClick={() => setPreviewIdx(idx)}
+    >
+      <img
+        src={img.dataUrl}
+        alt={`상품 이미지 ${idx + 1}`}
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      />
+
+      {/* AI 출처 배지 — 항상 표시 (split mode 아니어도 구분되게) */}
+      {img.source === 'ai' && (
+        <div
+          style={{
+            position: 'absolute', top: 3, left: bgRemoveEnabled ? 24 : 3, zIndex: 2,
+            padding: '1px 5px', borderRadius: 3,
+            background: 'rgba(200,160,80,0.95)', color: '#0c0c10',
+            fontSize: 8, fontWeight: 800, letterSpacing: 0.3,
+          }}
+          title="AI 생성 이미지"
+        >
+          ✨ AI
+        </div>
+      )}
+
+      {/* 좌상단: 배경제거 체크박스 (토글 ON일 때) / 완료 뱃지 */}
+      {bgRemoveEnabled && img.bgRemoved && (
+        <div style={{ position: 'absolute', top: '3px', left: '3px', width: '18px', height: '18px', borderRadius: '4px', background: 'var(--green)', color: '#fff', fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }} title="배경 제거 완료">
+          ✓
+        </div>
+      )}
+      {bgRemoveEnabled && !img.bgRemoved && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            toggleBgSelect(img.id)
+          }}
+          title={bgSelectedIds.includes(img.id) ? '선택 해제' : '배경 제거 대상 선택'}
+          style={{
+            position: 'absolute', top: '3px', left: '3px', width: '18px', height: '18px',
+            borderRadius: '4px', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3,
+            background: bgSelectedIds.includes(img.id) ? 'var(--accent)' : 'rgba(255,255,255,0.9)',
+            color: bgSelectedIds.includes(img.id) ? '#0c0c10' : 'var(--text3)',
+            border: `1px solid ${bgSelectedIds.includes(img.id) ? 'var(--accent)' : 'var(--border2)'}`,
+            padding: 0,
+          }}
+        >
+          {bgSelectedIds.includes(img.id) ? '✓' : ''}
+        </button>
+      )}
+
+      {/* Thumbnail badge */}
+      {thumbnailImageId === img.id && (
+        <div style={{ position: 'absolute', bottom: '3px', left: '3px', padding: '1px 5px', borderRadius: '4px', background: 'var(--accent)', color: '#0c0c10', fontSize: '8px', fontWeight: 700, zIndex: 2 }}>
+          썸네일
+        </div>
+      )}
+
+      {/* Thumbnail set button */}
+      <button
+        style={{ position: 'absolute', bottom: '3px', left: thumbnailImageId === img.id ? '45px' : '3px', width: '18px', height: '18px', borderRadius: '4px', background: thumbnailImageId === img.id ? 'var(--accent)' : 'rgba(0,0,0,0.7)', border: 'none', color: thumbnailImageId === img.id ? '#0c0c10' : '#fff', fontSize: '10px', cursor: 'pointer', zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'opacity 0.15s' }}
+        className={thumbnailImageId === img.id ? '' : 'opacity-0 group-hover:!opacity-100'}
+        onClick={(e) => {
+          e.stopPropagation()
+          setThumbnailSource(thumbnailImageId === img.id ? null : img.id)
+        }}
+        title={thumbnailImageId === img.id ? '썸네일 해제' : '썸네일 지정'}
+      >
+        📌
+      </button>
+
+      {/* Crop button */}
+      <button
+        style={{ position: 'absolute', bottom: '3px', right: '3px', width: '18px', height: '18px', borderRadius: '4px', background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff', fontSize: '10px', cursor: 'pointer', zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'opacity 0.15s' }}
+        className="opacity-0 group-hover:!opacity-100"
+        onClick={(e) => {
+          e.stopPropagation()
+          setCropIdx(idx)
+        }}
+        title="자르기"
+      >
+        ✂
+      </button>
+
+      {/* Delete button */}
+      <button
+        style={{ position: 'absolute', top: '3px', right: '3px', width: '18px', height: '18px', borderRadius: '50%', background: 'rgba(0,0,0,0.75)', border: 'none', color: '#fff', fontSize: '10px', cursor: 'pointer', transition: 'opacity 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        className="opacity-0 group-hover:!opacity-100"
+        onClick={(e) => {
+          e.stopPropagation()
+          removeImage(img.id)
+        }}
+      >
+        ✕
+      </button>
+    </div>
+  )
+
+  // 섹션 헤더 helper
+  const sectionHeader = (label: string, count: number, accent = false) => (
+    <div style={{ padding: '6px 18px 4px', display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span
+        style={{
+          fontSize: 10,
+          fontWeight: accent ? 700 : 600,
+          color: accent ? 'var(--accent)' : 'var(--text3)',
+          letterSpacing: 0.5,
+        }}
+      >
+        {label} ({count})
+      </span>
+      <span
+        style={{
+          flex: 1,
+          height: 1,
+          background: accent ? 'rgba(200,160,80,0.4)' : 'var(--border)',
+        }}
+      />
+    </div>
+  )
+
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px', padding: '6px 18px 0' }}>
-        {images.map((img, idx) => (
-          <div
-            key={img.id}
-            style={{ position: 'relative', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${dragIdx === idx ? 'var(--accent)' : 'var(--border)'}`, cursor: 'pointer', transition: 'border-color 0.15s', opacity: dragIdx === idx ? 0.4 : 1 }}
-            className="group"
-            draggable
-            onDragStart={() => handleDragStart(idx)}
-            onDragOver={(e) => handleDragOver(e, idx)}
-            onDragEnd={() => setDragIdx(null)}
-            onClick={() => setPreviewIdx(idx)}
-          >
-            <img
-              src={img.dataUrl}
-              alt={`상품 이미지 ${idx + 1}`}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-
-            {/* 좌상단: 배경제거 체크박스 (토글 ON일 때) / 완료 뱃지 */}
-            {bgRemoveEnabled && img.bgRemoved && (
-              <div style={{ position: 'absolute', top: '3px', left: '3px', width: '18px', height: '18px', borderRadius: '4px', background: 'var(--green)', color: '#fff', fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3 }} title="배경 제거 완료">
-                ✓
+      {splitMode ? (
+        // ── AI 전용 모드: 두 섹션 분리 ──
+        <>
+          {originalImages.length > 0 && (
+            <>
+              {sectionHeader('원본 · 참고용', originalImages.length, false)}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, padding: '0 18px 8px' }}>
+                {originalImages.map((img) => {
+                  const idx = images.findIndex((x) => x.id === img.id)
+                  return renderCard(img, idx, true)
+                })}
               </div>
-            )}
-            {bgRemoveEnabled && !img.bgRemoved && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  toggleBgSelect(img.id)
-                }}
-                title={bgSelectedIds.includes(img.id) ? '선택 해제' : '배경 제거 대상 선택'}
-                style={{
-                  position: 'absolute', top: '3px', left: '3px', width: '18px', height: '18px',
-                  borderRadius: '4px', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3,
-                  background: bgSelectedIds.includes(img.id) ? 'var(--accent)' : 'rgba(255,255,255,0.9)',
-                  color: bgSelectedIds.includes(img.id) ? '#0c0c10' : 'var(--text3)',
-                  border: `1px solid ${bgSelectedIds.includes(img.id) ? 'var(--accent)' : 'var(--border2)'}`,
-                  padding: 0,
-                }}
-              >
-                {bgSelectedIds.includes(img.id) ? '✓' : ''}
-              </button>
-            )}
-
-            {/* Thumbnail badge */}
-            {thumbnailImageId === img.id && (
-              <div style={{ position: 'absolute', bottom: '3px', left: '3px', padding: '1px 5px', borderRadius: '4px', background: 'var(--accent)', color: '#0c0c10', fontSize: '8px', fontWeight: 700, zIndex: 2 }}>
-                썸네일
+            </>
+          )}
+          {aiImages.length > 0 && (
+            <>
+              {sectionHeader('✨ AI 이미지 · 템플릿 사용', aiImages.length, true)}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, padding: '0 18px 0' }}>
+                {aiImages.map((img) => {
+                  const idx = images.findIndex((x) => x.id === img.id)
+                  return renderCard(img, idx, false)
+                })}
               </div>
-            )}
-
-            {/* Thumbnail set button */}
-            <button
-              style={{ position: 'absolute', bottom: '3px', left: thumbnailImageId === img.id ? '45px' : '3px', width: '18px', height: '18px', borderRadius: '4px', background: thumbnailImageId === img.id ? 'var(--accent)' : 'rgba(0,0,0,0.7)', border: 'none', color: thumbnailImageId === img.id ? '#0c0c10' : '#fff', fontSize: '10px', cursor: 'pointer', zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'opacity 0.15s' }}
-              className={thumbnailImageId === img.id ? '' : 'opacity-0 group-hover:!opacity-100'}
-              onClick={(e) => {
-                e.stopPropagation()
-                setThumbnailSource(thumbnailImageId === img.id ? null : img.id)
-              }}
-              title={thumbnailImageId === img.id ? '썸네일 해제' : '썸네일 지정'}
-            >
-              📌
-            </button>
-
-            {/* Crop button */}
-            <button
-              style={{ position: 'absolute', bottom: '3px', right: '3px', width: '18px', height: '18px', borderRadius: '4px', background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff', fontSize: '10px', cursor: 'pointer', zIndex: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'opacity 0.15s' }}
-              className="opacity-0 group-hover:!opacity-100"
-              onClick={(e) => {
-                e.stopPropagation()
-                setCropIdx(idx)
-              }}
-              title="자르기"
-            >
-              ✂
-            </button>
-
-            {/* Delete button */}
-            <button
-              style={{ position: 'absolute', top: '3px', right: '3px', width: '18px', height: '18px', borderRadius: '50%', background: 'rgba(0,0,0,0.75)', border: 'none', color: '#fff', fontSize: '10px', cursor: 'pointer', transition: 'opacity 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              className="opacity-0 group-hover:!opacity-100"
-              onClick={(e) => {
-                e.stopPropagation()
-                removeImage(img.id)
-              }}
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-      </div>
+            </>
+          )}
+        </>
+      ) : (
+        // ── 일반 모드: 단일 그리드 ──
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px', padding: '6px 18px 0' }}>
+          {images.map((img, idx) => renderCard(img, idx, false))}
+        </div>
+      )}
 
       {/* Preview modal */}
       {previewIdx !== null && images[previewIdx] && (

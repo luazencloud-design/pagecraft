@@ -37,9 +37,15 @@ interface ImageState {
   bgSelectedIds: string[]
   aiModelEnabled: boolean
   aiModelGender: 'male' | 'female'
+  /**
+   * AI 전용 모드 — 활성 시 detail page 템플릿은 source === 'ai' 만 사용.
+   * ImageGrid 도 시각 분리 (원본 / AI 섹션). 풀세트 생성 시 자동 활성화.
+   */
+  aiOnlyMode: boolean
   _hydrated: boolean
 
-  addImages: (dataUrls: string[], prepend?: boolean) => void
+  /** addImages — prepend / source 지정 가능. source 기본값 'original' */
+  addImages: (dataUrls: string[], prepend?: boolean, source?: 'original' | 'ai') => void
   removeImage: (id: string) => void
   reorderImages: (fromIndex: number, toIndex: number) => void
   updateImage: (id: string, partial: Partial<ProductImage>) => void
@@ -53,6 +59,7 @@ interface ImageState {
   deselectAllForBg: () => void
   setAiModelEnabled: (enabled: boolean) => void
   setAiModelGender: (gender: 'male' | 'female') => void
+  setAiOnlyMode: (enabled: boolean) => void
   clearImages: () => void
   resetAll: () => void
   /**
@@ -78,15 +85,17 @@ export const useImageStore = create<ImageState>()((set, get) => ({
   bgSelectedIds: [],
   aiModelEnabled: false,
   aiModelGender: 'female',
+  aiOnlyMode: false,
   _hydrated: false,
 
-  addImages: (dataUrls, prepend) => {
+  addImages: (dataUrls, prepend, source = 'original') => {
     set((state) => {
-      const incoming = dataUrls.map((dataUrl) => ({
+      const incoming: ProductImage[] = dataUrls.map((dataUrl) => ({
         id: generateId(),
         dataUrl,
         bgRemoved: false,
         order: 0,
+        source,
       }))
       const merged = prepend
         ? [...incoming, ...state.images]
@@ -152,6 +161,7 @@ export const useImageStore = create<ImageState>()((set, get) => ({
   deselectAllForBg: () => set({ bgSelectedIds: [] }),
   setAiModelEnabled: (enabled) => set({ aiModelEnabled: enabled }),
   setAiModelGender: (gender) => set({ aiModelGender: gender }),
+  setAiOnlyMode: (enabled) => set({ aiOnlyMode: enabled }),
 
   clearImages: () => {
     set({ images: [], storeIntroImage: null, termsImage: null })
@@ -170,6 +180,7 @@ export const useImageStore = create<ImageState>()((set, get) => ({
       bgSelectedIds: [],
       aiModelEnabled: false,
       aiModelGender: 'female',
+      aiOnlyMode: false,
     })
     clearImagesFromDB(getCurrentDraftId()).catch(() => {})
   },
