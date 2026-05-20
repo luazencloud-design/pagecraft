@@ -646,6 +646,11 @@ export async function generateModelImage(
 
 Subject: a Korean ${req.gender} model ${focus.action} "${req.productName}" (the product shown in the reference images).
 
+COMPOSITION (CRITICAL):
+- The model/subject MUST be perfectly centered in the frame, both horizontally and vertically.
+- Symmetric framing — equal negative space on left and right sides.
+- Do NOT use rule-of-thirds offset; the subject sits dead-center.
+
 CROP RULES (must obey):
 - Shot type: ${focus.shot}
 - Visible area: ${focus.crop} ONLY
@@ -653,8 +658,8 @@ CROP RULES (must obey):
 ${focus.extraInstruction ? `- Extra: ${focus.extraInstruction}` : ''}
 
 Style:
-- Korean ${genderKo}, natural confident pose, editorial e-commerce vibe
-- Background: clean white or light gray studio sweep
+- Korean ${genderKo}, natural confident pose facing the camera straight on
+- Background: clean white or light gray studio sweep, uniform
 - Lighting: soft professional studio, gentle shadows
 - Reference quality: Olive Young / Musinsa / Zara product photography
 
@@ -825,6 +830,7 @@ Product: "${product.productName}"
 RULES:
 - Preserve the product's color, material, branding, and overall design as shown in the references.
 - When the reference doesn't show this exact angle (e.g. back view of a hat), render a plausible, consistent extrapolation — keep style/materials matching.
+- COMPOSITION: product perfectly centered in the frame, symmetric framing, equal margins on left and right. No rule-of-thirds offset.
 - NO model, NO human hands, NO clothing context.
 - Clean isolated product shot, high-end e-commerce catalog quality.
 - Soft professional studio lighting with subtle shadows.
