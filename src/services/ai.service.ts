@@ -727,6 +727,32 @@ const ANGLE_VARIANTS = [
 ]
 
 /**
+ * 1회 재시도 헬퍼 — 일시 에러(rate limit / 5xx / 네트워크 흔들림) 흡수
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  label: string,
+  retries = 1,
+  baseDelayMs = 1500,
+): Promise<T> {
+  let lastErr: unknown
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastErr = err
+      if (attempt < retries) {
+        // 지수 백오프 + 약간의 jitter
+        const delay = baseDelayMs * (attempt + 1) + Math.random() * 500
+        console.warn(`[${label}] 실패, ${Math.round(delay)}ms 후 재시도:`, err)
+        await new Promise((r) => setTimeout(r, delay))
+      }
+    }
+  }
+  throw lastErr
+}
+
+/**
  * 제품 단독 각도 컷 1장 생성 (모델 없음)
  */
 async function generateAngleShot(
@@ -797,16 +823,27 @@ export async function generateImageSet(req: AIImageSetRequest): Promise<string[]
     throw new Error('이미지 풀세트 생성은 원본 사진 2장 이상이 필요합니다.')
   }
 
-  // 1) 모델 시착 컷 + 각도 컷들을 병렬 호출
+  // 1) 모델 시착 컷 + 각도 컷들 — 동시 발사하면 Gemini Image의 RPM 한도에 걸려서
+  //    한 장씩 실패가 잦음. 살짝 stagger (250ms 간격) + 각 호출에 1회 재시도로 흡수.
   const angleCount = count - 1
   const anglesToUse = ANGLE_VARIANTS.slice(0, angleCount)
 
+  const STAGGER_MS = 250
   const promises: Array<Promise<string>> = []
-  // 모델 시착 컷 — 기존 generateModelImage 재사용
-  promises.push(generateModelImage(req))
-  // 각도 컷들
-  for (const variant of anglesToUse) {
-    promises.push(generateAngleShot({ productName: req.productName, images: req.images }, variant))
+  // 모델 시착 컷 — 기존 generateModelImage 재사용 + 재시도
+  promises.push(withRetry(() => generateModelImage(req), 'model-shot'))
+  // 각도 컷들 — stagger 두며 발사
+  for (let i = 0; i < anglesToUse.length; i++) {
+    const variant = anglesToUse[i]
+    const idx = i + 1
+    const delayed = (async () => {
+      await new Promise((r) => setTimeout(r, idx * STAGGER_MS))
+      return withRetry(
+        () => generateAngleShot({ productName: req.productName, images: req.images }, variant),
+        `angle-${variant.label}`,
+      )
+    })()
+    promises.push(delayed)
   }
 
   // Promise.allSettled 로 부분 실패 허용 — 4장 요청했는데 1장 실패면 3장이라도 반환

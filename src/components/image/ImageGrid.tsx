@@ -41,8 +41,16 @@ export default function ImageGrid() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [previewIdx, images.length])
 
-  const handleDragStart = useCallback((idx: number) => {
+  const handleDragStart = useCallback((idx: number, e: React.DragEvent) => {
     setDragIdx(idx)
+    // 전역 drag&drop 핸들러가 외부 파일 드래그로 오해하지 않도록 sentinel 박음
+    // — useGlobalImagePaste 에서 이 타입을 검사해서 무시함
+    try {
+      e.dataTransfer?.setData('application/x-pagecraft-internal', '1')
+      e.dataTransfer.effectAllowed = 'move'
+    } catch {
+      /* setData가 일부 환경에서 throw할 수 있어 swallow */
+    }
   }, [])
 
   const handleDragOver = useCallback(
@@ -79,7 +87,7 @@ export default function ImageGrid() {
       }}
       className="group"
       draggable
-      onDragStart={() => handleDragStart(idx)}
+      onDragStart={(e) => handleDragStart(idx, e)}
       onDragOver={(e) => handleDragOver(e, idx)}
       onDragEnd={() => setDragIdx(null)}
       onClick={() => setPreviewIdx(idx)}
@@ -88,6 +96,7 @@ export default function ImageGrid() {
         src={img.dataUrl}
         alt={`상품 이미지 ${idx + 1}`}
         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        draggable={false}
       />
 
       {/* AI 출처 배지 — 항상 표시 (split mode 아니어도 구분되게) */}

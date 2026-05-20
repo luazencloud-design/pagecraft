@@ -39,10 +39,16 @@ export async function POST(req: Request) {
 
   try {
     const images = await generateImageSet({ ...body, count })
+    // 부분 실패 시 안 나온 만큼 환불 — 4장 요청 → 3장 성공이면 1장분 환불
+    const failedCount = count - images.length
+    if (failedCount > 0 && session) {
+      await refundOnFailure(session.user.id, 'image', session.user.email, failedCount)
+    }
     return NextResponse.json({ images, generated: images.length, requested: count })
   } catch (err) {
     console.error('AI 이미지 풀세트 오류:', err)
     if (session) {
+      // 전체 실패 — 전액 환불
       await refundOnFailure(session.user.id, 'image', session.user.email, count)
     }
     return NextResponse.json(
