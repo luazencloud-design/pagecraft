@@ -88,6 +88,12 @@ export interface ProductImage {
   file?: File
   bgRemoved: boolean
   order: number
+  /**
+   * 출처 — 사용자 업로드 vs AI 생성.
+   * AI 전용 모드 토글 시 source === 'ai' 만 템플릿에 포함.
+   * 마이그레이션 호환: undefined 면 'original' 로 간주.
+   */
+  source?: 'original' | 'ai'
 }
 
 export interface CropState {

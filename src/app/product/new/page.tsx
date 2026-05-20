@@ -32,7 +32,7 @@ export default function ProductNewPage() {
   const { status } = useSession()
   const router = useRouter()
   const { product } = useProductStore()
-  const { images, storeIntroImage, termsImage, setStoreIntroImage, setTermsImage } =
+  const { images, storeIntroImage, termsImage, setStoreIntroImage, setTermsImage, aiOnlyMode } =
     useImageStore()
   const {
     isGenerating: rawIsGenerating,
@@ -531,7 +531,12 @@ export default function ProductNewPage() {
                   ref={previewRef}
                   content={previewContent}
                   price={product.price}
-                  images={images.map((img) => img.dataUrl)}
+                  images={
+                    // AI 전용 모드: ai 이미지만 템플릿에. 단 ai가 0장이면 fallback으로 전체 사용 (빈 페이지 방지)
+                    aiOnlyMode && images.some((img) => img.source === 'ai')
+                      ? images.filter((img) => img.source === 'ai').map((img) => img.dataUrl)
+                      : images.map((img) => img.dataUrl)
+                  }
                   template={product.template}
                   storeIntroImage={storeIntroImage}
                   termsImage={termsImage}

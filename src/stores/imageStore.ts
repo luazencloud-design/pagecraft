@@ -12,6 +12,9 @@ export function setImageStoreDraftIdGetter(fn: () => string) {
   getCurrentDraftId = fn
 }
 
+// 한 드래프트당 이미지 최대 매수 — UI에도 동일 노출
+export const MAX_IMAGES = 10
+
 // localStorage 키 — 스토어 소개/약관 이미지는 세션과 무관하게 영구 보존
 const LS_STORE_INTRO = 'pagecraft-store-intro'
 const LS_TERMS = 'pagecraft-terms'
@@ -37,9 +40,15 @@ interface ImageState {
   bgSelectedIds: string[]
   aiModelEnabled: boolean
   aiModelGender: 'male' | 'female'
+  /**
+   * AI 전용 모드 — 활성 시 detail page 템플릿은 source === 'ai' 만 사용.
+   * ImageGrid 도 시각 분리 (원본 / AI 섹션). 풀세트 생성 시 자동 활성화.
+   */
+  aiOnlyMode: boolean
   _hydrated: boolean
 
-  addImages: (dataUrls: string[], prepend?: boolean) => void
+  /** addImages — prepend / source 지정 가능. source 기본값 'original' */
+  addImages: (dataUrls: string[], prepend?: boolean, source?: 'original' | 'ai') => void
   removeImage: (id: string) => void
   reorderImages: (fromIndex: number, toIndex: number) => void
   updateImage: (id: string, partial: Partial<ProductImage>) => void
@@ -53,6 +62,12 @@ interface ImageState {
   deselectAllForBg: () => void
   setAiModelEnabled: (enabled: boolean) => void
   setAiModelGender: (gender: 'male' | 'female') => void
+  /**
+   * AI 전용 모드 토글.
+   * 끄려는데 원본+AI 합산이 MAX_IMAGES 초과면 변경 거부 + false 반환.
+   * → caller가 사용자에게 안내 (몇 장 삭제해야 하는지)
+   */
+  setAiOnlyMode: (enabled: boolean) => { ok: boolean; excess?: number }
   clearImages: () => void
   resetAll: () => void
   /**
@@ -78,15 +93,32 @@ export const useImageStore = create<ImageState>()((set, get) => ({
   bgSelectedIds: [],
   aiModelEnabled: false,
   aiModelGender: 'female',
+  aiOnlyMode: false,
   _hydrated: false,
 
-  addImages: (dataUrls, prepend) => {
+  addImages: (dataUrls, prepend, source = 'original') => {
     set((state) => {
-      const incoming = dataUrls.map((dataUrl) => ({
+      // 한도 정책:
+      //  - AI 전용 모드 ON: 각 source 별 독립 (AI는 AI끼리, 원본은 원본끼리 10장)
+      //  - mixed 모드: 전체 합산 10장
+      const { aiOnlyMode, images } = state
+      let remaining: number
+      if (aiOnlyMode) {
+        const sameSourceCount = images.filter(
+          (i) => (i.source ?? 'original') === source,
+        ).length
+        remaining = Math.max(0, MAX_IMAGES - sameSourceCount)
+      } else {
+        remaining = Math.max(0, MAX_IMAGES - images.length)
+      }
+      const accepted = dataUrls.slice(0, remaining)
+      if (accepted.length === 0) return state
+      const incoming: ProductImage[] = accepted.map((dataUrl) => ({
         id: generateId(),
         dataUrl,
         bgRemoved: false,
         order: 0,
+        source,
       }))
       const merged = prepend
         ? [...incoming, ...state.images]
@@ -152,6 +184,17 @@ export const useImageStore = create<ImageState>()((set, get) => ({
   deselectAllForBg: () => set({ bgSelectedIds: [] }),
   setAiModelEnabled: (enabled) => set({ aiModelEnabled: enabled }),
   setAiModelGender: (gender) => set({ aiModelGender: gender }),
+  setAiOnlyMode: (enabled) => {
+    // 끄는 방향: 전체 합산이 한도 초과면 거부
+    if (!enabled) {
+      const total = get().images.length
+      if (total > MAX_IMAGES) {
+        return { ok: false, excess: total - MAX_IMAGES }
+      }
+    }
+    set({ aiOnlyMode: enabled })
+    return { ok: true }
+  },
 
   clearImages: () => {
     set({ images: [], storeIntroImage: null, termsImage: null })
@@ -170,6 +213,7 @@ export const useImageStore = create<ImageState>()((set, get) => ({
       bgSelectedIds: [],
       aiModelEnabled: false,
       aiModelGender: 'female',
+      aiOnlyMode: false,
     })
     clearImagesFromDB(getCurrentDraftId()).catch(() => {})
   },

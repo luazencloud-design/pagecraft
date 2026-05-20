@@ -12,36 +12,26 @@ interface KoreanDefaultPreviewProps {
 }
 
 /**
- * 첫 문장만 잘라서 짧은 임팩트 카피로 변환
- * 너무 길면 잘라서 ... 추가
- */
-function impactLine(text: string | undefined, maxLen: number = 28): string {
-  if (!text) return ''
-  // 한국어 문장 종결 (다. / 요. / . / ! / ?) 기준 첫 문장
-  const firstSentence = text.split(/[.!?。！？\n]/)[0]?.trim() || text.trim()
-  if (firstSentence.length > maxLen) return firstSentence.slice(0, maxLen).trim() + '…'
-  return firstSentence
-}
-
-/**
  * 한국 (쿠팡·스마트스토어) 기본 템플릿 — 800px 표준 레이아웃
  * 헤더(검정/금색) + 메인이미지 + 셀링포인트 + 본문 + 사이사이 임팩트 한 줄 + 스펙 + 푸터
  *
  * 디자인 원칙:
  * - 글자 사이즈 전반적으로 키움 (모바일에서도 가독성 ↑)
- * - 사진 사이 긴 설명 X — 짧은 임팩트 한 줄만 (selling_points 또는 description 첫 문장)
+ * - 사진 사이 텍스트는 selling_points 또는 description 한 문장 — 잘림 없이 그대로 표시
+ *   (이전엔 32자 자르고 …을 붙였는데 잘린 모습이 어색해서 제거. 길이 제어는 프롬프트에서)
  */
 const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProps>(
   ({ content, price, images, storeIntroImage, termsImage }, ref) => {
     const descLines = content.description ? content.description.split('\n').filter(Boolean) : []
     const additionalImages = images.slice(1)
 
-    // 사이사이 배너용 임팩트 한 줄 — selling_points 우선, 부족하면 description 짧게
+    // 사이사이 배너용 한 문장 — selling_points 우선, 부족하면 description 다음 줄
+    // 잘림 없음 — 길이는 AI 프롬프트에서 30~50자 가이드로 통제
     const getBannerLine = (i: number): string => {
       const sp = content.selling_points[i]
-      if (sp) return impactLine(sp, 32)
+      if (sp) return sp.trim()
       const dl = descLines[i + 1]
-      if (dl) return impactLine(dl, 32)
+      if (dl) return dl.trim()
       return ''
     }
 

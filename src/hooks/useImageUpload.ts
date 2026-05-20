@@ -86,14 +86,28 @@ export function useGlobalImagePaste() {
     }
 
     // 드래그 진입/이탈 추적 — counter로 자식 → 부모 leave 노이즈 방지
+    //
+    // 외부 파일 드래그(OS 파일탐색기) vs 내부 드래그(그리드 카드 reorder) 구분 필요.
+    // 브라우저가 inline <img>(dataUrl) 드래그할 때도 dataTransfer.files 를 자동 채워서
+    // 'Files' 타입만 보면 false positive 발생. → ImageGrid의 onDragStart 에서
+    // dataTransfer.setData('application/x-pagecraft-internal', '1') 박아둔 sentinel 검사.
+    const isExternalFileDrag = (e: DragEvent): boolean => {
+      const types = e.dataTransfer?.types
+      if (!types) return false
+      // 내부 드래그면 무시
+      if (Array.from(types).includes('application/x-pagecraft-internal')) return false
+      // 외부 파일 드래그는 'Files' 타입 포함
+      return Array.from(types).includes('Files')
+    }
+
     let dragCounter = 0
     const onDragEnter = (e: DragEvent) => {
-      if (!e.dataTransfer?.types?.includes('Files')) return
+      if (!isExternalFileDrag(e)) return
       dragCounter += 1
       if (dragCounter === 1) setDragActive(true)
     }
     const onDragLeave = (e: DragEvent) => {
-      if (!e.dataTransfer?.types?.includes('Files')) return
+      if (!isExternalFileDrag(e)) return
       dragCounter -= 1
       if (dragCounter <= 0) {
         dragCounter = 0
@@ -101,19 +115,21 @@ export function useGlobalImagePaste() {
       }
     }
     const onDrop = (e: DragEvent) => {
+      // 내부 드래그(그리드 reorder) drop은 ImageGrid가 자체 처리 — 전역 핸들러 개입 X
+      if (!isExternalFileDrag(e)) {
+        dragCounter = 0
+        setDragActive(false)
+        return
+      }
       dragCounter = 0
       setDragActive(false)
-      // 페이지 전역 drop은 — ImageUploader 안에서 처리되는 drop은 그대로 두고,
-      // 빈 곳에 떨어진 경우는 page의 dropzone에서 처리하도록 dragActive만 끔
-      // (브라우저 기본 file open 동작 방지)
       if (e.dataTransfer?.files?.length) {
-        // 페이지 전역 drop도 받아주기
         e.preventDefault()
         handleFiles(e.dataTransfer.files)
       }
     }
     const onDragOver = (e: DragEvent) => {
-      if (e.dataTransfer?.types?.includes('Files')) e.preventDefault()
+      if (isExternalFileDrag(e)) e.preventDefault()
     }
 
     window.addEventListener('paste', onPaste)

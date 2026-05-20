@@ -19,7 +19,9 @@ import { consumeCreditsAtomic, refundCredits, type CreditType } from './rateLimi
  *   }
  */
 export async function requireAuth(
-  type?: CreditType
+  type?: CreditType,
+  /** 배치 호출 — N회분 한꺼번에 결제 (예: AI 이미지 풀세트 4장 → multiplier=4) */
+  multiplier: number = 1,
 ): Promise<{
   session: { user: { id: string; email?: string | null; name?: string | null } } | null
   error: NextResponse | null
@@ -49,6 +51,7 @@ export async function requireAuth(
       session.user.id,
       type,
       session.user.email,
+      multiplier,
     )
 
     if (!allowed) {
@@ -83,6 +86,7 @@ export async function refundOnFailure(
   userId: string,
   type: CreditType,
   email?: string | null,
+  multiplier: number = 1,
 ): Promise<void> {
-  await refundCredits(userId, type, email)
+  await refundCredits(userId, type, email, multiplier)
 }

@@ -103,6 +103,8 @@ export async function consumeCreditsAtomic(
   userId: string,
   type: CreditType,
   email?: string | null,
+  /** 한 번에 N회분 결제 (배치 호출용, 예: AI 이미지 풀세트 4장) */
+  multiplier: number = 1,
 ): Promise<{
   allowed: boolean
   used: number
@@ -110,7 +112,7 @@ export async function consumeCreditsAtomic(
   limit: number
   cost: number
 }> {
-  const cost = CREDIT_COST[type]
+  const cost = CREDIT_COST[type] * Math.max(1, Math.floor(multiplier))
 
   // 관리자 무제한 — 실제 카운트 안 함
   if (isAdmin(email)) {
@@ -185,9 +187,14 @@ export async function consumeCreditsAtomic(
 /**
  * 크레딧 환불 (API 실패 시 사용한 크레딧 복원)
  */
-export async function refundCredits(userId: string, type: CreditType, email?: string | null): Promise<void> {
+export async function refundCredits(
+  userId: string,
+  type: CreditType,
+  email?: string | null,
+  multiplier: number = 1,
+): Promise<void> {
   if (isAdmin(email)) return
-  const cost = CREDIT_COST[type]
+  const cost = CREDIT_COST[type] * Math.max(1, Math.floor(multiplier))
   const key = getMonthKey(userId)
 
   if (useRedis) {
