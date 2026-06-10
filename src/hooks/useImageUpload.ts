@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useImageStore } from '@/stores/imageStore'
 import { showToast } from '@/components/ui/Toast'
 
@@ -46,26 +46,21 @@ export function useImageUpload() {
 }
 
 /**
- * 페이지 전역 Ctrl+V 클립보드 이미지 붙여넣기 + 드래그 상태 추적 훅
+ * 페이지 전역 Ctrl+V 클립보드 이미지 붙여넣기 훅
  *
  * - 사용자가 어디서든 Ctrl+V 누르면 클립보드 안 이미지를 자동으로 추가
- * - input/textarea/contenteditable에 포커스된 상태면 무시 (텍스트 입력 보호)
- * - dragActive 상태로 전체 페이지에 드래그&드롭 오버레이 표시 가능
+ * - input/textarea/contenteditable에 포커스돼 있어도 이미지가 있으면 가로채기 (텍스트 paste는 그대로)
+ *
+ * 참고: 드래그&드롭 업로드는 ImageUploader 박스가 전담한다.
+ * 전역 드롭 핸들러는 두지 않는다 — 박스 onDrop과 window drop이 동시에 발동해
+ * 같은 이미지가 두 번 추가되던 버그가 있었기 때문. 단, 박스 바깥에 파일을 떨어뜨렸을 때
+ * 브라우저가 그 파일을 열어 작업이 날아가는 사고만 막는 no-op preventDefault 가드는 유지한다.
  */
 export function useGlobalImagePaste() {
   const { handleFiles } = useImageUpload()
-  const [dragActive, setDragActive] = useState(false)
 
   useEffect(() => {
     const onPaste = async (e: ClipboardEvent) => {
-      // 텍스트 입력 중이면 텍스트 paste 방해하지 않음 — 단, 이미지가 있으면 가로채기
-      const target = e.target as HTMLElement | null
-      const isInTextField =
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable)
-
       const items = e.clipboardData?.items
       if (!items) return
       const imageFiles: File[] = []
@@ -78,73 +73,23 @@ export function useGlobalImagePaste() {
       if (imageFiles.length === 0) return // 텍스트 paste는 그대로 진행
       // 이미지가 있으면 텍스트 필드 안이라도 가로채서 이미지로 추가
       e.preventDefault()
-      if (isInTextField) {
-        // 텍스트 필드에서 이미지 paste는 의도적이지 않을 수 있으므로 살짝 안내
-      }
       await handleFiles(imageFiles)
       showToast(`📋 클립보드에서 이미지 ${imageFiles.length}장 추가됨`)
     }
 
-    // 드래그 진입/이탈 추적 — counter로 자식 → 부모 leave 노이즈 방지
-    //
-    // 외부 파일 드래그(OS 파일탐색기) vs 내부 드래그(그리드 카드 reorder) 구분 필요.
-    // 브라우저가 inline <img>(dataUrl) 드래그할 때도 dataTransfer.files 를 자동 채워서
-    // 'Files' 타입만 보면 false positive 발생. → ImageGrid의 onDragStart 에서
-    // dataTransfer.setData('application/x-pagecraft-internal', '1') 박아둔 sentinel 검사.
-    const isExternalFileDrag = (e: DragEvent): boolean => {
-      const types = e.dataTransfer?.types
-      if (!types) return false
-      // 내부 드래그면 무시
-      if (Array.from(types).includes('application/x-pagecraft-internal')) return false
-      // 외부 파일 드래그는 'Files' 타입 포함
-      return Array.from(types).includes('Files')
-    }
-
-    let dragCounter = 0
-    const onDragEnter = (e: DragEvent) => {
-      if (!isExternalFileDrag(e)) return
-      dragCounter += 1
-      if (dragCounter === 1) setDragActive(true)
-    }
-    const onDragLeave = (e: DragEvent) => {
-      if (!isExternalFileDrag(e)) return
-      dragCounter -= 1
-      if (dragCounter <= 0) {
-        dragCounter = 0
-        setDragActive(false)
-      }
-    }
-    const onDrop = (e: DragEvent) => {
-      // 내부 드래그(그리드 reorder) drop은 ImageGrid가 자체 처리 — 전역 핸들러 개입 X
-      if (!isExternalFileDrag(e)) {
-        dragCounter = 0
-        setDragActive(false)
-        return
-      }
-      dragCounter = 0
-      setDragActive(false)
-      if (e.dataTransfer?.files?.length) {
-        e.preventDefault()
-        handleFiles(e.dataTransfer.files)
-      }
-    }
-    const onDragOver = (e: DragEvent) => {
-      if (isExternalFileDrag(e)) e.preventDefault()
+    // 박스 바깥 드롭 사고 방지 가드 — 이미지를 추가하지는 않고, 브라우저가 파일을
+    // 새 탭으로 여는 기본 동작만 차단한다. ImageUploader 박스 내부 드롭은 박스가 처리.
+    const blockBrowserFileOpen = (e: DragEvent) => {
+      if (e.dataTransfer?.types?.includes('Files')) e.preventDefault()
     }
 
     window.addEventListener('paste', onPaste)
-    window.addEventListener('dragenter', onDragEnter)
-    window.addEventListener('dragleave', onDragLeave)
-    window.addEventListener('drop', onDrop)
-    window.addEventListener('dragover', onDragOver)
+    window.addEventListener('dragover', blockBrowserFileOpen)
+    window.addEventListener('drop', blockBrowserFileOpen)
     return () => {
       window.removeEventListener('paste', onPaste)
-      window.removeEventListener('dragenter', onDragEnter)
-      window.removeEventListener('dragleave', onDragLeave)
-      window.removeEventListener('drop', onDrop)
-      window.removeEventListener('dragover', onDragOver)
+      window.removeEventListener('dragover', blockBrowserFileOpen)
+      window.removeEventListener('drop', blockBrowserFileOpen)
     }
   }, [handleFiles])
-
-  return { dragActive }
 }

@@ -330,11 +330,11 @@ function getCameraFocus(category: string, productName: string): CameraFocus {
     '패딩/점퍼': { leadFraming: F.midToKnee, part: '상반신~허벅지', shot: '미디엄', crop: '머리~무릎', action: 'wearing', extraInstruction: '겉옷 핏 강조. 무릎 아래 자르기.' },
     '집업/후리스': { leadFraming: F.upperBody, part: '상반신', shot: '미디엄', crop: '머리~허리', action: 'wearing', extraInstruction: '허리 아래 보이지 않게 잘라야 합니다.' },
     '티셔츠/맨투맨': { leadFraming: F.upperBody, part: '상반신', shot: '미디엄', crop: '머리~허리', action: 'wearing', extraInstruction: '허리 아래 보이지 않게 잘라야 합니다.' },
-    '바지/하의': { leadFraming: F.lowerBody, part: '하반신', shot: '미디엄', crop: '허리~발', action: 'wearing', extraInstruction: '하체만. 얼굴 X.' },
+    '바지/하의': { leadFraming: F.fullBody, part: '하체 중심 전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '전신 풀샷이되 하의가 잘 보이게.' },
     '가방/배낭': { leadFraming: F.bagShot, part: '어깨/손/등', shot: '미디엄', crop: '상반신 + 가방', action: 'carrying', extraInstruction: '가방 강조, 다리 아래 X.' },
     '모자/액세서리': { leadFraming: F.hatHead, part: '머리/얼굴 상부', shot: '미디엄 클로즈업', crop: '머리~어깨', action: 'wearing on head', extraInstruction: '얼굴+모자 중심. 어깨 아래 절대 X.' },
-    '신발/부츠': { leadFraming: F.feet, part: '발', shot: '미디엄 로우앵글', crop: '무릎~발끝', action: 'wearing', extraInstruction: '신발 강조.' },
-    '슬리퍼/샌들': { leadFraming: F.feet, part: '발', shot: '미디엄 로우앵글', crop: '무릎~발끝', action: 'wearing', extraInstruction: '슬리퍼/샌들 + 발 강조.' },
+    '신발/부츠': { leadFraming: F.fullBody, part: '전신 (발 강조)', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '전신 풀샷이되 신발이 또렷이 보이는 스타일링.' },
+    '슬리퍼/샌들': { leadFraming: F.fullBody, part: '전신 (발 강조)', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '전신 풀샷이되 슬리퍼/샌들이 또렷이 보이는 스타일링.' },
     '스카프/머플러': { leadFraming: F.chestUp, part: '목/어깨', shot: '미디엄 클로즈업', crop: '얼굴 하부~가슴', action: 'wearing around neck', extraInstruction: '스카프 두른 모습. 허리 아래 X.' },
     '기타 의류/잡화': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing/using' },
 
@@ -380,6 +380,7 @@ function getCameraFocus(category: string, productName: string): CameraFocus {
     bagShot: 'a medium shot showing the upper body and the bag clearly, cropped at the hip (NO legs visible)',
     feet: 'a low-angle close-up of the legs and feet only from knees to feet (NO upper body or face visible)',
     upperBody: 'a medium shot showing only the upper body from head to waist (NO legs or lower body visible)',
+    fullBody: 'a full-body fashion shot from head to feet',
   }
 
   // 액세서리 (가장 구체적)
@@ -406,11 +407,11 @@ function getCameraFocus(category: string, productName: string): CameraFocus {
   const outerPattern = /자켓|코트|패딩|점퍼|아우터|jacket|coat|padding/
 
   if (hatPattern.test(name)) return { leadFraming: FN.hatHead, part: '머리/얼굴 상부', shot: '미디엄 클로즈업', crop: '머리~어깨', action: 'wearing on head', extraInstruction: '얼굴+모자 중심. 어깨 아래 절대 X.' }
-  if (shoePattern.test(name)) return { leadFraming: FN.feet, part: '발', shot: '미디엄 로우앵글', crop: '무릎~발끝', action: 'wearing', extraInstruction: '신발 강조.' }
-  if (slipperPattern.test(name)) return { leadFraming: FN.feet, part: '발', shot: '미디엄 로우앵글', crop: '무릎~발끝', action: 'wearing', extraInstruction: '슬리퍼/샌들 강조.' }
+  if (shoePattern.test(name)) return { leadFraming: FN.fullBody, part: '전신 (발 강조)', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '전신 풀샷이되 신발이 또렷이 보이는 스타일링.' }
+  if (slipperPattern.test(name)) return { leadFraming: FN.fullBody, part: '전신 (발 강조)', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '전신 풀샷이되 슬리퍼/샌들이 또렷이 보이는 스타일링.' }
   if (scarfPattern.test(name)) return { leadFraming: FN.chestUp, part: '목/어깨', shot: '미디엄 클로즈업', crop: '얼굴 하부~가슴', action: 'wearing around neck', extraInstruction: '스카프 두른 모습. 허리 아래 X.' }
   if (bagPattern.test(name)) return { leadFraming: FN.bagShot, part: '어깨/손/등', shot: '미디엄', crop: '상반신+가방', action: 'carrying', extraInstruction: '가방 강조, 다리 아래 X.' }
-  if (pantsPattern.test(name)) return { leadFraming: 'a low-angle medium shot of the lower body from waist to feet (NO face visible)', part: '하체', shot: '미디엄', crop: '허리~발', action: 'wearing', extraInstruction: '하체 강조.' }
+  if (pantsPattern.test(name)) return { leadFraming: FN.fullBody, part: '하체 중심 전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '전신 풀샷이되 하의가 잘 보이게.' }
   if (topPattern.test(name)) return { leadFraming: FN.upperBody, part: '상반신', shot: '미디엄', crop: '머리~허리', action: 'wearing', extraInstruction: '상반신만. 하체 X.' }
   if (dressPattern.test(name)) return { leadFraming: 'a full-body fashion shot from head to feet', part: '전신', shot: '풀샷', crop: '전신', action: 'wearing' }
   if (outerPattern.test(name)) return { leadFraming: 'a medium-long shot from head to knees (cropped at knees)', part: '상반신~허벅지', shot: '미디엄~풀샷', crop: '머리~무릎', action: 'wearing', extraInstruction: '아우터 핏 강조.' }
@@ -419,8 +420,8 @@ function getCameraFocus(category: string, productName: string): CameraFocus {
   const catLower = (category || '').toLowerCase()
   if (/상의|티셔츠|셔츠|블라우스|니트|탑/.test(catLower))
     return { leadFraming: 'a medium shot showing only the upper body from head to waist (NO legs visible)', part: '상체', shot: '미디엄', crop: '머리~허리', action: 'wearing', extraInstruction: '상반신만. 하체 X.' }
-  if (/하의|팬츠|바지|스커트|치마/.test(catLower))
-    return { leadFraming: 'a low-angle medium shot of the lower body from waist to feet (NO face visible)', part: '하체', shot: '미디엄', crop: '허리~발', action: 'wearing', extraInstruction: '하체 강조.' }
+  if (/하의|팬츠|바지|스커트|치마|신발|구두|슈즈|샌들|슬리퍼/.test(catLower))
+    return { leadFraming: 'a full-body fashion shot from head to feet', part: '하체 중심 전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '전신 풀샷이되 하의/신발이 잘 보이게.' }
   if (/원피스|드레스/.test(catLower))
     return { leadFraming: 'a full-body fashion shot from head to feet', part: '전신', shot: '풀샷', crop: '전신', action: 'wearing' }
   if (/아우터|자켓|코트/.test(catLower))

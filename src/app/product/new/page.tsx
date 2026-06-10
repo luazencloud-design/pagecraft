@@ -49,8 +49,8 @@ export default function ProductNewPage() {
   const isGenerating = rawIsGenerating && generatingDraftId === currentDraftId
   const { generateContent } = useAIGenerate()
 
-  // 페이지 어디서든 Ctrl+V 로 이미지 클립보드 붙여넣기 + 페이지 전체 드래그&드롭 활성화
-  const { dragActive } = useGlobalImagePaste()
+  // 페이지 어디서든 Ctrl+V 로 이미지 클립보드 붙여넣기 (드래그&드롭은 ImageUploader 박스 전담)
+  useGlobalImagePaste()
 
   // 콘텐츠가 다른 플랫폼용으로 생성됐는지 판단 — 재생성 권장 배너 표시용
   const isStale = !!(
@@ -248,39 +248,6 @@ export default function ProductNewPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', position: 'relative' }}>
-      {/* 페이지 전체 드래그&드롭 오버레이 — 파일 드래그 시 시각적 피드백 */}
-      {dragActive && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: 'rgba(20, 24, 40, 0.75)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'none',
-          }}
-        >
-          <div
-            style={{
-              padding: '40px 60px',
-              borderRadius: 20,
-              border: '2px dashed var(--accent)',
-              background: 'rgba(0,0,0,0.4)',
-              color: '#fff',
-              textAlign: 'center',
-            }}
-          >
-            <p style={{ fontSize: 48, margin: '0 0 12px' }}>⬇</p>
-            <p style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>여기에 이미지 놓으세요</p>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', margin: '6px 0 0' }}>
-              현재 드래프트에 추가됩니다
-            </p>
-          </div>
-        </div>
-      )}
       <Header />
 
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '450px 1fr 480px', overflow: 'hidden' }}>
