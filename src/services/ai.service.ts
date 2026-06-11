@@ -626,20 +626,29 @@ Respond with ONLY the category name, nothing else.`
 /**
  * 사은품 이미지 → 담백한 사은품 안내 문구 생성 (vision)
  *
- * 톤: 과장 X, 담백하게. "어떤 물품인지" 확인 + 간단 설명 + "증정" 강조 한 줄.
- * 예) "구매 시 휴대용 미니 핸드크림을 함께 드립니다. 외출 시 간편하게 보습하세요."
+ * 톤: 과장 X, 담백하게. "어떤 물품인지" 확인 + 간단 설명 + "증정" 강조.
+ * 예) "구매 시 GG 패턴 버킷햇을 함께 드립니다. 데일리 코디에 포인트로 활용하기 좋습니다."
+ *
+ * 주의: gemini-2.5-flash는 thinking 토큰을 기본 사용 → maxOutputTokens가 작으면
+ *      추론에 다 쓰이고 본문이 잘림. thinkingBudget: 0 으로 끄고 토큰도 넉넉히.
  */
-export async function describeGiftImage(image: string): Promise<string> {
+export async function describeGiftImage(image: string, productName?: string): Promise<string> {
   const apiKey = getApiKey()
+  const productLine = productName?.trim()
+    ? `참고: 이 사은품은 "${productName.trim()}" 상품 구매 시 증정합니다. (사은품 자체를 설명하되, 자연스러우면 어떤 상품 구매 시 주는지 언급해도 좋음)`
+    : ''
+
   const prompt = `이미지는 상품 구매 시 함께 증정하는 "사은품"입니다.
-사은품이 무엇인지 파악하고, 상세페이지에 넣을 담백한 안내 문구를 작성하세요.
+사은품이 무엇인지 구체적으로 파악하고(브랜드/패턴/형태 등 보이는 특징 포함), 상세페이지에 넣을 담백한 안내 문구를 완성된 문장으로 작성하세요.
+${productLine}
 
 규칙:
-- 2문장 이내, 총 60자 내외. 과장/감탄사 없이 담백하게.
-- 첫 문장: 무엇을 증정하는지 ("구매 시 OOO를 함께 드립니다" 형태).
-- 둘째 문장(선택): 사은품의 간단한 용도/특징 한 줄.
+- 정확히 2문장. 총 50~80자. 과장/감탄사 없이 담백하게.
+- 첫 문장: 무엇을 증정하는지 — "구매 시 OOO를 함께 드립니다." 형태로 끝까지 완성.
+- 둘째 문장: 사은품의 용도/활용 팁 한 줄, 끝까지 완성.
+- 문장은 반드시 마침표로 끝맺을 것 (중간에 끊지 말 것).
 - 가격/한정수량 등 임의 정보 지어내지 말 것. 보이는 것만.
-- JSON 등 없이 문구 텍스트만 출력.`
+- JSON·따옴표·머리말 없이 안내 문구 텍스트만 출력.`
 
   const base64 = image.replace(/^data:image\/\w+;base64,/, '')
   const body = {
@@ -649,7 +658,12 @@ export async function describeGiftImage(image: string): Promise<string> {
         parts: [{ text: prompt }, { inlineData: { mimeType: 'image/jpeg', data: base64 } }],
       },
     ],
-    generationConfig: { temperature: 0.6, maxOutputTokens: 150 },
+    generationConfig: {
+      temperature: 0.6,
+      maxOutputTokens: 400,
+      // thinking 끄기 — 짧은 카피라 추론 불필요. 안 끄면 토큰이 추론에 소진돼 본문 잘림.
+      thinkingConfig: { thinkingBudget: 0 },
+    },
   }
   const res = await geminiRequest(
     `${GEMINI_BASE}/${getTextModel()}:generateContent?key=${apiKey}`,
@@ -660,8 +674,9 @@ export async function describeGiftImage(image: string): Promise<string> {
     throw new Error(`사은품 설명 생성 오류: ${res.status} ${err}`)
   }
   const data = await res.json()
-  const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-  const cleaned = text.trim().replace(/^["']|["']$/g, '')
+  const parts = data.candidates?.[0]?.content?.parts || []
+  const text: string = parts.map((p: { text?: string }) => p.text || '').join('').trim()
+  const cleaned = text.replace(/^["']|["']$/g, '').trim()
   if (!cleaned) throw new Error('사은품 설명 생성에 실패했습니다.')
   return cleaned
 }

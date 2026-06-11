@@ -260,6 +260,7 @@ export default function ProductNewPage() {
     try {
       const { description } = await api.post<{ description: string }>('/api/ai/gift-describe', {
         image: giftImage,
+        productName: product.name,
       })
       setGiftDescription(description)
       useUsageStore.getState().fetchUsage()

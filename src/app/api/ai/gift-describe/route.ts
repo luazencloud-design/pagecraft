@@ -8,7 +8,7 @@ import { friendlyErrorMessage } from '@/lib/errorMessage'
  * 크레딧: gift (1개)
  */
 export async function POST(req: Request) {
-  let body: { image?: string }
+  let body: { image?: string; productName?: string }
   try {
     body = await req.json()
   } catch {
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   if (error) return error
 
   try {
-    const description = await describeGiftImage(body.image)
+    const description = await describeGiftImage(body.image, body.productName)
     return NextResponse.json({ description })
   } catch (err) {
     console.error('사은품 설명 생성 오류:', err)
