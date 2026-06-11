@@ -1,25 +1,26 @@
 interface GiftBlockProps {
   giftImage?: string | null
   giftDescription?: string | null
-  /** 템플릿 팔레트에 맞춘 색 — accent(라벨/포인트), bg(블록 배경), border */
-  accent?: string
+  /** 한글 헤드라인 강조색 — 기본 블루(레퍼런스 톤). 템플릿별 오버라이드 가능 */
+  headlineColor?: string
+  /** 블록 배경 */
   bg?: string
-  border?: string
   fontFamily?: string
 }
 
 /**
- * 사은품 안내 블록 — 스토어 소개 이미지 바로 아래에 표시
+ * 사은품 안내 — 풀와이드 히어로 배너 (스토어 소개 이미지 바로 아래)
  *
- * 담백한 톤: 작은 'GIFT' 라벨 + 사은품 이미지 + 안내 문구.
- * giftImage 가 없으면 아무것도 렌더하지 않음 (호출부에서 가드해도 안전망).
+ * 구성: eyebrow(라인) → GIFT FOR YOU(블랙) → 사은품 증정 이벤트(블루)
+ *      → FREE GIFT EVENT(라인) → 사은품 이미지 크게 → 안내 문구
+ *
+ * giftImage 없으면 렌더 X.
  */
 export default function GiftBlock({
   giftImage,
   giftDescription,
-  accent = '#c8a050',
-  bg = '#faf9f6',
-  border = '#ece9e2',
+  headlineColor = '#3d7bf0',
+  bg = '#ffffff',
   fontFamily = "'Pretendard Variable', 'Pretendard', 'Noto Sans KR', sans-serif",
 }: GiftBlockProps) {
   if (!giftImage) return null
@@ -28,65 +29,119 @@ export default function GiftBlock({
     <div
       style={{
         background: bg,
-        borderTop: `1px solid ${border}`,
-        borderBottom: `1px solid ${border}`,
-        padding: '34px 40px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 24,
+        padding: '64px 50px 60px',
+        textAlign: 'center',
         fontFamily,
       }}
     >
-      {/* 사은품 이미지 — 정사각 썸네일 */}
+      {/* eyebrow — 짧은 라인 + 라벨 */}
       <div
         style={{
-          width: 130,
-          height: 130,
-          flexShrink: 0,
-          borderRadius: 10,
-          overflow: 'hidden',
-          border: `1px solid ${border}`,
-          background: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 14,
+          marginBottom: 16,
         }}
       >
+        <span
+          style={{
+            fontSize: 17,
+            fontWeight: 500,
+            color: '#2b2b2b',
+            letterSpacing: '0.02em',
+          }}
+        >
+          Special Gift
+        </span>
+        <span style={{ width: 90, height: 1, background: '#cdcdcd' }} />
+      </div>
+
+      {/* GIFT FOR YOU — 블랙 */}
+      <p
+        style={{
+          margin: 0,
+          fontSize: 50,
+          fontWeight: 900,
+          color: '#1a1a1a',
+          letterSpacing: '0.01em',
+          lineHeight: 1.1,
+        }}
+      >
+        GIFT FOR YOU
+      </p>
+
+      {/* 사은품 증정 이벤트 — 블루 */}
+      <p
+        style={{
+          margin: '6px 0 0',
+          fontSize: 44,
+          fontWeight: 900,
+          color: headlineColor,
+          letterSpacing: '0.01em',
+          lineHeight: 1.15,
+          wordBreak: 'keep-all',
+        }}
+      >
+        사은품 증정 이벤트
+      </p>
+
+      {/* FREE GIFT EVENT — 라인 + 라벨 */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 14,
+          margin: '18px 0 0',
+        }}
+      >
+        <span style={{ width: 60, height: 1, background: '#cdcdcd' }} />
+        <span
+          style={{
+            fontSize: 18,
+            fontWeight: 600,
+            color: '#6a6a6a',
+            letterSpacing: '0.12em',
+          }}
+        >
+          FREE GIFT EVENT
+        </span>
+      </div>
+
+      {/* 사은품 이미지 — 크게, 전체가 보이도록 contain */}
+      <div style={{ marginTop: 40 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={giftImage}
           alt="사은품"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          style={{
+            display: 'block',
+            margin: '0 auto',
+            maxWidth: 480,
+            width: '100%',
+            height: 'auto',
+            objectFit: 'contain',
+          }}
         />
       </div>
 
-      {/* 라벨 + 문구 */}
-      <div style={{ flex: 1 }}>
-        <div
-          style={{
-            display: 'inline-block',
-            padding: '3px 10px',
-            borderRadius: 4,
-            background: accent,
-            color: '#ffffff',
-            fontSize: 12,
-            fontWeight: 800,
-            letterSpacing: '0.08em',
-            marginBottom: 12,
-          }}
-        >
-          GIFT · 사은품 증정
-        </div>
+      {/* 안내 문구 — 사은품 정보 (담백하게, 읽기 좋은 크기) */}
+      {giftDescription && (
         <p
           style={{
-            margin: 0,
-            fontSize: 16,
-            lineHeight: 1.65,
-            color: '#3d3d3d',
+            margin: '34px auto 0',
+            maxWidth: 560,
+            fontSize: 19,
+            lineHeight: 1.7,
+            color: '#444444',
             fontWeight: 500,
             wordBreak: 'keep-all',
           }}
         >
-          {giftDescription || '구매 시 사은품을 함께 드립니다.'}
+          {giftDescription}
         </p>
-      </div>
+      )}
     </div>
   )
 }

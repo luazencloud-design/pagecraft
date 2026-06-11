@@ -46,13 +46,10 @@ const Qoo10ClassicPreview = forwardRef<HTMLDivElement, Qoo10ClassicPreviewProps>
           <img src={storeIntroImage} alt="" style={{ width: '100%', display: 'block' }} />
         )}
 
-        {/* 사은품 안내 (선택) — Classic 팔레트(살구/브라운) */}
+        {/* 사은품 안내 (선택) */}
         <GiftBlock
           giftImage={giftImage}
           giftDescription={giftDescription}
-          accent="#a04030"
-          bg="#fdf3e7"
-          border="#ead7c2"
           fontFamily="'Pretendard Variable', 'Pretendard', 'Noto Sans JP', 'Noto Sans KR', 'Hiragino Sans', sans-serif"
         />
 

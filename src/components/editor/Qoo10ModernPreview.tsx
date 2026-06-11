@@ -51,13 +51,10 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
           <img src={storeIntroImage} alt="" style={{ width: '100%', display: 'block' }} />
         )}
 
-        {/* 사은품 안내 (선택) — Modern 팔레트(피치/코랄) */}
+        {/* 사은품 안내 (선택) */}
         <GiftBlock
           giftImage={giftImage}
           giftDescription={giftDescription}
-          accent="#c08770"
-          bg="#fdf6ee"
-          border="#f0e0d0"
           fontFamily={FONT_BODY}
         />
 
