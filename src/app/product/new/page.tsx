@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
@@ -19,8 +19,10 @@ import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
 import { useEditorStore } from '@/stores/editorStore'
 import { useDraftsStore } from '@/stores/draftsStore'
+import { useUsageStore } from '@/stores/usageStore'
 import { useAIGenerate } from '@/hooks/useAIGenerate'
 import { useGlobalImagePaste } from '@/hooks/useImageUpload'
+import { api, ApiError } from '@/lib/api'
 import { showToast } from '@/components/ui/Toast'
 import { PLATFORM_META } from '@/types/product'
 import { copyEbayToClipboard } from '@/lib/ebayHtml'
@@ -32,8 +34,11 @@ export default function ProductNewPage() {
   const { status } = useSession()
   const router = useRouter()
   const { product } = useProductStore()
-  const { images, storeIntroImage, termsImage, setStoreIntroImage, setTermsImage, aiOnlyMode } =
-    useImageStore()
+  const {
+    images, storeIntroImage, termsImage, setStoreIntroImage, setTermsImage, aiOnlyMode,
+    giftImage, giftDescription, setGiftImage, setGiftDescription,
+  } = useImageStore()
+  const [giftDescLoading, setGiftDescLoading] = useState(false)
   const {
     isGenerating: rawIsGenerating,
     generatingDraftId,
@@ -246,6 +251,34 @@ export default function ProductNewPage() {
     else showToast('HTML 다운로드 실패', 'error')
   }
 
+  /**
+   * 사은품 설명 생성 — 사은품 이미지를 vision으로 인식해 담백한 문구 생성
+   */
+  const handleGenerateGiftDescription = async () => {
+    if (!giftImage) return
+    setGiftDescLoading(true)
+    try {
+      const { description } = await api.post<{ description: string }>('/api/ai/gift-describe', {
+        image: giftImage,
+      })
+      setGiftDescription(description)
+      useUsageStore.getState().fetchUsage()
+      showToast('사은품 설명 생성 완료')
+    } catch (err) {
+      let msg = '사은품 설명 생성 실패'
+      if (err instanceof ApiError) {
+        try {
+          msg = JSON.parse(err.message).error || msg
+        } catch {
+          msg = err.message || msg
+        }
+      }
+      showToast(msg, 'error')
+    } finally {
+      setGiftDescLoading(false)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', position: 'relative' }}>
       <Header />
@@ -297,6 +330,64 @@ export default function ProductNewPage() {
               imageData={storeIntroImage}
               onImageChange={setStoreIntroImage}
             />
+          </div>
+
+          <div className="divider" />
+
+          {/* 사은품 */}
+          <div className="panel-section">
+            <div className="panel-section-title">사은품 (선택)</div>
+          </div>
+          <div style={{ padding: '0 18px 8px' }}>
+            <SingleImageUpload
+              label="사은품 이미지"
+              icon="🎁"
+              description={'스토어 소개 아래에 사은품 안내 표시\n썸네일에도 작게 추가 가능 · 1장'}
+              imageData={giftImage}
+              onImageChange={setGiftImage}
+            />
+            {giftImage && (
+              <div style={{ marginTop: 8 }}>
+                <button
+                  onClick={handleGenerateGiftDescription}
+                  disabled={giftDescLoading}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    borderRadius: 7,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    background: giftDescLoading ? 'var(--surface3)' : 'var(--accent)',
+                    border: 'none',
+                    color: giftDescLoading ? 'var(--text3)' : '#0c0c10',
+                    cursor: giftDescLoading ? 'not-allowed' : 'pointer',
+                  }}
+                  title="사은품 이미지를 인식해 담백한 안내 문구 생성 (크레딧 1개)"
+                >
+                  {giftDescLoading
+                    ? '문구 생성 중...'
+                    : giftDescription
+                      ? '↻ 사은품 설명 다시 생성'
+                      : '✦ 사은품 설명 생성 (크레딧 1)'}
+                </button>
+                {giftDescription && (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      padding: '9px 11px',
+                      borderRadius: 8,
+                      background: 'var(--surface2)',
+                      border: '1px solid var(--border)',
+                      fontSize: 11.5,
+                      color: 'var(--text2)',
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {giftDescription}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="divider" />
@@ -507,6 +598,8 @@ export default function ProductNewPage() {
                   template={product.template}
                   storeIntroImage={storeIntroImage}
                   termsImage={termsImage}
+                  giftImage={giftImage}
+                  giftDescription={giftDescription}
                 />
               </div>
             )}

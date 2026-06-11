@@ -15,6 +15,10 @@ interface DetailPagePreviewProps {
   template?: Template
   storeIntroImage?: string | null
   termsImage?: string | null
+  /** 사은품 이미지 (1장) — 스토어 소개 아래에 사은품 안내 블록으로 표시 */
+  giftImage?: string | null
+  /** 사은품 안내 문구 — AI vision 생성. giftImage와 함께 표시 */
+  giftDescription?: string | null
 }
 
 /**

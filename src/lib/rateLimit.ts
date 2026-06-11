@@ -14,6 +14,7 @@ export const CREDIT_COST = {
   image: 5,        // AI 이미지 생성
   'bg-remove': 5,  // 배경 제거
   regen: 1,        // 부분 재생성 (단일 필드 한정)
+  gift: 1,         // 사은품 설명 생성 (vision 1회)
 } as const
 
 export type CreditType = keyof typeof CREDIT_COST

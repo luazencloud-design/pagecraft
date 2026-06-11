@@ -6,23 +6,105 @@ import { useImageStore } from '@/stores/imageStore'
 import { useProductStore } from '@/stores/productStore'
 import { showToast } from '@/components/ui/Toast'
 
+/** 캔버스 둥근 사각형 path */
+function roundRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.arcTo(x + w, y, x + w, y + h, r)
+  ctx.arcTo(x + w, y + h, x, y + h, r)
+  ctx.arcTo(x, y + h, x, y, r)
+  ctx.arcTo(x, y, x + w, y, r)
+  ctx.closePath()
+}
+
+/**
+ * 썸네일 오른쪽 하단에 사은품 이미지 배지 합성
+ * — 흰 바탕 카드 + 얇은 파란 테두리 + 좌상단 작은 '+' 기호 (제품 + 사은품)
+ */
+function drawGiftBadge(ctx: CanvasRenderingContext2D, giftImg: HTMLImageElement) {
+  const BLUE = '#3b82f6'
+  const BOX = 150
+  const M = 18
+  const x = 600 - BOX - M
+  const y = 600 - BOX - M
+  const r = 14
+
+  ctx.save()
+
+  // 흰 카드 바탕 + 미세 그림자
+  ctx.shadowColor = 'rgba(0,0,0,0.18)'
+  ctx.shadowBlur = 12
+  ctx.shadowOffsetY = 3
+  roundRectPath(ctx, x, y, BOX, BOX, r)
+  ctx.fillStyle = '#ffffff'
+  ctx.fill()
+  ctx.restore()
+
+  // 이미지 (cover) — 안쪽 4px 패딩, 둥근 클립
+  ctx.save()
+  roundRectPath(ctx, x + 4, y + 4, BOX - 8, BOX - 8, r - 3)
+  ctx.clip()
+  const inner = BOX - 8
+  const scale = Math.max(inner / giftImg.width, inner / giftImg.height)
+  const sw = giftImg.width * scale
+  const sh = giftImg.height * scale
+  ctx.drawImage(giftImg, x + 4 + (inner - sw) / 2, y + 4 + (inner - sh) / 2, sw, sh)
+  ctx.restore()
+
+  // 얇은 파란 테두리
+  roundRectPath(ctx, x, y, BOX, BOX, r)
+  ctx.lineWidth = 3
+  ctx.strokeStyle = BLUE
+  ctx.stroke()
+
+  // 좌상단 작은 '+' 기호 (제품 + 사은품)
+  const cx = x
+  const cy = y
+  ctx.beginPath()
+  ctx.arc(cx, cy, 16, 0, Math.PI * 2)
+  ctx.fillStyle = BLUE
+  ctx.fill()
+  ctx.lineWidth = 2
+  ctx.strokeStyle = '#ffffff'
+  ctx.stroke()
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = 2.6
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(cx - 7, cy)
+  ctx.lineTo(cx + 7, cy)
+  ctx.moveTo(cx, cy - 7)
+  ctx.lineTo(cx, cy + 7)
+  ctx.stroke()
+}
+
 /** 600x600 썸네일 크롭 편집기 */
 function ThumbnailEditor() {
-  const { images, thumbnailImageId, thumbnailDataUrl, setThumbnailDataUrl } = useImageStore()
+  const { images, thumbnailImageId, thumbnailDataUrl, setThumbnailDataUrl, giftImage } =
+    useImageStore()
   const sourceImage = images.find((img) => img.id === thumbnailImageId)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [imgEl, setImgEl] = useState<HTMLImageElement | null>(null)
+  const [giftImgEl, setGiftImgEl] = useState<HTMLImageElement | null>(null)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [dragging, setDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  // 사은품 배지 — 사은품 이미지 있을 때만 의미. 기본 OFF.
+  const [giftBadgeOn, setGiftBadgeOn] = useState(false)
 
-  // 이미지 로드
+  // 소스 이미지 로드
   useEffect(() => {
     if (!sourceImage) return
     const img = new Image()
     img.onload = () => {
       setImgEl(img)
-      // 초기 오프셋: 중앙 맞춤
       const scale = Math.max(600 / img.width, 600 / img.height)
       const sw = img.width * scale
       const sh = img.height * scale
@@ -30,6 +112,17 @@ function ThumbnailEditor() {
     }
     img.src = sourceImage.dataUrl
   }, [sourceImage])
+
+  // 사은품 이미지 로드
+  useEffect(() => {
+    if (!giftImage) {
+      setGiftImgEl(null)
+      return
+    }
+    const img = new Image()
+    img.onload = () => setGiftImgEl(img)
+    img.src = giftImage
+  }, [giftImage])
 
   // 캔버스 그리기
   const draw = useCallback(() => {
@@ -41,7 +134,9 @@ function ThumbnailEditor() {
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, 600, 600)
     ctx.drawImage(imgEl, offset.x, offset.y, sw, sh)
-  }, [imgEl, offset])
+    // 사은품 배지 — 토글 ON + 이미지 로드됐을 때만
+    if (giftBadgeOn && giftImgEl) drawGiftBadge(ctx, giftImgEl)
+  }, [imgEl, offset, giftBadgeOn, giftImgEl])
 
   useEffect(() => { draw() }, [draw])
 
@@ -56,7 +151,7 @@ function ThumbnailEditor() {
   }
   const handleMouseUp = () => setDragging(false)
 
-  // 썸네일 저장 (dataUrl로)
+  // 썸네일 저장 (dataUrl로) — 캔버스에 이미 배지 합성된 상태 그대로 캡처
   const saveThumbnail = () => {
     if (!canvasRef.current) return
     const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.92)
@@ -109,6 +204,56 @@ function ThumbnailEditor() {
       <p style={{ fontSize: 10, color: 'var(--text3)', textAlign: 'center', marginTop: 6 }}>
         드래그하여 위치 조절 · 600×600px
       </p>
+
+      {/* 사은품 배지 토글 — 사은품 이미지 있을 때만 노출 */}
+      {giftImage && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 10,
+            padding: '8px 10px',
+            borderRadius: 8,
+            background: 'rgba(59,130,246,0.06)',
+            border: '1px solid rgba(59,130,246,0.25)',
+          }}
+        >
+          <button
+            onClick={() => setGiftBadgeOn((v) => !v)}
+            style={{
+              width: 28,
+              height: 16,
+              borderRadius: 8,
+              background: giftBadgeOn ? '#3b82f6' : 'var(--surface3)',
+              border: `1px solid ${giftBadgeOn ? '#3b82f6' : 'var(--border2)'}`,
+              cursor: 'pointer',
+              position: 'relative',
+              flexShrink: 0,
+              padding: 0,
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: '1px',
+                left: '1px',
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                background: giftBadgeOn ? '#fff' : 'var(--text2)',
+                transition: 'all 0.2s',
+                transform: giftBadgeOn ? 'translateX(12px)' : 'translateX(0)',
+              }}
+            />
+          </button>
+          <span style={{ fontSize: 10.5, color: 'var(--text2)', flex: 1, lineHeight: 1.4 }}>
+            썸네일에 사은품 배지 표시
+            <br />
+            <span style={{ color: 'var(--text3)' }}>오른쪽 하단 · 파란 테두리 + 기호</span>
+          </span>
+        </div>
+      )}
 
       {/* 버튼 */}
       <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
