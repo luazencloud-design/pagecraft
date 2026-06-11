@@ -36,7 +36,7 @@ export default function ProductNewPage() {
   const { product } = useProductStore()
   const {
     images, storeIntroImage, termsImage, setStoreIntroImage, setTermsImage, aiOnlyMode,
-    giftImage, giftDescription, setGiftImage, setGiftDescription,
+    giftImage, giftDescription, giftEnabled, setGiftImage, setGiftDescription, setGiftEnabled,
   } = useImageStore()
   const [giftDescLoading, setGiftDescLoading] = useState(false)
   const {
@@ -336,10 +336,56 @@ export default function ProductNewPage() {
           <div className="divider" />
 
           {/* 사은품 */}
-          <div className="panel-section">
+          <div className="panel-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div className="panel-section-title">사은품 (선택)</div>
+            {/* 상세페이지 노출 토글 — 사은품 이미지 있을 때만 */}
+            {giftImage && (
+              <button
+                onClick={() => setGiftEnabled(!giftEnabled)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+                title={giftEnabled ? '상세페이지에 사은품 노출 중' : '상세페이지에 사은품 미노출'}
+              >
+                <span style={{ fontSize: 10, color: giftEnabled ? 'var(--accent)' : 'var(--text3)', fontWeight: 600 }}>
+                  {giftEnabled ? '노출' : '숨김'}
+                </span>
+                <span
+                  style={{
+                    width: 28,
+                    height: 16,
+                    borderRadius: 8,
+                    background: giftEnabled ? 'var(--accent)' : 'var(--surface3)',
+                    border: `1px solid ${giftEnabled ? 'var(--accent)' : 'var(--border2)'}`,
+                    position: 'relative',
+                    flexShrink: 0,
+                    display: 'inline-block',
+                  }}
+                >
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '1px',
+                      left: '1px',
+                      width: 12,
+                      height: 12,
+                      borderRadius: '50%',
+                      background: giftEnabled ? '#0c0c10' : 'var(--text2)',
+                      transition: 'all 0.2s',
+                      transform: giftEnabled ? 'translateX(12px)' : 'translateX(0)',
+                    }}
+                  />
+                </span>
+              </button>
+            )}
           </div>
-          <div style={{ padding: '0 18px 8px' }}>
+          <div style={{ padding: '0 18px 8px', opacity: giftImage && !giftEnabled ? 0.5 : 1, transition: 'opacity 0.15s' }}>
             <SingleImageUpload
               label="사은품 이미지"
               icon="🎁"
@@ -599,7 +645,7 @@ export default function ProductNewPage() {
                   template={product.template}
                   storeIntroImage={storeIntroImage}
                   termsImage={termsImage}
-                  giftImage={giftImage}
+                  giftImage={giftEnabled ? giftImage : null}
                   giftDescription={giftDescription}
                 />
               </div>
