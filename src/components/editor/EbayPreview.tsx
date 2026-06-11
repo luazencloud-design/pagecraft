@@ -10,6 +10,9 @@ interface EbayPreviewProps {
   images?: string[]
   storeIntroImage?: string | null
   termsImage?: string | null
+  /** eBay는 설명창에 이미지 미사용 — 사은품 블록도 렌더 X (시그니처 통일용) */
+  giftImage?: string | null
+  giftDescription?: string | null
 }
 
 /**

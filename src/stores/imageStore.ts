@@ -15,9 +15,12 @@ export function setImageStoreDraftIdGetter(fn: () => string) {
 // 한 드래프트당 이미지 최대 매수 — UI에도 동일 노출
 export const MAX_IMAGES = 10
 
-// localStorage 키 — 스토어 소개/약관 이미지는 세션과 무관하게 영구 보존
+// localStorage 키 — 스토어 소개/약관/사은품은 세션과 무관하게 영구 보존 (전 드래프트 공유)
 const LS_STORE_INTRO = 'pagecraft-store-intro'
 const LS_TERMS = 'pagecraft-terms'
+const LS_GIFT = 'pagecraft-gift'
+const LS_GIFT_DESC = 'pagecraft-gift-desc'
+const LS_GIFT_ENABLED = 'pagecraft-gift-enabled'
 
 function saveToLocal(key: string, value: string | null) {
   if (typeof window === 'undefined') return
@@ -34,6 +37,12 @@ interface ImageState {
   images: ProductImage[]
   storeIntroImage: string | null
   termsImage: string | null
+  /** 사은품 이미지 — 1장만. 전역 공유(스토어 소개와 동일). 있으면 상세페이지 + 썸네일에 노출 */
+  giftImage: string | null
+  /** 사은품 설명 — AI vision으로 생성한 담백한 한 줄~두 줄. 전역 공유 */
+  giftDescription: string | null
+  /** 상세페이지에 사은품 블록 노출 여부 — 이미지 있어도 OFF면 안 그림. 기본 ON */
+  giftEnabled: boolean
   thumbnailImageId: string | null
   thumbnailDataUrl: string | null
   bgRemoveEnabled: boolean
@@ -56,6 +65,10 @@ interface ImageState {
   setThumbnailDataUrl: (dataUrl: string | null) => void
   setStoreIntroImage: (dataUrl: string | null) => void
   setTermsImage: (dataUrl: string | null) => void
+  /** 사은품 이미지 교체 — 지우면 설명도 같이 초기화 */
+  setGiftImage: (dataUrl: string | null) => void
+  setGiftDescription: (text: string | null) => void
+  setGiftEnabled: (enabled: boolean) => void
   setBgRemoveEnabled: (enabled: boolean) => void
   toggleBgSelect: (id: string) => void
   selectAllForBg: () => void
@@ -89,6 +102,9 @@ export const useImageStore = create<ImageState>()((set, get) => ({
   thumbnailDataUrl: null,
   storeIntroImage: null,
   termsImage: null,
+  giftImage: null,
+  giftDescription: null,
+  giftEnabled: true,
   bgRemoveEnabled: false,
   bgSelectedIds: [],
   aiModelEnabled: false,
@@ -171,6 +187,25 @@ export const useImageStore = create<ImageState>()((set, get) => ({
     set({ termsImage: dataUrl })
     saveToLocal(LS_TERMS, dataUrl)
   },
+  setGiftImage: (dataUrl) => {
+    // 사은품 이미지를 지우면 설명도 함께 초기화 (다른 사은품으로 바뀌면 설명 무의미)
+    if (dataUrl) {
+      set({ giftImage: dataUrl })
+      saveToLocal(LS_GIFT, dataUrl)
+    } else {
+      set({ giftImage: null, giftDescription: null })
+      saveToLocal(LS_GIFT, null)
+      saveToLocal(LS_GIFT_DESC, null)
+    }
+  },
+  setGiftDescription: (text) => {
+    set({ giftDescription: text })
+    saveToLocal(LS_GIFT_DESC, text)
+  },
+  setGiftEnabled: (enabled) => {
+    set({ giftEnabled: enabled })
+    saveToLocal(LS_GIFT_ENABLED, enabled ? '1' : '0')
+  },
 
   setBgRemoveEnabled: (enabled) => set({ bgRemoveEnabled: enabled, bgSelectedIds: [] }),
   toggleBgSelect: (id) => set((state) => ({
@@ -201,7 +236,7 @@ export const useImageStore = create<ImageState>()((set, get) => ({
     clearImagesFromDB(getCurrentDraftId()).catch(() => {})
   },
 
-  // 새 작업: 상품 이미지 초기화, 스토어 소개/약관은 localStorage에서 복원
+  // 새 작업: 상품 이미지 초기화, 스토어 소개/약관/사은품은 localStorage에서 복원(전역 공유)
   resetAll: () => {
     set({
       images: [],
@@ -209,6 +244,9 @@ export const useImageStore = create<ImageState>()((set, get) => ({
       thumbnailDataUrl: null,
       storeIntroImage: loadFromLocal(LS_STORE_INTRO),
       termsImage: loadFromLocal(LS_TERMS),
+      giftImage: loadFromLocal(LS_GIFT),
+      giftDescription: loadFromLocal(LS_GIFT_DESC),
+      giftEnabled: loadFromLocal(LS_GIFT_ENABLED) !== '0', // 키 없으면 기본 ON
       bgRemoveEnabled: false,
       bgSelectedIds: [],
       aiModelEnabled: false,
@@ -235,6 +273,9 @@ export const useImageStore = create<ImageState>()((set, get) => ({
         images: images.length > 0 ? images : [],
         storeIntroImage: storeIntro,
         termsImage: terms,
+        giftImage: loadFromLocal(LS_GIFT),
+        giftDescription: loadFromLocal(LS_GIFT_DESC),
+        giftEnabled: loadFromLocal(LS_GIFT_ENABLED) !== '0',
         _hydrated: true,
         // 드래프트 전환 시 임시 상태 초기화
         thumbnailImageId: null,

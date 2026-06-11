@@ -2,6 +2,7 @@
 
 import { forwardRef } from 'react'
 import type { GeneratedContent } from '@/types/ai'
+import GiftBlock from './GiftBlock'
 
 interface Qoo10ModernPreviewProps {
   content: GeneratedContent
@@ -9,6 +10,8 @@ interface Qoo10ModernPreviewProps {
   images: string[]
   storeIntroImage?: string | null
   termsImage?: string | null
+  giftImage?: string | null
+  giftDescription?: string | null
 }
 
 /**
@@ -25,7 +28,7 @@ interface Qoo10ModernPreviewProps {
  * 800px 고정 폭 — html2canvas 호환
  */
 const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
-  ({ content, price, images, storeIntroImage, termsImage }, ref) => {
+  ({ content, price, images, storeIntroImage, termsImage, giftImage, giftDescription }, ref) => {
     const descLines = content.description ? content.description.split('\n').filter(Boolean) : []
     const yenPrice = price ? `¥${Number(price.replace(/[^\d]/g, '') || 0).toLocaleString()}` : ''
 
@@ -47,6 +50,13 @@ const Qoo10ModernPreview = forwardRef<HTMLDivElement, Qoo10ModernPreviewProps>(
         {storeIntroImage && (
           <img src={storeIntroImage} alt="" style={{ width: '100%', display: 'block' }} />
         )}
+
+        {/* 사은품 안내 (선택) */}
+        <GiftBlock
+          giftImage={giftImage}
+          giftDescription={giftDescription}
+          fontFamily={FONT_BODY}
+        />
 
         {/* 헤더 — 가운데 정렬 stacked 타이틀 + 부제 + 해시태그 칩
             (카라그램·아누아 큐텐 페이지 레퍼런스) */}

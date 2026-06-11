@@ -2,6 +2,7 @@
 
 import { forwardRef } from 'react'
 import type { GeneratedContent } from '@/types/ai'
+import GiftBlock from './GiftBlock'
 
 interface KoreanDefaultPreviewProps {
   content: GeneratedContent
@@ -9,6 +10,8 @@ interface KoreanDefaultPreviewProps {
   images: string[]
   storeIntroImage?: string | null
   termsImage?: string | null
+  giftImage?: string | null
+  giftDescription?: string | null
 }
 
 /**
@@ -21,7 +24,7 @@ interface KoreanDefaultPreviewProps {
  *   (이전엔 32자 자르고 …을 붙였는데 잘린 모습이 어색해서 제거. 길이 제어는 프롬프트에서)
  */
 const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProps>(
-  ({ content, price, images, storeIntroImage, termsImage }, ref) => {
+  ({ content, price, images, storeIntroImage, termsImage, giftImage, giftDescription }, ref) => {
     const descLines = content.description ? content.description.split('\n').filter(Boolean) : []
     const additionalImages = images.slice(1)
 
@@ -50,6 +53,9 @@ const KoreanDefaultPreview = forwardRef<HTMLDivElement, KoreanDefaultPreviewProp
         {storeIntroImage && (
           <img src={storeIntroImage} alt="" style={{ width: '100%', display: 'block' }} />
         )}
+
+        {/* 사은품 안내 (선택) — 스토어 소개 바로 아래 */}
+        <GiftBlock giftImage={giftImage} giftDescription={giftDescription} />
 
         {/* 헤더 — 미니멀 화이트 / 블랙 타이포 + 골드 미세 악센트 */}
         <div

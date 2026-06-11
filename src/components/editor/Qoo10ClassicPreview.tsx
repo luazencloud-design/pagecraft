@@ -2,6 +2,7 @@
 
 import { forwardRef } from 'react'
 import type { GeneratedContent } from '@/types/ai'
+import GiftBlock from './GiftBlock'
 
 interface Qoo10ClassicPreviewProps {
   content: GeneratedContent
@@ -9,6 +10,8 @@ interface Qoo10ClassicPreviewProps {
   images: string[]
   storeIntroImage?: string | null
   termsImage?: string | null
+  giftImage?: string | null
+  giftDescription?: string | null
 }
 
 /**
@@ -23,7 +26,7 @@ interface Qoo10ClassicPreviewProps {
  * - 푸터: 살구 그라디언트 + 황금 도장식 가격
  */
 const Qoo10ClassicPreview = forwardRef<HTMLDivElement, Qoo10ClassicPreviewProps>(
-  ({ content, price, images, storeIntroImage, termsImage }, ref) => {
+  ({ content, price, images, storeIntroImage, termsImage, giftImage, giftDescription }, ref) => {
     const descLines = content.description ? content.description.split('\n').filter(Boolean) : []
     const yenPrice = price ? `¥${Number(price.replace(/[^\d]/g, '') || 0).toLocaleString()}` : ''
 
@@ -42,6 +45,13 @@ const Qoo10ClassicPreview = forwardRef<HTMLDivElement, Qoo10ClassicPreviewProps>
         {storeIntroImage && (
           <img src={storeIntroImage} alt="" style={{ width: '100%', display: 'block' }} />
         )}
+
+        {/* 사은품 안내 (선택) */}
+        <GiftBlock
+          giftImage={giftImage}
+          giftDescription={giftDescription}
+          fontFamily="'Pretendard Variable', 'Pretendard', 'Noto Sans JP', 'Noto Sans KR', 'Hiragino Sans', sans-serif"
+        />
 
         {/* 헤더 — 가운데 정렬 stacked 타이틀 + 부제 + 해시태그 칩
             (카라그램·아누아 큐텐 페이지 레퍼런스, Modern과 동일 구조 + Classic 톤) */}
