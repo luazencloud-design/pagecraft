@@ -168,8 +168,11 @@ export default function ProductNewPage() {
       let dataUrl = canvas.toDataURL('image/png')
       let ext: 'png' | 'jpg' = 'png'
 
-      // 2) 10MB 초과 → JPEG 품질 루프 (같은 캔버스 재인코딩, 빠름)
-      if (bytesOf(dataUrl) > MAX_BYTES) {
+      // 10MB 제한은 쿠팡만 적용 — 다른 플랫폼은 PNG 원본 화질 유지
+      const enforce10MB = product.platform === 'coupang'
+
+      // 2) (쿠팡) 10MB 초과 → JPEG 품질 루프 (같은 캔버스 재인코딩, 빠름)
+      if (enforce10MB && bytesOf(dataUrl) > MAX_BYTES) {
         ext = 'jpg'
         let fit = false
         for (const q of [0.92, 0.85, 0.75, 0.65, 0.55, 0.45]) {
