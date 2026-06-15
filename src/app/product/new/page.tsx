@@ -106,10 +106,15 @@ export default function ProductNewPage() {
   }
 
   /**
-   * PNG 다운로드 — 미리보기 DOM을 html-to-image로 직접 캡처
-   * 화면에 보이는 그대로 캡처하므로 어떤 템플릿이든 동일하게 동작.
-   * 800px 고정 폭 미리보기 div 그대로 캡처. 화면 zoom(0.825)은 시각 변환이라
-   * DOM 자체는 800px이므로 캡처 결과도 800px 원본 해상도.
+   * 이미지 다운로드 — 미리보기 DOM을 html-to-image로 캡처
+   *
+   * 용량 정책 (쿠팡 상세페이지 한 장당 10MB 제한 대응):
+   *  1) PNG 시도 (최고 화질). 10MB 이하면 그대로 사용.
+   *  2) 초과 시 → 같은 캔버스에서 JPEG 품질만 0.92→0.45 낮춰가며 10MB 이하로.
+   *  3) 그래도 안 되면 (페이지가 너무 길면) pixelRatio 낮춰 재렌더 후 재시도.
+   *  4) 최후까지 안 되면 가장 작은 결과 내려주고 분할 업로드 안내.
+   *
+   * 한 번만 렌더(toCanvas)하고 품질만 재인코딩 → 긴 페이지도 빠름.
    */
   const handleDownload = async () => {
     if (!generatedContent) return
@@ -117,6 +122,14 @@ export default function ProductNewPage() {
     if (!node) {
       showToast('미리보기를 찾지 못했습니다', 'error')
       return
+    }
+
+    const MAX_BYTES = 9.8 * 1024 * 1024 // 10MB 한도에 안전 마진
+    // dataURL(base64) 실제 바이트 추정
+    const bytesOf = (url: string) => {
+      const i = url.indexOf(',')
+      const b64 = i >= 0 ? url.slice(i + 1) : url
+      return Math.ceil((b64.length * 3) / 4)
     }
 
     showToast('이미지 생성 중...')
@@ -139,30 +152,56 @@ export default function ProductNewPage() {
         }
       }
 
-      // html-to-image — html2canvas보다 web font / 한글·일본어 metric 처리가 안정적
-      const { toPng } = await import('html-to-image')
-
-      // 1차: 폰트 임베딩 시도 (crossOrigin 설정된 link만 성공)
-      // 실패 시 (CORS 문제 등) skipFonts로 재시도 — 브라우저 캐시된 폰트로 그려짐
-      const captureOptions = {
-        backgroundColor: '#ffffff',
-        pixelRatio: 2,
-        cacheBust: true,
-      }
-      let dataUrl: string
-      try {
-        dataUrl = await toPng(node, { ...captureOptions, skipFonts: false })
-      } catch (err) {
-        console.warn('폰트 임베딩 실패, skipFonts로 재시도:', err)
-        dataUrl = await toPng(node, { ...captureOptions, skipFonts: true })
+      const { toCanvas } = await import('html-to-image')
+      const renderCanvas = async (pixelRatio: number): Promise<HTMLCanvasElement> => {
+        const opts = { backgroundColor: '#ffffff', pixelRatio, cacheBust: true }
+        try {
+          return await toCanvas(node, { ...opts, skipFonts: false })
+        } catch (err) {
+          console.warn('폰트 임베딩 실패, skipFonts로 재시도:', err)
+          return await toCanvas(node, { ...opts, skipFonts: true })
+        }
       }
 
+      // 1) PNG 먼저 (최고 화질)
+      let canvas = await renderCanvas(2)
+      let dataUrl = canvas.toDataURL('image/png')
+      let ext: 'png' | 'jpg' = 'png'
+
+      // 10MB 제한은 쿠팡만 적용 — 다른 플랫폼은 PNG 원본 화질 유지
+      const enforce10MB = product.platform === 'coupang'
+
+      // 2) (쿠팡) 10MB 초과 → JPEG 품질 루프 (같은 캔버스 재인코딩, 빠름)
+      if (enforce10MB && bytesOf(dataUrl) > MAX_BYTES) {
+        ext = 'jpg'
+        let fit = false
+        for (const q of [0.92, 0.85, 0.75, 0.65, 0.55, 0.45]) {
+          dataUrl = canvas.toDataURL('image/jpeg', q)
+          if (bytesOf(dataUrl) <= MAX_BYTES) { fit = true; break }
+        }
+        // 3) 그래도 초과 → 해상도 낮춰 재렌더 후 재시도
+        if (!fit) {
+          for (const pr of [1.5, 1.2, 1.0]) {
+            canvas = await renderCanvas(pr)
+            for (const q of [0.8, 0.65, 0.5, 0.42]) {
+              dataUrl = canvas.toDataURL('image/jpeg', q)
+              if (bytesOf(dataUrl) <= MAX_BYTES) { fit = true; break }
+            }
+            if (fit) break
+          }
+        }
+        if (!fit) {
+          showToast('10MB 이하로 못 줄였어요 — 페이지가 너무 깁니다. 분할 업로드를 권장합니다', 'error')
+        }
+      }
+
+      const finalMB = (bytesOf(dataUrl) / 1024 / 1024).toFixed(1)
       const a = document.createElement('a')
       a.href = dataUrl
       const safeName = (generatedContent.product_name || product.name || '상품').replace(/[/\\?%*:|"<>]/g, '')
-      a.download = `상세페이지_${safeName}.png`
+      a.download = `상세페이지_${safeName}.${ext}`
       a.click()
-      showToast('이미지 다운로드 완료')
+      showToast(`이미지 다운로드 완료 — ${ext.toUpperCase()} ${finalMB}MB`)
     } catch (err) {
       console.error('다운로드 실패:', err)
       showToast('다운로드 실패 — 다시 시도해주세요', 'error')
