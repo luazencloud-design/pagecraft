@@ -3,7 +3,6 @@ import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import ToastContainer from '@/components/ui/Toast'
-import AuthProvider from '@/components/auth/AuthProvider'
 
 export const metadata: Metadata = {
   title: 'PageCraft — AI 상세페이지 자동 생성',
@@ -43,10 +42,8 @@ export default function RootLayout({
             }
           })();
         `}</Script>
-        <AuthProvider>
-          {children}
-          <ToastContainer />
-        </AuthProvider>
+        {children}
+        <ToastContainer />
         <Analytics />
       </body>
     </html>

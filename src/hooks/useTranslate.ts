@@ -3,7 +3,6 @@
 import { useCallback } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
 import { useProductStore } from '@/stores/productStore'
-import { useUsageStore } from '@/stores/usageStore'
 import { useDraftsStore } from '@/stores/draftsStore'
 import { api } from '@/lib/api'
 import { showToast } from '@/components/ui/Toast'
@@ -66,12 +65,10 @@ export function useTranslate() {
         const draftName = useDraftsStore.getState().drafts.find((d) => d.id === startDraftId)?.name
         const langLabel = toLang === 'ja' ? '일본어' : toLang === 'en' ? '영어' : '한국어'
         showToast(`'${draftName?.trim() || '드래프트'}' ${langLabel} 생성 완료`)
-        useUsageStore.getState().fetchUsage()
         return false
       }
 
       setGeneratedAllForLang(toLang, result)
-      useUsageStore.getState().fetchUsage()
 
       const langLabel = toLang === 'ja' ? '일본어' : toLang === 'en' ? '영어' : '한국어'
       showToast(`${langLabel} 버전이 생성되었습니다`)
@@ -135,13 +132,11 @@ export function useTranslate() {
         const draftName = useDraftsStore.getState().drafts.find((d) => d.id === startDraftId)?.name
         const targetLabel = targetLang === 'ja' ? '일본어' : targetLang === 'en' ? '영어' : '한국어'
         showToast(`'${draftName?.trim() || '드래프트'}' ${targetLabel} 동기화 완료`)
-        useUsageStore.getState().fetchUsage()
         return false
       }
 
       cacheLang(targetLang, result)
       setDirty(null)
-      useUsageStore.getState().fetchUsage()
       const targetLabel = targetLang === 'ja' ? '일본어' : targetLang === 'en' ? '영어' : '한국어'
       showToast(`${targetLabel} 동기화 완료`)
       return true

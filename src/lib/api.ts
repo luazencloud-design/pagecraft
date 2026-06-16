@@ -1,3 +1,5 @@
+import { getStoredApiKey } from '@/stores/apiKeyStore'
+
 const API_BASE = ''
 
 interface ApiOptions extends RequestInit {
@@ -20,12 +22,16 @@ async function request<T>(url: string, options: ApiOptions = {}): Promise<T> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
 
+  // BYOK — 저장된 Gemini 키를 헤더로 첨부 (있을 때만)
+  const userKey = getStoredApiKey()
+
   try {
     const res = await fetch(`${API_BASE}${url}`, {
       ...fetchOptions,
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
+        ...(userKey ? { 'x-gemini-key': userKey } : {}),
         ...fetchOptions.headers,
       },
     })

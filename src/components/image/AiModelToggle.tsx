@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useProductStore } from '@/stores/productStore'
 import { useImageStore, MAX_IMAGES } from '@/stores/imageStore'
-import { useUsageStore } from '@/stores/usageStore'
 import { api, ApiError } from '@/lib/api'
 import { compressForImageGen } from '@/lib/image'
 import { showToast } from '@/components/ui/Toast'
@@ -59,7 +58,6 @@ export default function AiModelToggle() {
       })
       if (result.image) {
         addImages([result.image], true, 'ai')
-        useUsageStore.getState().fetchUsage()
       }
     } catch (err) {
       if (err instanceof ApiError) {
@@ -106,10 +104,9 @@ export default function AiModelToggle() {
         addImages(result.images, true, 'ai')
         // 풀세트 성공 시 자동으로 AI 전용 모드 활성화 — 사용자가 끄고 싶으면 토글
         setAiOnlyMode(true)
-        useUsageStore.getState().fetchUsage()
         if (result.generated < result.requested) {
           setErrorMsg(
-            `${result.generated}/${result.requested}장 생성 (${result.requested - result.generated}장 실패) — 모자란 만큼 크레딧 환불됨`,
+            `${result.generated}/${result.requested}장 생성 (${result.requested - result.generated}장 실패) — 일부 실패`,
           )
         }
       }

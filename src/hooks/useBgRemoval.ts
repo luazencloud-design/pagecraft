@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from 'react'
 import { useImageStore } from '@/stores/imageStore'
-import { useUsageStore } from '@/stores/usageStore'
 import { api } from '@/lib/api'
 import { compressForBgRemoval } from '@/lib/image'
 import { showToast } from '@/components/ui/Toast'
@@ -40,7 +39,6 @@ export function useBgRemoval() {
     try {
       const result = await bgRemoveOne(dataUrl)
       // 크레딧 소비 후 UI 즉시 반영
-      useUsageStore.getState().fetchUsage()
       return result
     } finally {
       setIsProcessing(false)
@@ -88,8 +86,6 @@ export function useBgRemoval() {
     const workerCount = Math.min(CONCURRENCY, targets.length)
     await Promise.all(Array.from({ length: workerCount }, () => worker()))
 
-    // 배치 완료 후 크레딧 한 번만 재조회 (중간에 여러번 fetchUsage 불필요)
-    useUsageStore.getState().fetchUsage()
 
     setIsProcessing(false)
     setProgress('')

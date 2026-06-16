@@ -4,7 +4,6 @@ import { useCallback } from 'react'
 import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
 import { useEditorStore } from '@/stores/editorStore'
-import { useUsageStore } from '@/stores/usageStore'
 import { useDraftsStore } from '@/stores/draftsStore'
 import { api } from '@/lib/api'
 import { compressForAI } from '@/lib/image'
@@ -108,7 +107,6 @@ export function useAIGenerate() {
         )
         const draftName = useDraftsStore.getState().drafts.find((d) => d.id === startDraftId)?.name
         showToast(`'${draftName?.trim() || '드래프트'}' 생성 완료 — 해당 드래프트에서 확인하세요`)
-        useUsageStore.getState().fetchUsage()
         return
       }
 
@@ -149,7 +147,6 @@ export function useAIGenerate() {
       }
 
       // 크레딧 소비 후 UI 즉시 반영
-      useUsageStore.getState().fetchUsage()
 
       setActiveTab('copy')
     } catch (err) {

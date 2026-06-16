@@ -1,13 +1,15 @@
 import type { GeneratedAll, TranslateRequest } from '@/types/ai'
+import { currentRequestKey } from '@/lib/apiKeyContext'
 import { buildCoupangRewritePrompt } from './prompts/coupang'
 import { buildQoo10RewritePrompt } from './prompts/qoo10'
 import { buildEbayRewriteToEnPrompt, buildEbayRewriteToKoPrompt } from './prompts/ebay'
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
+// BYOK — 요청 컨텍스트의 사용자 키 우선, env 폴백
 function getApiKey(): string {
-  const key = process.env.GEMINI_API_KEY
-  if (!key) throw new Error('GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.')
+  const key = currentRequestKey() || process.env.GEMINI_API_KEY
+  if (!key) throw new Error('Gemini API 키가 없습니다. 설정에서 API 키를 입력해주세요.')
   return key
 }
 

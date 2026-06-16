@@ -1,8 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useMemo, useRef, useState } from 'react'
 import Header from '@/components/layout/Header'
 import StatusBar from '@/components/layout/StatusBar'
 import ProductForm from '@/components/layout/ProductForm'
@@ -17,9 +15,9 @@ import DraftSelector from '@/components/layout/DraftSelector'
 import Button from '@/components/ui/Button'
 import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
+import { useApiKeyStore } from '@/stores/apiKeyStore'
 import { useEditorStore } from '@/stores/editorStore'
 import { useDraftsStore } from '@/stores/draftsStore'
-import { useUsageStore } from '@/stores/usageStore'
 import { useAIGenerate } from '@/hooks/useAIGenerate'
 import { useGlobalImagePaste } from '@/hooks/useImageUpload'
 import { api, ApiError } from '@/lib/api'
@@ -31,8 +29,6 @@ import { exportQoo10HybridZip, exportQoo10SlicedZip } from '@/lib/qoo10Export'
 import type { GeneratedContent } from '@/types/ai'
 
 export default function ProductNewPage() {
-  const { status } = useSession()
-  const router = useRouter()
   const { product } = useProductStore()
   const {
     images, storeIntroImage, termsImage, setStoreIntroImage, setTermsImage, aiOnlyMode,
@@ -85,25 +81,11 @@ export default function ProductNewPage() {
       hashtags: (generatedContent.hashtags?.length ? generatedContent.hashtags : otherContent.hashtags) ?? [],
     }
   }, [generatedContent, currentLang, langCache])
-  const canGenerate = images.length > 0 && product.name.trim() !== ''
+  const hasApiKey = useApiKeyStore((s) => s.apiKey.trim().length > 0)
+  const canGenerate = images.length > 0 && product.name.trim() !== '' && hasApiKey
 
   // 미리보기 DOM 캡처용 ref — DetailPagePreview의 wrapper div에 연결
   const previewRef = useRef<HTMLDivElement>(null)
-
-  const skipAuth = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
-
-  // 비로그인이면 랜딩페이지로 (SKIP_AUTH면 패스)
-  useEffect(() => {
-    if (!skipAuth && status === 'unauthenticated') router.push('/')
-  }, [status, router, skipAuth])
-
-  if (!skipAuth && (status === 'loading' || status === 'unauthenticated')) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg">
-        <p className="text-text3">로딩 중...</p>
-      </div>
-    )
-  }
 
   /**
    * 이미지 다운로드 — 미리보기 DOM을 html-to-image로 캡처
@@ -302,7 +284,6 @@ export default function ProductNewPage() {
         productName: product.name,
       })
       setGiftDescription(description)
-      useUsageStore.getState().fetchUsage()
       showToast('사은품 설명 생성 완료')
     } catch (err) {
       let msg = '사은품 설명 생성 실패'
@@ -505,6 +486,11 @@ export default function ProductNewPage() {
             >
               {isGenerating ? '생성 중...' : '✦ AI 상세페이지 생성'}
             </Button>
+            {!hasApiKey && (
+              <p style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>
+                우측 상단 ⚙️ 설정에서 본인 Gemini API 키를 입력하면<br />모든 기능을 사용할 수 있어요.
+              </p>
+            )}
           </div>
         </aside>
 
