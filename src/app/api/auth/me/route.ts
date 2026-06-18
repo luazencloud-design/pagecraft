@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { verifySession, SESSION_COOKIE } from '@/lib/session'
+import { verifyTrialSession, TRIAL_SESSION_COOKIE } from '@/lib/session'
 import { getTrialStatus } from '@/lib/trial'
 
-/** 현재 로그인 상태 + 체험 크레딧 조회 */
+/** 현재 체험 로그인 상태 + 크레딧 조회 */
 export async function GET() {
   const store = await cookies()
-  const email = await verifySession(store.get(SESSION_COOKIE)?.value)
-  if (!email) {
+  const session = await verifyTrialSession(store.get(TRIAL_SESSION_COOKIE)?.value)
+  if (!session) {
     return NextResponse.json({ loggedIn: false })
   }
-  const trial = await getTrialStatus(email)
-  return NextResponse.json({ loggedIn: true, email, trial })
+  const trial = await getTrialStatus(session.sub)
+  return NextResponse.json({ loggedIn: true, name: session.name, trial })
 }

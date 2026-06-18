@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { verifySession, SESSION_COOKIE } from './session'
+import { verifyTrialSession, TRIAL_SESSION_COOKIE } from './session'
 import { consumeTrialCredits, refundTrialCredits, type CreditType } from './trial'
 
 /**
@@ -13,7 +13,7 @@ import { consumeTrialCredits, refundTrialCredits, type CreditType } from './tria
  */
 export type AiAuth =
   | { mode: 'byok'; key: string }
-  | { mode: 'trial'; key: string; email: string; creditType: CreditType; multiplier: number }
+  | { mode: 'trial'; key: string; subject: string; creditType: CreditType; multiplier: number }
 
 export async function authorizeAi(
   req: Request,
@@ -24,13 +24,13 @@ export async function authorizeAi(
   const headerKey = req.headers.get('x-gemini-key')?.trim()
   if (headerKey) return { auth: { mode: 'byok', key: headerKey } }
 
-  // 2) 무료 체험 — 로그인 + 크레딧
+  // 2) 무료 체험 — 초대 링크로 로그인된 세션 + 크레딧
   const store = await cookies()
-  const email = await verifySession(store.get(SESSION_COOKIE)?.value)
-  if (!email) {
+  const session = await verifyTrialSession(store.get(TRIAL_SESSION_COOKIE)?.value)
+  if (!session) {
     return {
       error: NextResponse.json(
-        { error: '로그인하거나 본인 Gemini API 키를 입력해주세요.' },
+        { error: '초대 링크로 로그인하거나 본인 Gemini API 키를 입력해주세요.' },
         { status: 401 },
       ),
     }
@@ -44,7 +44,7 @@ export async function authorizeAi(
       ),
     }
   }
-  const r = await consumeTrialCredits(email, creditType, multiplier)
+  const r = await consumeTrialCredits(session.sub, creditType, multiplier)
   if (!r.allowed) {
     const msg =
       r.reason === 'expired'
@@ -52,11 +52,11 @@ export async function authorizeAi(
         : `크레딧이 부족합니다 (필요 ${r.cost}개). 본인 API 키를 입력하면 무제한으로 사용할 수 있어요.`
     return { error: NextResponse.json({ error: msg }, { status: 402 }) }
   }
-  return { auth: { mode: 'trial', key: serverKey, email, creditType, multiplier } }
+  return { auth: { mode: 'trial', key: serverKey, subject: session.sub, creditType, multiplier } }
 }
 
 /** 처리 실패 시 환불 (trial 모드만, byok는 무차감이라 무시) */
 export async function refundIfTrial(auth: AiAuth, multiplierOverride?: number): Promise<void> {
   if (auth.mode !== 'trial') return
-  await refundTrialCredits(auth.email, auth.creditType, multiplierOverride ?? auth.multiplier)
+  await refundTrialCredits(auth.subject, auth.creditType, multiplierOverride ?? auth.multiplier)
 }

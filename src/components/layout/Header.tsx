@@ -6,18 +6,16 @@ import { useImageStore } from '@/stores/imageStore'
 import { useEditorStore } from '@/stores/editorStore'
 import { useApiKeyStore } from '@/stores/apiKeyStore'
 import { useAuthStore } from '@/stores/authStore'
-import LoginModal from '@/components/auth/LoginModal'
 import { showToast } from '@/components/ui/Toast'
 
 export default function Header() {
   const [isDark, setIsDark] = useState(true)
   const [showPanel, setShowPanel] = useState(false)
   const [showAccount, setShowAccount] = useState(false)
-  const [showLogin, setShowLogin] = useState(false)
   const { apiKey, setApiKey, clearApiKey } = useApiKeyStore()
   const [draftKey, setDraftKey] = useState('')
 
-  const { loggedIn, email, trial, fetchMe, logout } = useAuthStore()
+  const { loggedIn, name, trial, fetchMe, logout } = useAuthStore()
   useEffect(() => { fetchMe() }, [fetchMe])
 
   useEffect(() => {
@@ -147,17 +145,17 @@ export default function Header() {
                 borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
                 background: 'var(--surface2)', border: '1px solid var(--border2)', color: 'var(--text2)',
               }}
-              title={email || ''}
+              title={name || ''}
             >
               🎟️ {trial ? `${trial.remaining}/${trial.limit}` : '체험'}
-              {trial && trial.active && <span style={{ color: 'var(--text3)', fontWeight: 500 }}>· {trial.daysLeft}일</span>}
+              {trial && trial.active ? <span style={{ color: 'var(--text3)', fontWeight: 500 }}>· {trial.daysLeft}일</span> : null}
             </button>
             {showAccount && (
               <>
                 <div style={{ position: 'fixed', inset: 0, zIndex: 199 }} onClick={() => setShowAccount(false)} />
                 <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 200, width: 260, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px', wordBreak: 'break-all' }}>{email}</p>
-                  <p style={{ fontSize: 10, color: 'var(--text3)', margin: '0 0 12px' }}>무료 체험 계정</p>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px', wordBreak: 'break-all' }}>{name || '무료 체험'}</p>
+                  <p style={{ fontSize: 10, color: 'var(--text3)', margin: '0 0 12px' }}>초대 체험 계정</p>
 
                   {trial && (
                     <>
@@ -187,19 +185,8 @@ export default function Header() {
               </>
             )}
           </div>
-        ) : (
-          <button
-            onClick={() => setShowLogin(true)}
-            style={{
-              height: 28, padding: '0 14px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-              cursor: 'pointer', whiteSpace: 'nowrap', background: 'var(--accent)', border: 'none', color: '#0c0c10',
-            }}
-          >
-            무료 체험 로그인
-          </button>
-        )
+        ) : null
       )}
-      {showLogin && <LoginModal onClose={() => { setShowLogin(false); fetchMe() }} />}
 
       {/* API 키 설정 */}
       <div style={{ position: 'relative' }}>

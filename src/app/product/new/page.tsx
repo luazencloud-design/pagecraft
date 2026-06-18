@@ -492,7 +492,7 @@ export default function ProductNewPage() {
             </Button>
             {!canUseAi && (
               <p style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>
-                우측 상단에서 <b>무료 체험 로그인</b> 하거나<br />⚙️ 설정에서 본인 Gemini API 키를 입력하세요.
+                <b>초대 링크</b>로 입장(무료 체험)하거나<br />⚙️ 설정에서 본인 Gemini API 키를 입력하세요.
               </p>
             )}
           </div>

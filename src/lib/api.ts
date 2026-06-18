@@ -63,6 +63,16 @@ export const api = {
       body: JSON.stringify(body),
     })
   },
+  patch<T>(url: string, body: unknown, options?: ApiOptions) {
+    return request<T>(url, {
+      ...options,
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    })
+  },
+  del<T>(url: string, options?: ApiOptions) {
+    return request<T>(url, { ...options, method: 'DELETE' })
+  },
 }
 
 export { ApiError }

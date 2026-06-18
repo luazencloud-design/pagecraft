@@ -1,58 +1,77 @@
 import { SignJWT, jwtVerify } from 'jose'
 
 /**
- * 매직링크 토큰 + 로그인 세션 — jose JWT (DB 불필요)
+ * jose JWT 기반 토큰/세션 (DB 불필요)
+ *  - 초대 토큰: 관리자 발급 링크. 만료 없음, version으로 무효화
+ *  - 체험 세션: 초대 클릭 후 로그인 (subject=invite id, 30일)
+ *  - 관리자 세션: 구글 OAuth 후 (7일)
  *
- * - 매직링크 토큰: 이메일 + 15분 만료, 클릭 1회용(서명으로 위조 방지)
- * - 세션: 이메일 + 30일, httpOnly 쿠키
- *
- * AUTH_SECRET 환경변수로 서명. 없으면 에러.
+ * AUTH_SECRET 환경변수(16자+)로 서명.
  */
 function getSecret(): Uint8Array {
   const s = process.env.AUTH_SECRET
-  if (!s || s.length < 16) {
-    throw new Error('AUTH_SECRET 환경변수가 필요합니다 (16자 이상).')
-  }
+  if (!s || s.length < 16) throw new Error('AUTH_SECRET 환경변수가 필요합니다 (16자 이상).')
   return new TextEncoder().encode(s)
 }
 
-export const SESSION_COOKIE = 'pc_session'
-
-/** 매직링크용 단기 토큰 (15분) */
-export async function signMagicToken(email: string): Promise<string> {
-  return new SignJWT({ email, kind: 'magic' })
+/* ── 초대 토큰 (관리자 발급) — 만료 없음, Redis version으로 무효화 ── */
+export async function signInviteToken(inviteId: string, version: number): Promise<string> {
+  return new SignJWT({ kind: 'invite', id: inviteId, v: version })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('15m')
     .sign(getSecret())
 }
 
-/** 매직링크 토큰 검증 → 이메일 반환 (실패 시 null) */
-export async function verifyMagicToken(token: string): Promise<string | null> {
+export async function verifyInviteToken(token: string): Promise<{ id: string; v: number } | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret())
-    if (payload.kind !== 'magic' || typeof payload.email !== 'string') return null
-    return payload.email
+    if (payload.kind !== 'invite' || typeof payload.id !== 'string' || typeof payload.v !== 'number') return null
+    return { id: payload.id, v: payload.v }
   } catch {
     return null
   }
 }
 
-/** 로그인 세션 토큰 (30일) */
-export async function signSession(email: string): Promise<string> {
-  return new SignJWT({ email, kind: 'session' })
+/* ── 체험 세션 (초대 클릭 후) — subject = invite id, name 표시용 ── */
+export const TRIAL_SESSION_COOKIE = 'pc_session'
+
+export async function signTrialSession(sub: string, name: string): Promise<string> {
+  return new SignJWT({ kind: 'trial-session', sub, name })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('30d')
     .sign(getSecret())
 }
 
-/** 세션 토큰 검증 → 이메일 (실패 시 null) */
-export async function verifySession(token: string | undefined): Promise<string | null> {
+export async function verifyTrialSession(
+  token: string | undefined,
+): Promise<{ sub: string; name: string } | null> {
   if (!token) return null
   try {
     const { payload } = await jwtVerify(token, getSecret())
-    if (payload.kind !== 'session' || typeof payload.email !== 'string') return null
+    if (payload.kind !== 'trial-session' || typeof payload.sub !== 'string') return null
+    return { sub: payload.sub, name: typeof payload.name === 'string' ? payload.name : '' }
+  } catch {
+    return null
+  }
+}
+
+/* ── 관리자 세션 (구글 OAuth 후) ── */
+export const ADMIN_COOKIE = 'pc_admin'
+
+export async function signAdminSession(email: string): Promise<string> {
+  return new SignJWT({ kind: 'admin', email })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('7d')
+    .sign(getSecret())
+}
+
+export async function verifyAdminSession(token: string | undefined): Promise<string | null> {
+  if (!token) return null
+  try {
+    const { payload } = await jwtVerify(token, getSecret())
+    if (payload.kind !== 'admin' || typeof payload.email !== 'string') return null
     return payload.email
   } catch {
     return null
