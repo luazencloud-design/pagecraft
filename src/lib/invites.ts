@@ -15,6 +15,8 @@ export interface Invite {
   name: string
   version: number
   createdAt: number
+  /** 유효기간 만료 ts (ms). 없으면 무기한. 지나면 자동 삭제 */
+  expiresAt?: number
 }
 
 const useRedis = !!process.env.KV_REDIS_URL
@@ -84,8 +86,9 @@ export async function listInvites(): Promise<Invite[]> {
   const ids = await store.smembers(INDEX)
   const out: Invite[] = []
   for (const id of ids) {
-    const raw = await store.get(kInvite(id))
-    if (raw) { try { out.push(JSON.parse(raw)) } catch {} }
+    const inv = await getInvite(id) // 만료된 건 여기서 자동 제거됨
+    if (inv) out.push(inv)
+    else await store.srem(INDEX, id) // 없는데 인덱스에 남은 건 정리
   }
   return out.sort((a, b) => b.createdAt - a.createdAt)
 }
@@ -94,12 +97,26 @@ export async function getInvite(id: string): Promise<Invite | null> {
   const store = await kv()
   const raw = await store.get(kInvite(id))
   if (!raw) return null
-  try { return JSON.parse(raw) } catch { return null }
+  let inv: Invite
+  try { inv = JSON.parse(raw) } catch { return null }
+  // 유효기간 만료 → 즉시 삭제 (lazy)
+  if (inv.expiresAt && Date.now() > inv.expiresAt) {
+    await store.del(kInvite(id))
+    await store.srem(INDEX, id)
+    return null
+  }
+  return inv
 }
 
-export async function createInvite(name: string): Promise<Invite> {
+export async function createInvite(name: string, expiresAt?: number): Promise<Invite> {
   const store = await kv()
-  const inv: Invite = { id: genId(), name: name.trim() || '이름 없음', version: 1, createdAt: Date.now() }
+  const inv: Invite = {
+    id: genId(),
+    name: name.trim() || '이름 없음',
+    version: 1,
+    createdAt: Date.now(),
+    ...(expiresAt ? { expiresAt } : {}),
+  }
   await store.set(kInvite(inv.id), JSON.stringify(inv))
   await store.sadd(INDEX, inv.id)
   return inv
@@ -109,6 +126,17 @@ export async function renameInvite(id: string, name: string): Promise<Invite | n
   const inv = await getInvite(id)
   if (!inv) return null
   inv.name = name.trim() || inv.name
+  const store = await kv()
+  await store.set(kInvite(id), JSON.stringify(inv))
+  return inv
+}
+
+/** 유효기간 설정/해제 (expiresAt=null이면 무기한) */
+export async function setInviteExpiry(id: string, expiresAt: number | null): Promise<Invite | null> {
+  const inv = await getInvite(id)
+  if (!inv) return null
+  if (expiresAt) inv.expiresAt = expiresAt
+  else delete inv.expiresAt
   const store = await kv()
   await store.set(kInvite(id), JSON.stringify(inv))
   return inv

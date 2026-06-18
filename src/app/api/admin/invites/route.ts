@@ -20,13 +20,13 @@ export async function GET(req: Request) {
   return NextResponse.json({ admin, invites: rows })
 }
 
-/** 초대 생성 */
+/** 초대 생성 — name + 선택적 expiresAt(ms) */
 export async function POST(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: '관리자 권한 필요' }, { status: 403 })
 
-  const { name } = (await req.json().catch(() => ({}))) as { name?: string }
-  const inv = await createInvite(name || '')
+  const { name, expiresAt } = (await req.json().catch(() => ({}))) as { name?: string; expiresAt?: number }
+  const inv = await createInvite(name || '', expiresAt && expiresAt > Date.now() ? expiresAt : undefined)
   const origin = process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin
   return NextResponse.json({ invite: { ...inv, link: await inviteLink(origin, inv) } })
 }

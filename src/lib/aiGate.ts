@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verifyTrialSession, TRIAL_SESSION_COOKIE } from './session'
+import { getInvite } from './invites'
 import { consumeTrialCredits, refundTrialCredits, type CreditType } from './trial'
 
 /**
@@ -24,7 +25,7 @@ export async function authorizeAi(
   const headerKey = req.headers.get('x-gemini-key')?.trim()
   if (headerKey) return { auth: { mode: 'byok', key: headerKey } }
 
-  // 2) 무료 체험 — 초대 링크로 로그인된 세션 + 크레딧
+  // 2) 무료 체험 — 초대 링크 + 구글 로그인 세션 + 크레딧
   const store = await cookies()
   const session = await verifyTrialSession(store.get(TRIAL_SESSION_COOKIE)?.value)
   if (!session) {
@@ -32,6 +33,16 @@ export async function authorizeAi(
       error: NextResponse.json(
         { error: '초대 링크로 로그인하거나 본인 Gemini API 키를 입력해주세요.' },
         { status: 401 },
+      ),
+    }
+  }
+  // 초대가 삭제/만료됐으면 즉시 차단 (호출마다 재확인)
+  const inv = session.inv ? await getInvite(session.inv) : null
+  if (!inv) {
+    return {
+      error: NextResponse.json(
+        { error: '초대가 만료되었거나 삭제되었어요. 본인 Gemini API 키를 입력하면 계속 사용할 수 있어요.' },
+        { status: 403 },
       ),
     }
   }

@@ -32,11 +32,12 @@ export async function verifyInviteToken(token: string): Promise<{ id: string; v:
   }
 }
 
-/* ── 체험 세션 (초대 클릭 후) — subject = invite id, name 표시용 ── */
+/* ── 체험 세션 (초대 클릭 + 구글 로그인 후) ──────────────────────
+ *   sub = 구글 이메일(크레딧 신원), inv = 들어온 초대 id(삭제/만료 시 차단), name = 초대 이름 */
 export const TRIAL_SESSION_COOKIE = 'pc_session'
 
-export async function signTrialSession(sub: string, name: string): Promise<string> {
-  return new SignJWT({ kind: 'trial-session', sub, name })
+export async function signTrialSession(email: string, inv: string, name: string): Promise<string> {
+  return new SignJWT({ kind: 'trial-session', sub: email, inv, name })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('30d')
@@ -45,12 +46,41 @@ export async function signTrialSession(sub: string, name: string): Promise<strin
 
 export async function verifyTrialSession(
   token: string | undefined,
-): Promise<{ sub: string; name: string } | null> {
+): Promise<{ sub: string; inv: string; name: string } | null> {
   if (!token) return null
   try {
     const { payload } = await jwtVerify(token, getSecret())
     if (payload.kind !== 'trial-session' || typeof payload.sub !== 'string') return null
-    return { sub: payload.sub, name: typeof payload.name === 'string' ? payload.name : '' }
+    return {
+      sub: payload.sub,
+      inv: typeof payload.inv === 'string' ? payload.inv : '',
+      name: typeof payload.name === 'string' ? payload.name : '',
+    }
+  } catch {
+    return null
+  }
+}
+
+/* ── 구글 OAuth state (CSRF 방지 + 용도 전달) ──
+ *   purpose: 'admin' | 'invite', invite면 inv(초대 id) 동반 */
+export async function signOAuthState(purpose: 'admin' | 'invite', inv?: string): Promise<string> {
+  return new SignJWT({ kind: 'oauth-state', purpose, inv: inv || '' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('15m')
+    .sign(getSecret())
+}
+
+export async function verifyOAuthState(
+  token: string | undefined,
+): Promise<{ purpose: 'admin' | 'invite'; inv: string } | null> {
+  if (!token) return null
+  try {
+    const { payload } = await jwtVerify(token, getSecret())
+    if (payload.kind !== 'oauth-state') return null
+    const purpose = payload.purpose
+    if (purpose !== 'admin' && purpose !== 'invite') return null
+    return { purpose, inv: typeof payload.inv === 'string' ? payload.inv : '' }
   } catch {
     return null
   }
