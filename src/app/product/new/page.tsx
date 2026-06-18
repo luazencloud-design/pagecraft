@@ -16,6 +16,7 @@ import Button from '@/components/ui/Button'
 import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
 import { useApiKeyStore } from '@/stores/apiKeyStore'
+import { useAuthStore } from '@/stores/authStore'
 import { useEditorStore } from '@/stores/editorStore'
 import { useDraftsStore } from '@/stores/draftsStore'
 import { useAIGenerate } from '@/hooks/useAIGenerate'
@@ -82,7 +83,10 @@ export default function ProductNewPage() {
     }
   }, [generatedContent, currentLang, langCache])
   const hasApiKey = useApiKeyStore((s) => s.apiKey.trim().length > 0)
-  const canGenerate = images.length > 0 && product.name.trim() !== '' && hasApiKey
+  // 무료 체험 로그인(활성) 또는 BYOK 키 둘 중 하나면 사용 가능
+  const trialActive = useAuthStore((s) => s.loggedIn && !!s.trial?.active)
+  const canUseAi = hasApiKey || trialActive
+  const canGenerate = images.length > 0 && product.name.trim() !== '' && canUseAi
 
   // 미리보기 DOM 캡처용 ref — DetailPagePreview의 wrapper div에 연결
   const previewRef = useRef<HTMLDivElement>(null)
@@ -486,9 +490,9 @@ export default function ProductNewPage() {
             >
               {isGenerating ? '생성 중...' : '✦ AI 상세페이지 생성'}
             </Button>
-            {!hasApiKey && (
+            {!canUseAi && (
               <p style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>
-                우측 상단 ⚙️ 설정에서 본인 Gemini API 키를 입력하면<br />모든 기능을 사용할 수 있어요.
+                우측 상단에서 <b>무료 체험 로그인</b> 하거나<br />⚙️ 설정에서 본인 Gemini API 키를 입력하세요.
               </p>
             )}
           </div>

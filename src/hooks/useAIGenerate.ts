@@ -146,7 +146,8 @@ export function useAIGenerate() {
         setGeneratedTags(tags)
       }
 
-      // 크레딧 소비 후 UI 즉시 반영
+      // 무료 체험 크레딧 사용량 즉시 갱신 (헤더 표시용)
+      import('@/stores/authStore').then((m) => m.useAuthStore.getState().fetchMe())
 
       setActiveTab('copy')
     } catch (err) {

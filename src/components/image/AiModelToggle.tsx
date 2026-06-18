@@ -58,6 +58,7 @@ export default function AiModelToggle() {
       })
       if (result.image) {
         addImages([result.image], true, 'ai')
+        import('@/stores/authStore').then((m) => m.useAuthStore.getState().fetchMe())
       }
     } catch (err) {
       if (err instanceof ApiError) {
@@ -102,6 +103,7 @@ export default function AiModelToggle() {
       )
       if (result.images?.length) {
         addImages(result.images, true, 'ai')
+        import('@/stores/authStore').then((m) => m.useAuthStore.getState().fetchMe())
         // 풀세트 성공 시 자동으로 AI 전용 모드 활성화 — 사용자가 끄고 싶으면 토글
         setAiOnlyMode(true)
         if (result.generated < result.requested) {

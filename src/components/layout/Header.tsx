@@ -5,13 +5,20 @@ import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
 import { useEditorStore } from '@/stores/editorStore'
 import { useApiKeyStore } from '@/stores/apiKeyStore'
+import { useAuthStore } from '@/stores/authStore'
+import LoginModal from '@/components/auth/LoginModal'
 import { showToast } from '@/components/ui/Toast'
 
 export default function Header() {
   const [isDark, setIsDark] = useState(true)
   const [showPanel, setShowPanel] = useState(false)
+  const [showAccount, setShowAccount] = useState(false)
+  const [showLogin, setShowLogin] = useState(false)
   const { apiKey, setApiKey, clearApiKey } = useApiKeyStore()
   const [draftKey, setDraftKey] = useState('')
+
+  const { loggedIn, email, trial, fetchMe, logout } = useAuthStore()
+  useEffect(() => { fetchMe() }, [fetchMe])
 
   useEffect(() => {
     if (showPanel) setDraftKey(apiKey)
@@ -128,6 +135,71 @@ export default function Header() {
           />
         </div>
       </div>
+
+      {/* 계정 / 무료 체험 — BYOK 키 있으면 숨김 (그땐 무제한) */}
+      {!hasKey && (
+        loggedIn ? (
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowAccount(!showAccount)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 7, height: 28, padding: '0 12px',
+                borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                background: 'var(--surface2)', border: '1px solid var(--border2)', color: 'var(--text2)',
+              }}
+              title={email || ''}
+            >
+              🎟️ {trial ? `${trial.remaining}/${trial.limit}` : '체험'}
+              {trial && trial.active && <span style={{ color: 'var(--text3)', fontWeight: 500 }}>· {trial.daysLeft}일</span>}
+            </button>
+            {showAccount && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 199 }} onClick={() => setShowAccount(false)} />
+                <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 200, width: 260, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px', wordBreak: 'break-all' }}>{email}</p>
+                  <p style={{ fontSize: 10, color: 'var(--text3)', margin: '0 0 12px' }}>무료 체험 계정</p>
+
+                  {trial && (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>
+                        <span>잔여 크레딧</span>
+                        <span style={{ fontWeight: 700, color: 'var(--text)' }}>{trial.remaining} / {trial.limit}</span>
+                      </div>
+                      <div style={{ height: 6, background: 'var(--surface3)', borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
+                        <div style={{ height: '100%', borderRadius: 3, width: `${(trial.used / trial.limit) * 100}%`, background: trial.remaining <= 50 ? 'var(--red)' : 'var(--accent)' }} />
+                      </div>
+                      <p style={{ fontSize: 10.5, color: trial.active ? 'var(--text3)' : 'var(--red)', margin: '0 0 12px' }}>
+                        {trial.active ? `체험 ${trial.daysLeft}일 남음` : '체험 기간 종료'}
+                      </p>
+                    </>
+                  )}
+
+                  <p style={{ fontSize: 10.5, color: 'var(--text3)', margin: '0 0 10px', lineHeight: 1.6, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                    체험이 끝나면 ⚙️ 설정에서 본인 Gemini API 키를 입력해 무제한으로 쓸 수 있어요.
+                  </p>
+                  <button
+                    onClick={async () => { await logout(); setShowAccount(false); showToast('로그아웃됨') }}
+                    style={{ width: '100%', padding: '8px', borderRadius: 6, fontSize: 12, color: 'var(--text2)', background: 'var(--surface2)', border: '1px solid var(--border)', cursor: 'pointer' }}
+                  >
+                    로그아웃
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowLogin(true)}
+            style={{
+              height: 28, padding: '0 14px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+              cursor: 'pointer', whiteSpace: 'nowrap', background: 'var(--accent)', border: 'none', color: '#0c0c10',
+            }}
+          >
+            무료 체험 로그인
+          </button>
+        )
+      )}
+      {showLogin && <LoginModal onClose={() => { setShowLogin(false); fetchMe() }} />}
 
       {/* API 키 설정 */}
       <div style={{ position: 'relative' }}>
