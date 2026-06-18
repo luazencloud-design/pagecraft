@@ -1,31 +1,27 @@
-import nodemailer from 'nodemailer'
+import { Resend } from 'resend'
 
 /**
- * 매직링크 이메일 발송 — Gmail SMTP (nodemailer)
+ * 매직링크 이메일 발송 — Resend
  *
  * env:
- *  - GMAIL_USER=your@gmail.com
- *  - GMAIL_APP_PASSWORD=16자리 앱 비밀번호 (2단계 인증 후 발급)
+ *  - RESEND_API_KEY=re_xxx           (Resend 대시보드에서 발급)
+ *  - EMAIL_FROM="PageCraft <onboarding@resend.dev>"
+ *      · 도메인 인증 전: resend.dev onboarding 주소로 시작 가능 (본인에게만 발송 제한 가능성)
+ *      · 도메인 인증 후: noreply@yourdomain.com 등 자유
  */
-let transporter: nodemailer.Transporter | null = null
-function getTransporter(): nodemailer.Transporter {
-  if (transporter) return transporter
-  const user = process.env.GMAIL_USER
-  const pass = process.env.GMAIL_APP_PASSWORD
-  if (!user || !pass) {
-    throw new Error('GMAIL_USER / GMAIL_APP_PASSWORD 환경변수가 필요합니다.')
-  }
-  transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user, pass },
-  })
-  return transporter
+let client: Resend | null = null
+function getResend(): Resend {
+  if (client) return client
+  const key = process.env.RESEND_API_KEY
+  if (!key) throw new Error('RESEND_API_KEY 환경변수가 필요합니다.')
+  client = new Resend(key)
+  return client
 }
 
 export async function sendMagicLinkEmail(to: string, link: string): Promise<void> {
-  const from = process.env.GMAIL_USER
+  const from = process.env.EMAIL_FROM || 'PageCraft <onboarding@resend.dev>'
   const html = `
-  <div style="font-family:'Apple SD Gothic Neo',sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#1a1a1a">
+  <div style="font-family:'Apple SD Gothic Neo',Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#1a1a1a">
     <h2 style="margin:0 0 8px;font-size:20px">PageCraft 로그인</h2>
     <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.6">
       아래 버튼을 눌러 로그인하세요. 이 링크는 <b>15분간</b> 유효합니다.
@@ -42,10 +38,13 @@ export async function sendMagicLinkEmail(to: string, link: string): Promise<void
     </p>
   </div>`
 
-  await getTransporter().sendMail({
-    from: `PageCraft <${from}>`,
+  const { error } = await getResend().emails.send({
+    from,
     to,
     subject: 'PageCraft 로그인 링크',
     html,
   })
+  if (error) {
+    throw new Error(`메일 발송 실패: ${error.message || error.name}`)
+  }
 }
