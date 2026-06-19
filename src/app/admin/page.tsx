@@ -133,7 +133,7 @@ export default function AdminPage() {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && newName.trim() && !busy) create() }}
-            placeholder="용도/이름 (예: 수강생 1기, 김철수)"
+            placeholder="용도 (예: 수강생 1기)"
             style={{ flex: 1, padding: '10px 13px', borderRadius: 9, fontSize: 13, color: 'var(--text)', background: 'var(--surface)', border: '1px solid var(--border)', outline: 'none' }}
           />
           <input

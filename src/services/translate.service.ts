@@ -52,11 +52,17 @@ function safeParseJSON<T>(text: string): T {
 }
 
 async function geminiRequest(url: string, body: object): Promise<Response> {
+  // 보안: API 키를 URL ?key= 에서 x-goog-api-key 헤더로 이동 (URL/로그 노출 차단)
+  const u = new URL(url)
+  const apiKey = u.searchParams.get('key') || ''
+  u.searchParams.delete('key')
+  const cleanUrl = u.toString()
+
   const MAX_RETRIES = 3
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    const res = await fetch(url, {
+    const res = await fetch(cleanUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify(body),
     })
     if (res.status !== 503 || attempt === MAX_RETRIES) return res

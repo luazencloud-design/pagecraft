@@ -64,11 +64,18 @@ function safeParseJSON<T>(text: string): T {
  * 최대 3회 재시도. 429는 Retry-After 헤더 존중 (없으면 5s/10s/15s).
  */
 async function geminiRequest(url: string, body: object): Promise<Response> {
+  // 보안: API 키를 URL 쿼리(?key=)에서 헤더(x-goog-api-key)로 이동.
+  // 키가 fetch URL/네트워크 로그/에러에 노출되는 경로를 원천 차단.
+  const u = new URL(url)
+  const apiKey = u.searchParams.get('key') || ''
+  u.searchParams.delete('key')
+  const cleanUrl = u.toString()
+
   const MAX_RETRIES = 3
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    const res = await fetch(url, {
+    const res = await fetch(cleanUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify(body),
     })
     if (attempt === MAX_RETRIES) return res

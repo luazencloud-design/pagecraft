@@ -5,7 +5,7 @@ import {
   signAdminSession, ADMIN_COOKIE,
   signTrialSession, TRIAL_SESSION_COOKIE,
 } from '@/lib/session'
-import { isAdmin, activateTrial } from '@/lib/trial'
+import { isAdmin, activateTrial, normalizeEmail } from '@/lib/trial'
 import { getInvite } from '@/lib/invites'
 
 /** 구글 OAuth 콜백 — 관리자 / 초대 사용자 둘 다 처리 (state.purpose 로 분기) */
@@ -38,10 +38,11 @@ export async function GET(req: Request) {
   const inv = state.inv ? await getInvite(state.inv) : null
   if (!inv) return NextResponse.redirect(`${origin}/?invite=revoked`)
 
-  // 구글 이메일 기준 체험 활성화 (이미 시작했으면 그대로)
-  await activateTrial(email)
+  // 구글 이메일 정규화(별칭 우회 차단) 후 체험 활성화 (이미 시작했으면 그대로)
+  const trialEmail = normalizeEmail(email)
+  await activateTrial(trialEmail)
 
-  const session = await signTrialSession(email, inv.id, inv.name)
+  const session = await signTrialSession(trialEmail, inv.id, inv.name)
   const res = NextResponse.redirect(`${origin}/product/new`)
   res.cookies.set(TRIAL_SESSION_COOKIE, session, {
     httpOnly: true, secure: process.env.NODE_ENV === 'production',

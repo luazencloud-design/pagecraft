@@ -10,7 +10,7 @@ import { SignJWT, jwtVerify } from 'jose'
  */
 function getSecret(): Uint8Array {
   const s = process.env.AUTH_SECRET
-  if (!s || s.length < 16) throw new Error('AUTH_SECRET 환경변수가 필요합니다 (16자 이상).')
+  if (!s || s.length < 32) throw new Error('AUTH_SECRET 환경변수가 필요합니다 (32자 이상 권장).')
   return new TextEncoder().encode(s)
 }
 

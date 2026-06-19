@@ -47,8 +47,10 @@ export async function exchangeCodeForEmail(origin: string, code: string): Promis
     const infoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${access_token}` },
     })
-    const info = (await infoRes.json()) as { email?: string }
-    return info.email?.toLowerCase() || null
+    const info = (await infoRes.json()) as { email?: string; verified_email?: boolean }
+    // 인증된 이메일만 허용 (미인증 이메일 스푸핑 차단)
+    if (!info.email || info.verified_email === false) return null
+    return info.email.toLowerCase()
   } catch (err) {
     console.error('구글 OAuth 교환 오류:', err)
     return null

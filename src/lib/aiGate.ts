@@ -57,6 +57,14 @@ export async function authorizeAi(
   }
   const r = await consumeTrialCredits(session.sub, creditType, multiplier)
   if (!r.allowed) {
+    if (r.reason === 'unavailable') {
+      return {
+        error: NextResponse.json(
+          { error: '무료 체험이 일시적으로 불가합니다. 잠시 후 다시 시도하거나 본인 Gemini API 키를 입력해주세요.' },
+          { status: 503 },
+        ),
+      }
+    }
     const msg =
       r.reason === 'expired'
         ? '무료 체험 기간이 끝났어요. 본인 Gemini API 키를 입력하면 계속 사용할 수 있어요.'

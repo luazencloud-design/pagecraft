@@ -40,9 +40,25 @@ function getRedis(): Redis | null {
 }
 
 // 관리자 — 무제한
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map((e) => e.trim()).filter(Boolean)
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
 export function isAdmin(email?: string | null): boolean {
-  return !!email && ADMIN_EMAILS.includes(email)
+  return !!email && ADMIN_EMAILS.includes(email.toLowerCase())
+}
+
+/**
+ * 이메일 정규화 — gmail 별칭 우회(점/+alias) 차단해 1인 1체험 강화.
+ * gmail은 점(.) 무시 + '+이후' 무시하고 같은 사서함. 다른 도메인은 소문자만.
+ * 예) Foo.Bar+test@gmail.com → foobar@gmail.com
+ */
+export function normalizeEmail(email: string): string {
+  const e = email.trim().toLowerCase()
+  const [local, domain] = e.split('@')
+  if (!domain) return e
+  if (domain === 'gmail.com' || domain === 'googlemail.com') {
+    const cleaned = local.split('+')[0].replace(/\./g, '')
+    return `${cleaned}@gmail.com`
+  }
+  return e
 }
 
 // 로컬 폴백 (메모리)
@@ -66,11 +82,14 @@ async function rSet(k: string, v: string, ttl?: number) {
   if (useRedis) { const r = getRedis(); if (!r) return; try { ttl ? await r.set(k, v, 'EX', ttl) : await r.set(k, v) } catch {} return }
   memSet(k, v, ttl)
 }
+/** 크레딧 차감용 원자 증가. 실패 시 throw (fail-closed — 차감 실패가 무료 통과로 이어지지 않게) */
 async function rIncrBy(k: string, n: number, ttl: number): Promise<number> {
   if (useRedis) {
     const r = getRedis()
-    if (!r) return 0
-    try { const v = await r.incrby(k, n); await r.expire(k, ttl); return v } catch { return 0 }
+    if (!r) throw new Error('credit store unavailable')
+    const v = await r.incrby(k, n)
+    await r.expire(k, ttl)
+    return v
   }
   const cur = parseInt(memGet(k) || '0', 10) + n
   memSet(k, String(cur), ttl)
@@ -134,26 +153,42 @@ export async function consumeTrialCredits(
   email: string,
   type: CreditType,
   multiplier = 1,
-): Promise<{ allowed: boolean; reason?: 'expired' | 'insufficient'; remaining: number; cost: number }> {
+): Promise<{ allowed: boolean; reason?: 'expired' | 'insufficient' | 'unavailable'; remaining: number; cost: number }> {
   const cost = CREDIT_COST[type] * Math.max(1, Math.floor(multiplier))
   if (isAdmin(email)) return { allowed: true, remaining: 99999, cost }
 
-  const start = await rGet(kStart(email))
-  if (!start) {
-    const ever = await rGet(kEver(email))
-    return { allowed: false, reason: ever ? 'expired' : 'expired', remaining: 0, cost }
+  // 운영 환경에서 Redis 미설정 → 체험 차단 (메모리 폴백은 인스턴스별·콜드스타트마다 초기화되어
+  // 무제한 크레딧으로 이어짐). fail-closed.
+  if (process.env.NODE_ENV === 'production' && !useRedis) {
+    return { allowed: false, reason: 'unavailable', remaining: 0, cost }
   }
-  const newUsed = await rIncrBy(kUsed(email), cost, TTL_SECONDS)
-  if (newUsed > TRIAL_CREDITS) {
-    await rIncrBy(kUsed(email), -cost, TTL_SECONDS) // 롤백
-    return { allowed: false, reason: 'insufficient', remaining: Math.max(0, TRIAL_CREDITS - (newUsed - cost)), cost }
+
+  try {
+    const start = await rGet(kStart(email))
+    if (!start) {
+      return { allowed: false, reason: 'expired', remaining: 0, cost }
+    }
+    const newUsed = await rIncrBy(kUsed(email), cost, TTL_SECONDS)
+    if (newUsed > TRIAL_CREDITS) {
+      await rIncrBy(kUsed(email), -cost, TTL_SECONDS).catch(() => {}) // 롤백 (실패해도 무방)
+      return { allowed: false, reason: 'insufficient', remaining: Math.max(0, TRIAL_CREDITS - (newUsed - cost)), cost }
+    }
+    return { allowed: true, remaining: TRIAL_CREDITS - newUsed, cost }
+  } catch {
+    // 저장소 오류 → fail-closed (차감 못 했으면 통과시키지 않음)
+    return { allowed: false, reason: 'unavailable', remaining: 0, cost }
   }
-  return { allowed: true, remaining: TRIAL_CREDITS - newUsed, cost }
 }
 
-/** 실패 시 환불 */
+/** 실패 시 환불 — used가 음수로 내려가지 않도록 클램프 */
 export async function refundTrialCredits(email: string, type: CreditType, multiplier = 1): Promise<void> {
   if (isAdmin(email)) return
   const cost = CREDIT_COST[type] * Math.max(1, Math.floor(multiplier))
-  await rIncrBy(kUsed(email), -cost, TTL_SECONDS)
+  try {
+    const cur = parseInt((await rGet(kUsed(email))) || '0', 10)
+    const refund = Math.min(cost, Math.max(0, cur)) // 보유분 이상 환불 금지 (음수화 방지)
+    if (refund > 0) await rIncrBy(kUsed(email), -refund, TTL_SECONDS)
+  } catch {
+    /* 환불 실패는 사용자에게 불리하지 않으므로 무시 */
+  }
 }
