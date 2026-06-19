@@ -1,247 +1,93 @@
 # API 명세
 
-모든 API는 `src/app/api/` 하위에 위치. 인증은 **NextAuth JWT 세션 쿠키**로 자동 처리 (Google OAuth).
+모든 API는 `src/app/api/` 하위. 인가는 `lib/aiGate.ts`(AI) / `lib/adminAuth.ts`(관리자).
 
-개발 환경에서 `SKIP_AUTH=true`이면 모든 인증/크레딧 체크가 스킵됨.
+## 공통
 
----
-
-## 인증 & 크레딧
-
-- 모든 보호된 엔드포인트는 `src/lib/apiAuth.ts`의 `requireAuth(type)` 헬퍼를 사용
-- `type`이 지정되면 해당 작업의 크레딧을 **원자 INCRBY**로 선차감
-- 실패 시 `refundOnFailure()`로 자동 환불
-- 401: 로그인 필요 / 429: 크레딧 부족 (초기화일 안내 포함)
-
-### 크레딧 단가
-
-| 기능 | type | 크레딧 |
-|------|------|--------|
-| 상세페이지 통합 생성 | `generate` | 1 |
-| AI 모델 이미지 생성 | `image` | 5 |
-| 배경 제거 | `bg-remove` | 5 |
-| PNG 렌더링 | (인증만) | 0 |
+- AI 라우트는 **클라이언트가 `x-gemini-key` 헤더를 자동 첨부**(`lib/api.ts`).
+  - 헤더 있으면 → **BYOK**(그 키, 크레딧 X)
+  - 없으면 → **무료 체험**(세션 쿠키 + 서버 키 + 크레딧 차감)
+- 에러 응답: `{ "error": "메시지" }` + HTTP status
+  - `401` 로그인/키 필요 · `402` 크레딧 부족/만료 · `403` 초대 만료·삭제 / 관리자 아님 · `400` 입력 오류 · `500` 서버 오류
 
 ---
 
-## AI 통합 생성
+## AI 라우트
 
 ### `POST /api/ai/copy`
+상세페이지 통합 생성 (content + titles + tags). 크레딧 `generate`(1).
+- req: `{ images[], brand, productName, price, category, platform, memo, features[], coupangSuggestions? }`
+- res: `GeneratedByLang` (한국 `{ko}`, 큐텐 `{ja,ko}`, 이베이 `{en,ko}`)
 
-상품 정보와 이미지에서 **상세 콘텐츠 + 상품명 5개 + 태그 20개**를 한 번에 생성.
+### `POST /api/ai/titles` · `POST /api/ai/tags`
+상품명 5개 / 태그 20개. 크레딧 `generate`(1).
 
-**Request**
-```json
-{
-  "images": ["data:image/jpeg;base64,..."],
-  "brand": "BRAND",
-  "productName": "여성 캐시미어 니트",
-  "price": "39900",
-  "category": "상의/니트",
-  "platform": "쿠팡",
-  "memo": "",
-  "features": ["캐시미어 혼방", "루즈핏"],
-  "coupangSuggestions": ["캐시미어니트 여성", ...]
-}
-```
+### `POST /api/ai/regen`
+단일 필드 재생성. 크레딧 `regen`(1).
+- req: `{ field, brand, productName, price, category, platform, currentContent }`
+- field ∈ `product_name|subtitle|main_copy|selling_points|description|keywords|caution`
+- res: `{ [field]: ... }`
 
-- `images`: 최대 5장, 클라이언트에서 `compressForAI(400px, 0.5)` 압축
-- `coupangSuggestions`: (선택) 쿠팡 자동완성 키워드
-
-**Response**
-```json
-{
-  "content": {
-    "product_name": "캐시미어 블렌드 라운드넥 니트",
-    "subtitle": "부드러운 촉감, 매일 입고 싶은 니트",
-    "main_copy": "...",
-    "selling_points": ["...", "...", "..."],
-    "description": "...",
-    "specs": [{"key": "소재", "value": "캐시미어 10%, 울 90%"}],
-    "keywords": ["캐시미어니트", "여성니트"],
-    "caution": "..."
-  },
-  "titles": [
-    {
-      "rank": 1, "strategy": "키워드형",
-      "title": "[브랜드] 여성 캐시미어 니트 라운드넥",
-      "used_keywords": ["캐시미어", "여성", "라운드넥"],
-      "char_count": 22
-    }
-  ],
-  "tags": ["캐시미어니트", "여성니트", ...]
-}
-```
-
-**Service**: `ai.service.ts` → `generateAll()` → Gemini 2.5 Flash (단일 호출)
-**크레딧**: 1
-**실패 처리**: 크레딧 자동 환불
-
-> **이전 v1** (`/api/ai/titles`, `/api/ai/tags`)는 통합 엔드포인트로 병합됨 — Gemini 503 확률 감소 + 레이턴시 단축 목적.
-
----
-
-## AI 이미지
+### `POST /api/ai/gift-describe`
+사은품 설명. 크레딧 `gift`(1).
+- req: `{ image(dataURL), productName? }` → res: `{ description }`
 
 ### `POST /api/image/generate`
+모델 시착 이미지 1장. 크레딧 `image`(5). maxDuration 60.
+- req: `{ productName, category, gender, images[] }` → res: `{ image(dataURL) }`
 
-상품 이미지로 AI 모델(사람) 컷을 생성.
-
-**Request**
-```json
-{
-  "productName": "여성 캐시미어 니트",
-  "category": "상의/니트",
-  "gender": "female",
-  "images": ["data:image/jpeg;base64,..."]
-}
-```
-
-- `images`: 최대 3장, 클라에서 `compressForImageGen(1024px, 0.9)` 압축 (품질 보존)
-- `gender`: `"male"` | `"female"`
-
-**Response**
-```json
-{ "image": "data:image/png;base64,..." }
-```
-
-**Service**: `ai.service.ts` → `generateModelImage()` → Gemini 2.5 Flash Image
-**크레딧**: 5
-**실패 처리**: 크레딧 자동 환불
-
----
+### `POST /api/image/generate-set`
+풀세트(모델 1 + 각도 N-1). 크레딧 `image × count`. 부분 실패분 환불.
+- req: `{ productName, category, gender, images[], count(1~6) }`
+- res: `{ images[], generated, requested }`
 
 ### `POST /api/image/bg-remove`
+배경 제거(Gemini). 크레딧 `bg-remove`(5).
+- req: `{ image(dataURL) }` → res: `{ image(dataURL) }`
 
-이미지에서 배경을 제거하고 흰 배경으로 치환.
+### `POST /api/translate`
+한↔일/영 톤 재작성. 크레딧 `generate`(1).
+- req: `{ current(GeneratedAll), fromLang, toLang, targetPlatform }` → res: `GeneratedAll`
 
-**Request**
-```json
-{ "image": "data:image/jpeg;base64,..." }
-```
-
-- `image`: 1장, 클라에서 `compressForImageGen(1024px, 0.9)` 압축
-
-**Response**
-```json
-{ "image": "data:image/png;base64,..." }
-```
-
-**Service**: `ai.service.ts` → `removeBackgroundGemini()` → Gemini 2.5 Flash Image (생성형 방식)
-**후처리** (클라이언트): `whitenNearWhite(threshold=245)` — Gemini가 만드는 회색빛 배경을 순수 #FFFFFF로 치환
-**크레딧**: 5
-**실패 처리**: 크레딧 자동 환불
+### `GET /api/market/suggest?keyword=`
+쿠팡 인기검색어 (AI 아님, 키 불필요). res: `{ suggestions[] }`
 
 ---
 
-## 렌더링
+## 인증/세션 라우트
 
-### `POST /api/render`
+### `GET /api/auth/invite?token=`
+초대 링크 진입점. 토큰 검증(서명+버전+유효기간) → 구글 OAuth로 리다이렉트.
 
-상품 데이터 + 본문 이미지로 **본문만** PNG 생성. 상하단 이미지는 클라이언트에서 합성.
+### `GET /api/auth/me`
+현재 체험 로그인 상태. res: `{ loggedIn, name?, email?, trial? }` (초대 삭제/만료면 `loggedIn:false`)
 
-**Request**
-```json
-{
-  "data": {
-    "product_name": "...",
-    "subtitle": "...",
-    "main_copy": "...",
-    "selling_points": ["...", "...", "..."],
-    "description": "...",
-    "specs": [{"key": "...", "value": "..."}],
-    "keywords": ["..."],
-    "caution": "..."
-  },
-  "price": "39,900",
-  "images": ["data:image/jpeg;base64,..."]
-}
-```
+### `POST /api/auth/logout`
+체험 세션 쿠키 제거.
 
-- `images`: 본문에 들어가는 이미지 (상하단 제외)
-- 상하단 `storeIntroImage`, `termsImage`는 서버에 **전송하지 않음** (클라에서 직접 합성)
+### `GET /api/oauth/google/start?admin=1`
+관리자 구글 로그인 시작. (사용자 로그인은 `/api/auth/invite`에서 시작)
 
-**Response**: Binary PNG (`Content-Type: image/png`)
-
-**Service**: `render.service.ts` → `@napi-rs/canvas`
-**크레딧**: 0 (인증만)
-**제한**: `maxDuration = 60s` (Vercel Pro 기준)
+### `GET /api/oauth/google/callback?code=&state=`
+구글 콜백. `state.purpose`로 분기:
+- `admin` → ADMIN_EMAILS 확인 → 관리자 세션 → `/admin`
+- `invite` → 초대 재확인 → 체험 활성화 → 체험 세션 → `/product/new`
 
 ---
 
-## 사용량
+## 관리자 라우트 (전부 `requireAdmin`)
 
-### `GET /api/usage`
+### `GET /api/admin/invites`
+초대 목록 + 각자 체험 상태 + 링크. res: `{ admin, invites[] }`
 
-현재 유저의 크레딧 잔량 조회.
+### `POST /api/admin/invites`
+초대 생성. req: `{ name, expiresAt?(ms) }` → res: `{ invite }`
 
-**Response**
-```json
-{
-  "credits": {
-    "used": 47,
-    "remaining": 453,
-    "limit": 500
-  },
-  "cost": {
-    "generate": 1,
-    "image": 5,
-    "bg-remove": 5
-  }
-}
-```
+### `PATCH /api/admin/invites/[id]`
+수정. req: `{ action: 'rename'|'regenerate'|'expiry', name?, expiresAt? }`
 
-**Service**: `rateLimit.ts` → `getCreditStatus()` → Redis `GET credits:{userId}:{YYYY-MM}`
-**관리자**(`ADMIN_EMAILS`): `remaining: 99999`로 반환
+### `DELETE /api/admin/invites/[id]`
+삭제 (그 링크 사용자도 즉시 차단됨).
 
----
-
-## 시장 데이터
-
-### `GET /api/market/suggest?keyword={keyword}`
-
-쿠팡 자동완성 API 프록시. AI 생성 시 SEO 키워드 힌트로 사용.
-
-**Response**
-```json
-{
-  "seeds": ["캐시미어 니트"],
-  "bySeed": { "캐시미어 니트": ["캐시미어 니트 여성", ...] },
-  "suggestions": ["캐시미어 니트 여성", "캐시미어 니트 남성", ...]
-}
-```
-
-**Service**: `market.service.ts` → 쿠팡 자동완성 엔드포인트 직접 호출
-**크레딧**: 0 (인증 불필요)
-**폴백**: 실패 시 빈 배열 반환 (200 OK)
-
----
-
-## 인증 콜백
-
-### `GET|POST /api/auth/[...nextauth]`
-
-NextAuth v4가 관리. 로그인/로그아웃/세션 조회 자동 처리.
-
-- `GET /api/auth/signin` → Google OAuth 리다이렉트
-- `GET /api/auth/callback/google` → 콜백 처리 + JWT 쿠키 발급
-- `POST /api/auth/signout` → 세션 종료
-
----
-
-## 에러 응답 규약
-
-모든 JSON 에러는 다음 형식:
-
-```json
-{ "error": "사용자 친화 한글 메시지" }
-```
-
-`src/lib/errorMessage.ts`의 `friendlyErrorMessage()`가 내부 에러를 사용자가 읽을 수 있는 형태로 매핑:
-
-| 내부 에러 | 사용자 메시지 |
-|----------|-------------|
-| Gemini 503/unavailable | "AI 서버가 일시적으로 바쁩니다. 30초 후 다시 시도해주세요." |
-| 네트워크/타임아웃 | "네트워크 오류가 발생했습니다." |
-| 401 | "로그인이 필요합니다." |
-| 429 | "크레딧이 부족합니다. N월 1일 00:00에 자동 초기화됩니다." |
+### `POST /api/admin/logout`
+관리자 세션 제거.
