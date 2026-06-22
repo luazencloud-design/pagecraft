@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verifyTrialSession, TRIAL_SESSION_COOKIE } from './session'
-import { getInvite } from './invites'
+import { getInvite, inviteUsableReason } from './invites'
 import { consumeTrialCredits, refundTrialCredits, type CreditType } from './trial'
 
 /**
@@ -36,9 +36,9 @@ export async function authorizeAi(
       ),
     }
   }
-  // 초대가 삭제/만료됐으면 즉시 차단 (호출마다 재확인)
+  // 초대가 삭제/만료/시작전이면 즉시 차단 (호출마다 재확인). 레코드는 남아도 inviteUsableReason로 판단
   const inv = session.inv ? await getInvite(session.inv) : null
-  if (!inv) {
+  if (!inv || inviteUsableReason(inv) !== 'ok') {
     return {
       error: NextResponse.json(
         { error: '초대가 만료되었거나 삭제되었어요. 본인 Gemini API 키를 입력하면 계속 사용할 수 있어요.' },
