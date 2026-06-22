@@ -10,6 +10,7 @@ import type {
   GeneratedByLang,
   RegenField,
 } from '@/types/ai'
+import Replicate from 'replicate'
 import type { Platform } from '@/types/product'
 import { PLATFORM_META } from '@/types/product'
 import { currentRequestKey } from '@/lib/apiKeyContext'
@@ -434,11 +435,59 @@ function getCameraFocus(category: string, productName: string): CameraFocus {
   return { leadFraming: 'a full-body fashion shot from head to feet', part: '전신', shot: '풀샷', crop: '전신', action: 'wearing/using' }
 }
 
+// Replicate 클라이언트 싱글톤 (서버 체험 모드 배경제거용 — REPLICATE_API_TOKEN)
+let replicateClient: Replicate | null = null
+function getReplicate(): Replicate {
+  if (replicateClient) return replicateClient
+  const token = process.env.REPLICATE_API_TOKEN
+  if (!token) throw new Error('REPLICATE_API_TOKEN 환경변수가 설정되지 않았습니다.')
+  replicateClient = new Replicate({ auth: token })
+  return replicateClient
+}
+
 /**
- * Gemini 기반 배경 제거 — 상품을 순백(#FFFFFF) 배경으로 분리
+ * Recraft 배경 제거 (via Replicate) — 무료 체험(서버 키) 경로 전용
+ * - 픽셀 마스크 기반 진짜 배경 제거(투명 PNG → 흰 배경에 자연스럽게)
+ * - 품질/비용 모두 Gemini보다 우수($0.01/건). 우리 서버 비용이라 이걸 씀.
+ * - BYOK 사용자는 Replicate 토큰이 없으니 removeBackground(Gemini)를 씀.
+ */
+export async function removeBackgroundRecraft(imageDataUrl: string): Promise<string> {
+  const replicate = getReplicate()
+  const MAX_RETRIES = 3
+  let output: unknown
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      output = await replicate.run('recraft-ai/recraft-remove-background', { input: { image: imageDataUrl } })
+      break
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status !== 429 || attempt === MAX_RETRIES) throw err
+      const headers = (err as { response?: { headers?: Headers } })?.response?.headers
+      const retryAfterSec = Number(headers?.get?.('retry-after')) || 6
+      await new Promise((r) => setTimeout(r, retryAfterSec * 1000 + 1000))
+    }
+  }
+  if (output === undefined) throw new Error('Recraft 응답을 받지 못했습니다.')
+
+  let resultUrl: string
+  if (typeof output === 'string') resultUrl = output
+  else if (Array.isArray(output) && typeof output[0] === 'string') resultUrl = output[0]
+  else if (output && typeof output === 'object' && 'url' in output) {
+    const urlValue = (output as { url: () => URL | string }).url.call(output)
+    resultUrl = typeof urlValue === 'string' ? urlValue : urlValue.toString()
+  } else throw new Error('Recraft 응답 형식을 인식하지 못했습니다.')
+
+  const imageRes = await fetch(resultUrl)
+  if (!imageRes.ok) throw new Error(`Recraft 결과 다운로드 실패: ${imageRes.status}`)
+  const buffer = await imageRes.arrayBuffer()
+  return `data:image/png;base64,${Buffer.from(buffer).toString('base64')}`
+}
+
+/**
+ * Gemini 기반 배경 제거 — BYOK(본인 키) 경로 전용
  *
- * BYOK 전환으로 Replicate(Recraft) → Gemini Image로 변경.
- * 사용자 키 하나로 모든 기능 처리. Gemini는 "생성" 모델이라 흰 배경 근사로 출력됨.
+ * BYOK 사용자는 Gemini 키만 있어 Replicate를 못 씀 → 어쩔 수 없이 Gemini로.
+ * Gemini는 "생성" 모델이라 흰 배경 근사로 출력됨(Recraft보다 품질 낮을 수 있음).
  */
 export async function removeBackground(imageDataUrl: string): Promise<string> {
   const apiKey = getApiKey()

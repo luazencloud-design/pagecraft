@@ -106,7 +106,8 @@ AI 요청 → aiGate.authorizeAi(req, creditType, multiplier)
 | 사은품 설명 | `describeGiftImage` | text(vision) |
 | 모델 시착 이미지 | `generateModelImage` | image |
 | 이미지 풀세트 | `generateImageSet` (모델 1 + 각도 N-1) | image |
-| 배경 제거 | `removeBackground` | image |
+| 배경 제거 (체험) | `removeBackgroundRecraft` (Replicate) | image |
+| 배경 제거 (BYOK) | `removeBackground` (Gemini) | image |
 | 카테고리 자동 검출 | `detectProductCategoryFromImages` | text(vision) |
 
 - **프롬프트는 플랫폼별 분리**: `services/prompts/{coupang,qoo10,ebay}.ts`
@@ -146,4 +147,7 @@ AI 요청 → aiGate.authorizeAi(req, creditType, multiplier)
 - **DB**: Redis + 클라이언트 저장으로 충분 (단순성)
 - **NextAuth**: 경량 jose JWT 직접 구현 (관리자/사용자 OAuth)
 - **이메일 발송**: 초대 링크는 관리자가 URL 직접 배포 (메일 서비스 불필요)
-- **Replicate**: 배경 제거를 Gemini로 통합 (키 하나로 전 기능)
+
+> 배경 제거는 경로별로 분기한다 — 체험(서버)은 **Recraft(Replicate)**, BYOK는 **Gemini**.
+> 체험 비용은 우리가 내므로 품질·단가가 좋은 Recraft를 쓰고, BYOK는 사용자가 Replicate 토큰이 없어 Gemini로 처리.
+> 분기는 `api/image/bg-remove/route.ts`에서 `gate.auth.mode`로 결정.

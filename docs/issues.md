@@ -439,3 +439,40 @@ const output = await replicate.run(
 - `package.json` — `replicate` 의존성 추가
 
 **관련 이슈**: #15 (Gemini 한계 단기 대응), #19 (압축 분기 — 1024px 유지), #21 (Vercel payload 검증)
+
+---
+
+## #23. 배경 제거: 경로별 모델 분기 (체험=Recraft / BYOK=Gemini)
+
+**배경**
+- #22(Recraft 전환) 후 BYOK 도입 과정에서 배경제거를 **전부 Gemini로** 합쳐버렸음 (키 하나 단순화 목적)
+- 그러나 무료 체험(서버 키) 경로까지 Gemini로 바뀌면서 품질↓·비용↑ 손해. Recraft 의도가 사라짐
+
+**결정**: 모드별로 분기
+| 경로 | 모델 | 이유 |
+|---|---|---|
+| 무료 체험(서버 키) | **Recraft (Replicate)** | 비용 우리 부담 → 품질·단가 좋은 Recraft. $0.01/건 진짜 픽셀 마스크 |
+| BYOK(본인 키) | **Gemini** | 사용자는 Replicate 토큰이 없음 → 어쩔 수 없이 Gemini Image 근사 |
+
+**구현**
+- `ai.service.ts` — `removeBackgroundRecraft`(복원) + `removeBackground`(Gemini) **둘 다 보유**
+- `api/image/bg-remove/route.ts` — `gate.auth.mode === 'byok'` 이면 Gemini(키 컨텍스트), 아니면 Recraft(서버 토큰)
+- `replicate` 의존성 재설치, `REPLICATE_API_TOKEN` env 부활 (체험 경로 필수)
+
+**운영 주의**: 무료 체험을 켜려면 이제 `GEMINI_API_KEY`(텍스트·이미지) **+ `REPLICATE_API_TOKEN`(배경제거)** 둘 다 필요. BYOK 전용으로만 쓸 거면 Replicate 토큰 없어도 됨.
+
+---
+
+## #24. 무제한(직원용) 초대 링크
+
+**요구**: 직원용으로 **크레딧·기간 제한 없는** 링크가 필요.
+
+**구현**
+- `Invite.unlimited?: boolean` 추가
+- `inviteUsableReason` / `getInvite` — unlimited면 만료 검사 스킵 (영구)
+- `aiGate` — unlimited 초대는 `consumeTrialCredits` 건너뛰고 서버 키로 바로 통과 (차감 없음)
+- `/api/auth/me` — unlimited면 `{ unlimited: true }`, 크레딧 객체 미반환
+- Header — `♾️ 무제한` 배지 / authStore `unlimited` 플래그
+- 관리자 페이지 — 생성·편집에 "무제한(직원용)" 체크박스, 행에 무제한 배지
+
+**주의**: 무제한 링크도 일반 초대와 동일하게 **삭제/링크 재생성하면 즉시 차단**. 직원 퇴사 시 삭제로 회수.

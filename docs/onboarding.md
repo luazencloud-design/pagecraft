@@ -9,8 +9,8 @@
 
 - **Next.js 16 풀스택** 앱. 프론트(React)와 API(라우트 핸들러)가 한 repo.
 - **DB 없음.** 데이터는 Redis(초대/크레딧) + 브라우저(localStorage/IndexedDB).
-- **AI는 Gemini 하나로** 전부 (텍스트/이미지/배경제거).
-- **두 사용 모드**: 무료 체험(초대링크+구글로그인+크레딧) / BYOK(본인 키).
+- **AI는 Gemini** (텍스트/이미지). 단 배경제거는 경로별 분기 — 체험=Recraft(Replicate), BYOK=Gemini.
+- **두 사용 모드**: 무료 체험(초대링크+구글로그인+크레딧) / BYOK(본인 키). 직원용 **무제한 초대**도 있음(크레딧·기간 제한 없음).
 - 인가 핵심 파일: `src/lib/aiGate.ts`.
 
 ---
@@ -92,7 +92,7 @@ pagecraft/
 
 | 파일 | 용도 |
 |---|---|
-| `ai.service.ts` | **Gemini 호출 전부** — 생성/이미지/배경제거 + `getCameraFocus` 프레이밍 |
+| `ai.service.ts` | Gemini 호출(생성/이미지) + `getCameraFocus` 프레이밍. 배경제거 2종: `removeBackgroundRecraft`(체험/Replicate), `removeBackground`(BYOK/Gemini) |
 | `translate.service.ts` | 한↔일/영 재작성 |
 | `market.service.ts` | 쿠팡 인기검색어 스크랩 |
 | `prompts/coupang.ts` | 쿠팡·스마트스토어 프롬프트 |

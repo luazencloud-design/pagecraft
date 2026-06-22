@@ -14,6 +14,10 @@ export async function GET() {
   const inv = session.inv ? await getInvite(session.inv) : null
   if (!inv) return NextResponse.json({ loggedIn: false, reason: 'invite_revoked' })
 
+  // 무제한(직원용) 초대 → 크레딧 표시 X
+  if (inv.unlimited) {
+    return NextResponse.json({ loggedIn: true, name: session.name, email: session.sub, unlimited: true })
+  }
   const trial = await getTrialStatus(session.sub) // 구글 이메일 기준
   return NextResponse.json({ loggedIn: true, name: session.name, email: session.sub, trial })
 }

@@ -42,7 +42,7 @@
 - res: `{ images[], generated, requested }`
 
 ### `POST /api/image/bg-remove`
-배경 제거(Gemini). 크레딧 `bg-remove`(5).
+배경 제거. 크레딧 `bg-remove`(5). 모드별 모델 분기 — 체험=Recraft(Replicate), BYOK=Gemini.
 - req: `{ image(dataURL) }` → res: `{ image(dataURL) }`
 
 ### `POST /api/translate`

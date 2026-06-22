@@ -13,7 +13,7 @@
 - **입력**: 상품 사진 + 간단한 정보(상품명/카테고리/플랫폼)
 - **출력**: AI가 생성한 상세페이지(HTML/이미지), 상품명 5개, 태그 20개, AI 모델 착용 이미지, 600×600 썸네일
 - **플랫폼별 템플릿**: 쿠팡/스마트스토어(한국), 큐텐 재팬(일본어), 이베이(영어)
-- **AI 엔진**: Google **Gemini** (텍스트 + 이미지 생성 + 배경 제거 전부 Gemini 하나로)
+- **AI 엔진**: Google **Gemini** (텍스트 + 이미지 생성). 배경 제거는 경로별 분기 — 체험(서버)=**Recraft(Replicate)**, BYOK(본인 키)=Gemini
 
 ### 두 가지 사용 방식 (한 앱에 공존)
 
@@ -46,7 +46,7 @@ npm run dev
 
 ### 로컬에서 최소로 돌리려면
 - **BYOK만 테스트**: env 없이도 됨. 앱 우측 상단 ⚙️에 본인 Gemini 키 입력 → 바로 사용
-- **무료 체험/관리자까지 테스트**: `.env.local`에 `AUTH_SECRET`, `GOOGLE_CLIENT_ID/SECRET`, `ADMIN_EMAILS`, `GEMINI_API_KEY` 필요 (3번 참고)
+- **무료 체험/관리자까지 테스트**: `.env.local`에 `AUTH_SECRET`, `GOOGLE_CLIENT_ID/SECRET`, `ADMIN_EMAILS`, `GEMINI_API_KEY`, `REPLICATE_API_TOKEN`(체험 배경제거용) 필요 (3번 참고)
 
 ---
 
@@ -57,7 +57,8 @@ npm run dev
 | 변수 | 필수? | 용도 | 어디서 |
 |---|---|---|---|
 | `AUTH_SECRET` | ✅ | 로그인 세션·초대 토큰 JWT 서명 (16자+ 랜덤) | 직접 생성 ↓ |
-| `GEMINI_API_KEY` | ✅(체험) | 무료 체험용 서버 AI 키 | [Google AI Studio](https://aistudio.google.com/app/apikey) |
+| `GEMINI_API_KEY` | ✅(체험) | 무료 체험용 서버 AI 키 (텍스트·이미지) | [Google AI Studio](https://aistudio.google.com/app/apikey) |
+| `REPLICATE_API_TOKEN` | ✅(체험) | 체험 경로 배경제거(Recraft). BYOK 전용이면 불필요 | [Replicate](https://replicate.com/account/api-tokens) |
 | `GOOGLE_CLIENT_ID` | ✅ | 구글 로그인(관리자+사용자) | [Google Cloud Console](https://console.cloud.google.com) |
 | `GOOGLE_CLIENT_SECRET` | ✅ | 〃 | 〃 |
 | `ADMIN_EMAILS` | ✅ | 관리자 구글 이메일 (쉼표 구분) | 본인 지정 |

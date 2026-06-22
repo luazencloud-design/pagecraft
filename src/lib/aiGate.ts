@@ -55,6 +55,10 @@ export async function authorizeAi(
       ),
     }
   }
+  // 무제한(직원용) 초대 → 크레딧 차감 없이 통과
+  if (inv.unlimited) {
+    return { auth: { mode: 'trial', key: serverKey, subject: session.sub, creditType, multiplier } }
+  }
   const r = await consumeTrialCredits(session.sub, creditType, multiplier)
   if (!r.allowed) {
     if (r.reason === 'unavailable') {
