@@ -3,7 +3,6 @@
 import { useCallback, useState } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
 import { useProductStore } from '@/stores/productStore'
-import { useUsageStore } from '@/stores/usageStore'
 import { api, ApiError } from '@/lib/api'
 import { showToast } from '@/components/ui/Toast'
 import type { GeneratedContent, RegenField } from '@/types/ai'
@@ -48,7 +47,6 @@ export function useFieldRegen() {
           ...generatedContent,
           [field]: result[field],
         })
-        useUsageStore.getState().fetchUsage()
         showToast(`${labelOf(field)} 재생성 완료`)
       } catch (err) {
         const msg =

@@ -1,13 +1,15 @@
 import type { GeneratedAll, TranslateRequest } from '@/types/ai'
+import { currentRequestKey } from '@/lib/apiKeyContext'
 import { buildCoupangRewritePrompt } from './prompts/coupang'
 import { buildQoo10RewritePrompt } from './prompts/qoo10'
 import { buildEbayRewriteToEnPrompt, buildEbayRewriteToKoPrompt } from './prompts/ebay'
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
+// BYOK — 요청 컨텍스트의 사용자 키 우선, env 폴백
 function getApiKey(): string {
-  const key = process.env.GEMINI_API_KEY
-  if (!key) throw new Error('GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.')
+  const key = currentRequestKey() || process.env.GEMINI_API_KEY
+  if (!key) throw new Error('Gemini API 키가 없습니다. 설정에서 API 키를 입력해주세요.')
   return key
 }
 
@@ -50,11 +52,17 @@ function safeParseJSON<T>(text: string): T {
 }
 
 async function geminiRequest(url: string, body: object): Promise<Response> {
+  // 보안: API 키를 URL ?key= 에서 x-goog-api-key 헤더로 이동 (URL/로그 노출 차단)
+  const u = new URL(url)
+  const apiKey = u.searchParams.get('key') || ''
+  u.searchParams.delete('key')
+  const cleanUrl = u.toString()
+
   const MAX_RETRIES = 3
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    const res = await fetch(url, {
+    const res = await fetch(cleanUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify(body),
     })
     if (res.status !== 503 || attempt === MAX_RETRIES) return res

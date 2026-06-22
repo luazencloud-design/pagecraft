@@ -1,25 +1,25 @@
 import { NextResponse } from 'next/server'
 import { generateTags } from '@/services/ai.service'
+import { runWithKey } from '@/lib/apiKeyContext'
+import { authorizeAi, refundIfTrial } from '@/lib/aiGate'
+import { friendlyErrorMessage } from '@/lib/errorMessage'
 import type { AITagRequest } from '@/types/ai'
 
 export async function POST(req: Request) {
-  try {
-    const body = (await req.json()) as AITagRequest
+  let body: AITagRequest
+  try { body = await req.json() } catch { return NextResponse.json({ error: '잘못된 요청' }, { status: 400 }) }
+  if (!body.productName) return NextResponse.json({ error: '상품명이 필요합니다.' }, { status: 400 })
 
-    if (!body.productName) {
-      return NextResponse.json(
-        { error: '상품명이 필요합니다.' },
-        { status: 400 },
-      )
+  const gate = await authorizeAi(req, 'generate')
+  if ('error' in gate) return gate.error
+
+  return runWithKey(gate.auth.key, async () => {
+    try {
+      return NextResponse.json(await generateTags(body))
+    } catch (err) {
+      console.error('태그 생성 오류:', err)
+      await refundIfTrial(gate.auth)
+      return NextResponse.json({ error: friendlyErrorMessage(err) }, { status: 500 })
     }
-
-    const result = await generateTags(body)
-    return NextResponse.json(result)
-  } catch (err) {
-    console.error('태그 생성 오류:', err)
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : '태그 생성 실패' },
-      { status: 500 },
-    )
-  }
+  })
 }

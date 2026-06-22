@@ -1,3 +1,5 @@
+import { getStoredApiKey } from '@/stores/apiKeyStore'
+
 const API_BASE = ''
 
 interface ApiOptions extends RequestInit {
@@ -17,6 +19,9 @@ class ApiError extends Error {
 async function request<T>(url: string, options: ApiOptions = {}): Promise<T> {
   const { timeout = 60000, ...fetchOptions } = options
 
+  // BYOK — 저장된 Gemini 키를 헤더로 첨부 (있으면 BYOK, 없으면 서버가 로그인/체험으로 판단)
+  const userKey = getStoredApiKey()
+
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeout)
 
@@ -26,6 +31,7 @@ async function request<T>(url: string, options: ApiOptions = {}): Promise<T> {
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
+        ...(userKey ? { 'x-gemini-key': userKey } : {}),
         ...fetchOptions.headers,
       },
     })
@@ -56,6 +62,16 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     })
+  },
+  patch<T>(url: string, body: unknown, options?: ApiOptions) {
+    return request<T>(url, {
+      ...options,
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    })
+  },
+  del<T>(url: string, options?: ApiOptions) {
+    return request<T>(url, { ...options, method: 'DELETE' })
   },
 }
 
