@@ -79,7 +79,15 @@ async function rGet(k: string): Promise<string | null> {
   return memGet(k)
 }
 async function rSet(k: string, v: string, ttl?: number) {
-  if (useRedis) { const r = getRedis(); if (!r) return; try { ttl ? await r.set(k, v, 'EX', ttl) : await r.set(k, v) } catch {} return }
+  if (useRedis) {
+    const r = getRedis()
+    if (!r) return
+    try {
+      if (ttl) await r.set(k, v, 'EX', ttl)
+      else await r.set(k, v)
+    } catch { /* 무시 */ }
+    return
+  }
   memSet(k, v, ttl)
 }
 /** 크레딧 차감용 원자 증가. 실패 시 throw (fail-closed — 차감 실패가 무료 통과로 이어지지 않게) */
