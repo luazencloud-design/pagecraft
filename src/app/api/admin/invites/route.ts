@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/adminAuth'
-import { listInvites, createInvite, inviteLink } from '@/lib/invites'
+import { listInvites, createInvite, inviteLink, getEvents } from '@/lib/invites'
 import { getTrialStatus } from '@/lib/trial'
 
-/** 초대 목록 + 각자 체험 상태 + 링크 */
+/** 초대 목록 + 각자 체험 상태 + 링크 + 최근 활동 로그 */
 export async function GET(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: '관리자 권한 필요' }, { status: 403 })
@@ -17,16 +17,23 @@ export async function GET(req: Request) {
       trial: await getTrialStatus(inv.id),
     })),
   )
-  return NextResponse.json({ admin, invites: rows })
+  const events = await getEvents(30)
+  return NextResponse.json({ admin, invites: rows, events })
 }
 
-/** 초대 생성 — name + 선택적 expiresAt(ms) */
+/** 초대 생성 — name + 선택적 startsAt/expiresAt(ms) */
 export async function POST(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: '관리자 권한 필요' }, { status: 403 })
 
-  const { name, expiresAt } = (await req.json().catch(() => ({}))) as { name?: string; expiresAt?: number }
-  const inv = await createInvite(name || '', expiresAt && expiresAt > Date.now() ? expiresAt : undefined)
+  const { name, startsAt, expiresAt } = (await req.json().catch(() => ({}))) as {
+    name?: string; startsAt?: number; expiresAt?: number
+  }
+  const inv = await createInvite(
+    name || '',
+    startsAt || undefined,
+    expiresAt && expiresAt > Date.now() ? expiresAt : undefined,
+  )
   const origin = process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin
   return NextResponse.json({ invite: { ...inv, link: await inviteLink(origin, inv) } })
 }

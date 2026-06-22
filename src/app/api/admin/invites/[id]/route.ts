@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/adminAuth'
-import { renameInvite, regenerateInvite, deleteInvite, setInviteExpiry, inviteLink, getInvite } from '@/lib/invites'
+import { renameInvite, regenerateInvite, deleteInvite, setInviteSchedule, inviteLink, getInvite } from '@/lib/invites'
 
-/** 수정 — 이름(rename) / 링크 재생성(regenerate) / 유효기간(expiry) */
+/** 수정 — 이름(rename) / 링크 재생성(regenerate) / 기간(schedule: 시작·종료) */
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: '관리자 권한 필요' }, { status: 403 })
 
   const { id } = await ctx.params
   const body = (await req.json().catch(() => ({}))) as {
-    action?: 'rename' | 'regenerate' | 'expiry'
+    action?: 'rename' | 'regenerate' | 'schedule'
     name?: string
+    startsAt?: number | null
     expiresAt?: number | null
   }
 
@@ -19,8 +20,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 
   if (body.action === 'regenerate') {
     inv = await regenerateInvite(id)
-  } else if (body.action === 'expiry') {
-    inv = await setInviteExpiry(id, body.expiresAt ?? null)
+  } else if (body.action === 'schedule') {
+    inv = await setInviteSchedule(id, body.startsAt ?? null, body.expiresAt ?? null)
   } else {
     inv = await renameInvite(id, body.name || inv.name)
   }

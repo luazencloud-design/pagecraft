@@ -6,7 +6,7 @@ import {
   signTrialSession, TRIAL_SESSION_COOKIE,
 } from '@/lib/session'
 import { isAdmin, activateTrial, normalizeEmail } from '@/lib/trial'
-import { getInvite } from '@/lib/invites'
+import { getInvite, inviteUsableReason, logEvent } from '@/lib/invites'
 
 /** 구글 OAuth 콜백 — 관리자 / 초대 사용자 둘 다 처리 (state.purpose 로 분기) */
 export async function GET(req: Request) {
@@ -34,13 +34,18 @@ export async function GET(req: Request) {
   }
 
   // ── 초대 사용자 ──
-  // 구글 라운드트립 후 초대가 여전히 유효한지 재확인 (삭제/만료 시 차단)
+  // 구글 라운드트립 후 초대가 여전히 유효한지 재확인 (삭제/만료/시작전 차단)
   const inv = state.inv ? await getInvite(state.inv) : null
-  if (!inv) return NextResponse.redirect(`${origin}/?invite=revoked`)
+  if (!inv || inviteUsableReason(inv) !== 'ok') {
+    return NextResponse.redirect(`${origin}/?invite=revoked`)
+  }
 
   // 구글 이메일 정규화(별칭 우회 차단) 후 체험 활성화 (이미 시작했으면 그대로)
   const trialEmail = normalizeEmail(email)
   await activateTrial(trialEmail)
+  // 활동 로그 — 누가(마스킹) 어떤 초대로 입장했는지
+  const masked = trialEmail.replace(/^(.{2}).*(@.*)$/, '$1***$2')
+  await logEvent('redeemed', inv.name, masked)
 
   const session = await signTrialSession(trialEmail, inv.id, inv.name)
   const res = NextResponse.redirect(`${origin}/product/new`)
