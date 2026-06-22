@@ -83,8 +83,8 @@ export default function ProductNewPage() {
     }
   }, [generatedContent, currentLang, langCache])
   const hasApiKey = useApiKeyStore((s) => s.apiKey.trim().length > 0)
-  // 무료 체험 로그인(활성) 또는 BYOK 키 둘 중 하나면 사용 가능
-  const trialActive = useAuthStore((s) => s.loggedIn && !!s.trial?.active)
+  // 무료 체험(활성) / 무제한(직원) / BYOK 키 중 하나면 사용 가능
+  const trialActive = useAuthStore((s) => s.loggedIn && (s.unlimited || !!s.trial?.active))
   const canUseAi = hasApiKey || trialActive
   const canGenerate = images.length > 0 && product.name.trim() !== '' && canUseAi
 

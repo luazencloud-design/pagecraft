@@ -15,7 +15,7 @@ export default function Header() {
   const { apiKey, setApiKey, clearApiKey } = useApiKeyStore()
   const [draftKey, setDraftKey] = useState('')
 
-  const { loggedIn, name, trial, fetchMe, logout } = useAuthStore()
+  const { loggedIn, name, trial, unlimited, fetchMe, logout } = useAuthStore()
   useEffect(() => { fetchMe() }, [fetchMe])
 
   useEffect(() => {
@@ -147,17 +147,20 @@ export default function Header() {
               }}
               title={name || ''}
             >
-              🎟️ {trial ? `${trial.remaining}/${trial.limit}` : '체험'}
-              {trial && trial.active ? <span style={{ color: 'var(--text3)', fontWeight: 500 }}>· {trial.daysLeft}일</span> : null}
+              {unlimited ? '♾️ 무제한' : `🎟️ ${trial ? `${trial.remaining}/${trial.limit}` : '체험'}`}
+              {!unlimited && trial && trial.active ? <span style={{ color: 'var(--text3)', fontWeight: 500 }}>· {trial.daysLeft}일</span> : null}
             </button>
             {showAccount && (
               <>
                 <div style={{ position: 'fixed', inset: 0, zIndex: 199 }} onClick={() => setShowAccount(false)} />
                 <div style={{ position: 'absolute', top: 38, right: 0, zIndex: 200, width: 260, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
                   <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px', wordBreak: 'break-all' }}>{name || '무료 체험'}</p>
-                  <p style={{ fontSize: 10, color: 'var(--text3)', margin: '0 0 12px' }}>초대 체험 계정</p>
+                  <p style={{ fontSize: 10, color: 'var(--text3)', margin: '0 0 12px' }}>{unlimited ? '무제한 계정 (직원용)' : '초대 체험 계정'}</p>
 
-                  {trial && (
+                  {unlimited && (
+                    <p style={{ fontSize: 11.5, color: 'var(--green)', fontWeight: 600, margin: '0 0 12px' }}>♾️ 크레딧·기간 무제한</p>
+                  )}
+                  {!unlimited && trial && (
                     <>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>
                         <span>잔여 크레딧</span>

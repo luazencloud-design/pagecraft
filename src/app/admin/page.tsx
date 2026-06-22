@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { api, ApiError } from '@/lib/api'
+import { api } from '@/lib/api'
 
 interface Trial { active: boolean; everStarted: boolean; used: number; remaining: number; limit: number; daysLeft: number }
 interface InviteRow {
   id: string; name: string; version: number; createdAt: number
-  startsAt?: number; expiresAt?: number; link: string; trial: Trial
+  startsAt?: number; expiresAt?: number; unlimited?: boolean; link: string; trial: Trial
 }
 interface EventRow { ts: number; action: 'created' | 'regenerated' | 'deleted' | 'redeemed'; invite: string; detail?: string }
 
@@ -17,12 +17,14 @@ const dateToEnd = (d: string) => (d ? new Date(`${d}T23:59:59`).getTime() : null
 const fmtDate = (ts?: number) => (ts ? new Date(ts).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }) : '')
 
 function period(inv: InviteRow): string {
+  if (inv.unlimited) return '무제한'
   const s = inv.startsAt ? fmtDate(inv.startsAt) : ''
   const e = inv.expiresAt ? fmtDate(inv.expiresAt) : ''
   if (!s && !e) return '무기한'
   return `${s || '~'} → ${e || '~'}`
 }
 function statusOf(inv: InviteRow): { label: string; color: string } {
+  if (inv.unlimited) return { label: '♾️ 무제한 (직원)', color: 'var(--green)' }
   const now = Date.now()
   if (inv.startsAt && now < inv.startsAt) return { label: '시작 전', color: 'var(--text3)' }
   if (inv.expiresAt && now > inv.expiresAt) return { label: '만료', color: 'var(--red)' }
@@ -57,6 +59,7 @@ export default function AdminPage() {
   const [newName, setNewName] = useState('')
   const [newStart, setNewStart] = useState('')
   const [newEnd, setNewEnd] = useState('')
+  const [newUnlimited, setNewUnlimited] = useState(false)
 
   // 행 상태
   const [copiedId, setCopiedId] = useState('')
@@ -77,11 +80,15 @@ export default function AdminPage() {
     setBusy(true)
     try {
       await api.post('/api/admin/invites', {
-        name: newName, startsAt: dateToStart(newStart), expiresAt: dateToEnd(newEnd),
+        name: newName, startsAt: dateToStart(newStart), expiresAt: dateToEnd(newEnd), unlimited: newUnlimited,
       })
-      setNewName(''); setNewStart(''); setNewEnd('')
+      setNewName(''); setNewStart(''); setNewEnd(''); setNewUnlimited(false)
       await load()
     } finally { setBusy(false) }
+  }
+
+  const toggleUnlimited = async (id: string, next: boolean) => {
+    await api.patch(`/api/admin/invites/${id}`, { action: 'unlimited', unlimited: next }); await load()
   }
 
   const startEdit = (inv: InviteRow) => {
@@ -141,16 +148,21 @@ export default function AdminPage() {
               <input value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newName.trim() && !busy) create() }} placeholder="예: 수강생 1기" style={input} />
             </Field>
             <Field label="시작일 (선택)">
-              <input type="date" value={newStart} onChange={(e) => setNewStart(e.target.value)} style={{ ...input, width: 140 }} />
+              <input type="date" value={newStart} onChange={(e) => setNewStart(e.target.value)} disabled={newUnlimited} style={{ ...input, width: 140, opacity: newUnlimited ? 0.4 : 1 }} />
             </Field>
             <Field label="종료일 (선택)">
-              <input type="date" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} style={{ ...input, width: 140 }} />
+              <input type="date" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} disabled={newUnlimited} style={{ ...input, width: 140, opacity: newUnlimited ? 0.4 : 1 }} />
             </Field>
             <button onClick={create} disabled={busy || !newName.trim()} style={primaryBtn(busy || !newName.trim())}>+ 생성</button>
           </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 12, cursor: 'pointer', fontSize: 12, color: 'var(--text2)' }}>
+            <input type="checkbox" checked={newUnlimited} onChange={(e) => setNewUnlimited(e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--accent)' }} />
+            <span><b>♾️ 무제한 </b> — 크레딧·기간 제한 없음</span>
+          </label>
         </div>
         <p style={{ fontSize: 11, color: 'var(--text3)', margin: '0 0 22px' }}>
           기간을 비우면 무기한. 시작일 전엔 입장 불가, 종료일 후엔 링크 자동 삭제 + 사용자 즉시 차단.
+          무제한은 직원용 — 크레딧·기간 안 걸림.
         </p>
 
         {/* 목록 */}
@@ -188,13 +200,17 @@ export default function AdminPage() {
                           <input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} style={input} />
                         </Field>
                         <Field label="시작일">
-                          <input type="date" value={edit.start} onChange={(e) => setEdit({ ...edit, start: e.target.value })} style={{ ...input, width: 140 }} />
+                          <input type="date" value={edit.start} onChange={(e) => setEdit({ ...edit, start: e.target.value })} disabled={inv.unlimited} style={{ ...input, width: 140, opacity: inv.unlimited ? 0.4 : 1 }} />
                         </Field>
                         <Field label="종료일">
-                          <input type="date" value={edit.end} onChange={(e) => setEdit({ ...edit, end: e.target.value })} style={{ ...input, width: 140 }} />
+                          <input type="date" value={edit.end} onChange={(e) => setEdit({ ...edit, end: e.target.value })} disabled={inv.unlimited} style={{ ...input, width: 140, opacity: inv.unlimited ? 0.4 : 1 }} />
                         </Field>
                         <button onClick={() => saveEdit(inv.id)} disabled={busy} style={primaryBtn(busy)}>저장</button>
                       </div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 12, color: 'var(--text2)' }}>
+                        <input type="checkbox" checked={!!inv.unlimited} onChange={(e) => toggleUnlimited(inv.id, e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--accent)' }} />
+                        <span><b>♾️ 무제한 (직원용)</b> — 크레딧·기간 제한 없음</span>
+                      </label>
                       {/* 링크 + 위험 작업 */}
                       <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono, monospace)', wordBreak: 'break-all', background: 'var(--surface2)', borderRadius: 6, padding: '7px 9px' }}>{inv.link}</div>
                       <div style={{ display: 'flex', gap: 6 }}>

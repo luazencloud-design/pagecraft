@@ -19,11 +19,14 @@ export interface Invite {
   startsAt?: number
   /** 종료일 ts (ms). 이 시각 이후 로그인 불가 + 자동 삭제. 없으면 무기한 */
   expiresAt?: number
+  /** 직원용 무제한 — 크레딧 무제한 + 만료 무시(있어도). 기간도 사실상 무제한 */
+  unlimited?: boolean
 }
 
-/** 초대 사용 가능 여부 (시작 전/만료/존재) */
+/** 초대 사용 가능 여부 (시작 전/만료/존재). 무제한 초대는 만료 무시 */
 export function inviteUsableReason(inv: Invite | null): 'ok' | 'not_started' | 'expired' | 'gone' {
   if (!inv) return 'gone'
+  if (inv.unlimited) return 'ok'
   const now = Date.now()
   if (inv.startsAt && now < inv.startsAt) return 'not_started'
   if (inv.expiresAt && now > inv.expiresAt) return 'expired'
@@ -120,8 +123,8 @@ export async function getInvite(id: string): Promise<Invite | null> {
   if (!raw) return null
   let inv: Invite
   try { inv = JSON.parse(raw) } catch { return null }
-  // 유효기간 만료 → 즉시 삭제 (lazy)
-  if (inv.expiresAt && Date.now() > inv.expiresAt) {
+  // 유효기간 만료 → 즉시 삭제 (lazy). 무제한(직원용)은 만료 무시
+  if (!inv.unlimited && inv.expiresAt && Date.now() > inv.expiresAt) {
     await store.del(kInvite(id))
     await store.srem(INDEX, id)
     return null
@@ -129,19 +132,23 @@ export async function getInvite(id: string): Promise<Invite | null> {
   return inv
 }
 
-export async function createInvite(name: string, startsAt?: number, expiresAt?: number): Promise<Invite> {
+export async function createInvite(
+  name: string,
+  opts?: { startsAt?: number; expiresAt?: number; unlimited?: boolean },
+): Promise<Invite> {
   const store = await kv()
   const inv: Invite = {
     id: genId(),
     name: name.trim() || '이름 없음',
     version: 1,
     createdAt: Date.now(),
-    ...(startsAt ? { startsAt } : {}),
-    ...(expiresAt ? { expiresAt } : {}),
+    ...(opts?.unlimited ? { unlimited: true } : {}),
+    ...(opts?.startsAt ? { startsAt: opts.startsAt } : {}),
+    ...(opts?.expiresAt ? { expiresAt: opts.expiresAt } : {}),
   }
   await store.set(kInvite(inv.id), JSON.stringify(inv))
   await store.sadd(INDEX, inv.id)
-  await logEvent('created', inv.name)
+  await logEvent('created', inv.name + (inv.unlimited ? ' (무제한)' : ''))
   return inv
 }
 
@@ -166,6 +173,17 @@ export async function setInviteSchedule(
   else delete inv.startsAt
   if (expiresAt) inv.expiresAt = expiresAt
   else delete inv.expiresAt
+  const store = await kv()
+  await store.set(kInvite(id), JSON.stringify(inv))
+  return inv
+}
+
+/** 무제한(직원용) 토글 */
+export async function setInviteUnlimited(id: string, unlimited: boolean): Promise<Invite | null> {
+  const inv = await getInvite(id)
+  if (!inv) return null
+  if (unlimited) inv.unlimited = true
+  else delete inv.unlimited
   const store = await kv()
   await store.set(kInvite(id), JSON.stringify(inv))
   return inv

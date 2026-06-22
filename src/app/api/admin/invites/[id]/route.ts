@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/adminAuth'
-import { renameInvite, regenerateInvite, deleteInvite, setInviteSchedule, inviteLink, getInvite } from '@/lib/invites'
+import { renameInvite, regenerateInvite, deleteInvite, setInviteSchedule, setInviteUnlimited, inviteLink, getInvite } from '@/lib/invites'
 
-/** 수정 — 이름(rename) / 링크 재생성(regenerate) / 기간(schedule: 시작·종료) */
+/** 수정 — 이름 / 링크 재생성 / 기간(schedule) / 무제한(unlimited) */
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: '관리자 권한 필요' }, { status: 403 })
 
   const { id } = await ctx.params
   const body = (await req.json().catch(() => ({}))) as {
-    action?: 'rename' | 'regenerate' | 'schedule'
+    action?: 'rename' | 'regenerate' | 'schedule' | 'unlimited'
     name?: string
     startsAt?: number | null
     expiresAt?: number | null
+    unlimited?: boolean
   }
 
   let inv = await getInvite(id)
@@ -22,6 +23,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     inv = await regenerateInvite(id)
   } else if (body.action === 'schedule') {
     inv = await setInviteSchedule(id, body.startsAt ?? null, body.expiresAt ?? null)
+  } else if (body.action === 'unlimited') {
+    inv = await setInviteUnlimited(id, !!body.unlimited)
   } else {
     inv = await renameInvite(id, body.name || inv.name)
   }
