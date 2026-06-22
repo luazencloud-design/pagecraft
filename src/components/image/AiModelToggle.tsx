@@ -6,9 +6,12 @@ import { useImageStore, MAX_IMAGES } from '@/stores/imageStore'
 import { api, ApiError } from '@/lib/api'
 import { compressForImageGen } from '@/lib/image'
 import { showToast } from '@/components/ui/Toast'
+import { useShowCredits } from '@/hooks/useCredits'
+import { CREDIT_COST } from '@/lib/credits'
 
 export default function AiModelToggle() {
   const { product } = useProductStore()
+  const showCredits = useShowCredits()
   const {
     images, aiModelEnabled, aiModelGender, aiOnlyMode,
     setAiModelEnabled, setAiModelGender, setAiOnlyMode, addImages,
@@ -312,9 +315,11 @@ export default function AiModelToggle() {
                 <span title={aiOnlyMode ? 'AI 전용 모드 — AI 이미지만 템플릿에 사용' : '모든 이미지가 템플릿에 사용됨'}>
                   {slotLabel} 슬롯 {slotUsed}/{MAX_IMAGES} (남음 {remainingSlots})
                 </span>
-                <span>
-                  크레딧 <b style={{ color: 'var(--text2)' }}>{effectiveCount * 5}</b>개
-                </span>
+                {showCredits && (
+                  <span>
+                    크레딧 <b style={{ color: 'var(--text2)' }}>{effectiveCount * CREDIT_COST.image}</b>개
+                  </span>
+                )}
               </div>
 
               {/* AI 전용 모드 토글 — AI 이미지 있을 때만 의미 있음

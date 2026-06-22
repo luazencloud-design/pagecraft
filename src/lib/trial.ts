@@ -9,19 +9,15 @@
  * 만료 후엔 start/used만 사라지고 ever는 남아 → 재활성(무한 체험) 방지.
  */
 import Redis from 'ioredis'
+import { CREDIT_COST, type CreditType } from './credits'
 
 export const TRIAL_CREDITS = 500
 const TRIAL_DAYS = 30
 const TTL_SECONDS = TRIAL_DAYS * 24 * 60 * 60
 
-export const CREDIT_COST = {
-  generate: 1,
-  image: 5,
-  'bg-remove': 5,
-  regen: 1,
-  gift: 1,
-} as const
-export type CreditType = keyof typeof CREDIT_COST
+// 단가는 credits.ts 단일 출처. 기존 import 경로 유지 위해 re-export.
+export { CREDIT_COST }
+export type { CreditType }
 
 const useRedis = !!process.env.KV_REDIS_URL
 let redis: Redis | null = null

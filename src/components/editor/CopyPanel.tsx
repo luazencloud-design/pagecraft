@@ -9,6 +9,7 @@ import { PLATFORM_META } from '@/types/product'
 import { buildEbayPlainText } from '@/lib/ebayHtml'
 import { showToast } from '@/components/ui/Toast'
 import { useFieldRegen } from '@/hooks/useFieldRegen'
+import { useCreditLabel, useShowCredits } from '@/hooks/useCredits'
 import type { GeneratedContent } from '@/types/ai'
 
 function CopyButton({ text, label }: { text: string; label: string }) {
@@ -268,6 +269,8 @@ function LangSwitcher() {
   // 다른 드래프트가 번역 중인 경우엔 이 화면에 로딩 표시 X
   const isTranslating = rawIsTranslating && translatingDraftId === currentDraftId
   const { translateTo, syncFromDirty, canTranslate, altLang, isCached, dirtyLang } = useTranslate()
+  const creditLabel = useCreditLabel()
+  const showCredits = useShowCredits()
 
   if (!canTranslate) return null
 
@@ -307,7 +310,7 @@ function LangSwitcher() {
                 {dirtyLabel} 수정사항이 {targetLabel}에 아직 반영되지 않았어요
               </p>
               <p className="text-[10px] text-text3" style={{ margin: '4px 0 0', lineHeight: 1.6 }}>
-                💡 여러 항목 한 번에 수정 후 동기화하세요 — <b>크레딧 1개 차감</b>
+                💡 여러 항목 한 번에 수정 후 동기화하세요{showCredits && <> — <b>크레딧 1개 차감</b></>}
               </p>
             </div>
           </div>
@@ -327,7 +330,7 @@ function LangSwitcher() {
               transition: 'all 0.15s',
             }}
           >
-            {isTranslating ? '⏳ 동기화 중...' : `🔄 ${targetLabel} 다시 작성 (크레딧 1개)`}
+            {isTranslating ? '⏳ 동기화 중...' : `🔄 ${targetLabel} 다시 작성${creditLabel('regen')}`}
           </button>
         </div>
       )}
