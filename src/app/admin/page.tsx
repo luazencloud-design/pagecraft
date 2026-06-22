@@ -161,7 +161,7 @@ export default function AdminPage() {
           </label>
         </div>
         <p style={{ fontSize: 11, color: 'var(--text3)', margin: '0 0 22px' }}>
-          기간을 비우면 무기한. 시작일 전엔 입장 불가, 종료일 후엔 링크 자동 삭제 + 사용자 즉시 차단.
+          기간을 비우면 무기한. 시작일 전엔 입장 불가, 종료일 후엔 사용자 즉시 차단(목록엔 <b>만료</b>로 남으니 직접 삭제).
           무제한은 직원용 — 크레딧·기간 안 걸림.
         </p>
 
@@ -173,8 +173,10 @@ export default function AdminPage() {
             {invites.map((inv) => {
               const st = statusOf(inv)
               const editing = editingId === inv.id
+              const expired = !inv.unlimited && !!inv.expiresAt && Date.now() > inv.expiresAt
+              const borderColor = editing ? 'var(--accent)' : expired ? 'var(--red)' : 'var(--border)'
               return (
-                <div key={inv.id} style={{ background: 'var(--surface)', border: `1px solid ${editing ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 12, padding: 14, transition: 'border-color 0.15s' }}>
+                <div key={inv.id} style={{ background: expired ? 'color-mix(in srgb, var(--red) 6%, var(--surface))' : 'var(--surface)', border: `1px solid ${borderColor}`, borderRadius: 12, padding: 14, transition: 'border-color 0.15s' }}>
                   {/* 한 줄 요약 */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <div style={{ minWidth: 0 }}>
@@ -183,12 +185,15 @@ export default function AdminPage() {
                       <span style={{ fontSize: 10.5, color: st.color, marginLeft: 8, fontWeight: 600 }}>· {st.label}</span>
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                      <button onClick={() => copy(inv.id, inv.link)} style={smallBtn(copiedId === inv.id ? 'var(--green)' : undefined)}>
-                        {copiedId === inv.id ? '✓ 복사됨' : '링크 복사'}
-                      </button>
+                      {!expired && (
+                        <button onClick={() => copy(inv.id, inv.link)} style={smallBtn(copiedId === inv.id ? 'var(--green)' : undefined)}>
+                          {copiedId === inv.id ? '✓ 복사됨' : '링크 복사'}
+                        </button>
+                      )}
                       <button onClick={() => (editing ? setEditingId('') : startEdit(inv))} style={smallBtn(editing ? 'var(--accent)' : undefined)}>
                         {editing ? '닫기' : '수정'}
                       </button>
+                      <button onClick={() => remove(inv.id, inv.name)} style={smallBtn('var(--red)')}>🗑 삭제</button>
                     </div>
                   </div>
 
@@ -211,11 +216,10 @@ export default function AdminPage() {
                         <input type="checkbox" checked={!!inv.unlimited} onChange={(e) => toggleUnlimited(inv.id, e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--accent)' }} />
                         <span><b>♾️ 무제한 (직원용)</b> — 크레딧·기간 제한 없음</span>
                       </label>
-                      {/* 링크 + 위험 작업 */}
+                      {/* 링크 + 재생성 (삭제는 행에 상시 노출) */}
                       <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono, monospace)', wordBreak: 'break-all', background: 'var(--surface2)', borderRadius: 6, padding: '7px 9px' }}>{inv.link}</div>
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button onClick={() => regenerate(inv.id)} style={smallBtn()}>↻ 링크 재생성</button>
-                        <button onClick={() => remove(inv.id, inv.name)} style={smallBtn('var(--red)')}>🗑 삭제</button>
                       </div>
                     </div>
                   )}

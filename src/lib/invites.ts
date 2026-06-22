@@ -17,7 +17,7 @@ export interface Invite {
   createdAt: number
   /** 시작일 ts (ms). 이 시각 이전엔 로그인 불가. 없으면 즉시 사용 가능 */
   startsAt?: number
-  /** 종료일 ts (ms). 이 시각 이후 로그인 불가 + 자동 삭제. 없으면 무기한 */
+  /** 종료일 ts (ms). 이 시각 이후 로그인 불가(차단). 레코드는 유지되며 삭제는 관리자가 직접. 없으면 무기한 */
   expiresAt?: number
   /** 직원용 무제한 — 크레딧 무제한 + 만료 무시(있어도). 기간도 사실상 무제한 */
   unlimited?: boolean
@@ -110,26 +110,22 @@ export async function listInvites(): Promise<Invite[]> {
   const ids = await store.smembers(INDEX)
   const out: Invite[] = []
   for (const id of ids) {
-    const inv = await getInvite(id) // 만료된 건 여기서 자동 제거됨
+    const inv = await getInvite(id) // 만료돼도 유지됨 (목록에서 '만료' 표시)
     if (inv) out.push(inv)
-    else await store.srem(INDEX, id) // 없는데 인덱스에 남은 건 정리
+    else await store.srem(INDEX, id) // 실제로 없는데 인덱스에만 남은 건 정리
   }
   return out.sort((a, b) => b.createdAt - a.createdAt)
 }
 
+/**
+ * 초대 레코드 조회 — 만료돼도 삭제하지 않고 그대로 반환 (관리자 목록 '만료' 표시용).
+ * 접근 가능 여부는 호출부에서 inviteUsableReason()로 판단. 실제 삭제는 deleteInvite()만.
+ */
 export async function getInvite(id: string): Promise<Invite | null> {
   const store = await kv()
   const raw = await store.get(kInvite(id))
   if (!raw) return null
-  let inv: Invite
-  try { inv = JSON.parse(raw) } catch { return null }
-  // 유효기간 만료 → 즉시 삭제 (lazy). 무제한(직원용)은 만료 무시
-  if (!inv.unlimited && inv.expiresAt && Date.now() > inv.expiresAt) {
-    await store.del(kInvite(id))
-    await store.srem(INDEX, id)
-    return null
-  }
-  return inv
+  try { return JSON.parse(raw) as Invite } catch { return null }
 }
 
 export async function createInvite(

@@ -17,6 +17,7 @@ import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
 import { useApiKeyStore } from '@/stores/apiKeyStore'
 import { useAuthStore } from '@/stores/authStore'
+import { useCreditLabel } from '@/hooks/useCredits'
 import { useEditorStore } from '@/stores/editorStore'
 import { useDraftsStore } from '@/stores/draftsStore'
 import { useAIGenerate } from '@/hooks/useAIGenerate'
@@ -86,6 +87,7 @@ export default function ProductNewPage() {
   // 무료 체험(활성) / 무제한(직원) / BYOK 키 중 하나면 사용 가능
   const trialActive = useAuthStore((s) => s.loggedIn && (s.unlimited || !!s.trial?.active))
   const canUseAi = hasApiKey || trialActive
+  const creditLabel = useCreditLabel() // 체험 모드일 때만 ' (크레딧 N개)' 반환
   const canGenerate = images.length > 0 && product.name.trim() !== '' && canUseAi
 
   // 미리보기 DOM 캡처용 ref — DetailPagePreview의 wrapper div에 연결
@@ -438,8 +440,8 @@ export default function ProductNewPage() {
                   {giftDescLoading
                     ? '문구 생성 중...'
                     : giftDescription
-                      ? '↻ 사은품 설명 다시 생성'
-                      : '✦ 사은품 설명 생성 (크레딧 1)'}
+                      ? `↻ 사은품 설명 다시 생성${creditLabel('gift')}`
+                      : `✦ 사은품 설명 생성${creditLabel('gift')}`}
                 </button>
                 {giftDescription && (
                   <div
@@ -488,7 +490,7 @@ export default function ProductNewPage() {
               disabled={!canGenerate}
               onClick={generateContent}
             >
-              {isGenerating ? '생성 중...' : '✦ AI 상세페이지 생성'}
+              {isGenerating ? '생성 중...' : `✦ AI 상세페이지 생성${creditLabel('generate')}`}
             </Button>
             {!canUseAi && (
               <p style={{ fontSize: 11, color: 'var(--accent)', textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>
