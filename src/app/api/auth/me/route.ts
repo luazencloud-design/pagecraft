@@ -20,6 +20,6 @@ export async function GET() {
   if (inv.unlimited) {
     return NextResponse.json({ loggedIn: true, name: session.name, email: session.sub, unlimited: true })
   }
-  const trial = await getTrialStatus(session.sub) // 구글 이메일 기준
+  const trial = await getTrialStatus(session.inv, session.sub) // (초대 링크 × 계정) 기준
   return NextResponse.json({ loggedIn: true, name: session.name, email: session.sub, trial })
 }

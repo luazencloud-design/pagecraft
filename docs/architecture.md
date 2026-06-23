@@ -62,7 +62,7 @@ AI 요청 → aiGate.authorizeAi(req, creditType, multiplier)
   → /product/new
 
 세션 쿠키 pc_session = { sub: 구글이메일, inv: 초대id, name }
-  - 크레딧은 이메일별 추적 (1인 1체험, ever 마커). 무제한 초대는 차감 X
+  - 크레딧은 **(초대 링크 × 계정)** 단위 추적 — 같은 계정도 링크가 다르면 별도 500 (ever 마커도 링크별). 무제한 초대는 차감 X
   - inv 로 매 호출마다 초대 유효성 재확인 → 삭제/만료/시작전 시 즉시 차단
 ```
 
@@ -91,10 +91,11 @@ AI 요청 → aiGate.authorizeAi(req, creditType, multiplier)
 
 ## 3. 크레딧 (무료 체험)
 
-`src/lib/trial.ts` — 이메일당 1회, 30일 한정.
+`src/lib/trial.ts` — **(초대 링크 × 계정)당 1회, 30일 한정**. 같은 계정도 링크가 다르면 별도 500.
 
-- **키**(Redis): `trial:{email}:ever`(영구 마커) / `:start`(TTL 30일) / `:used`(TTL 30일)
-- `ever`가 있으면 만료 후 재활성 불가 → **무한 체험 방지**
+- **키**(Redis): `trial:{inv}:{email}:ever`(영구 마커) / `:start`(TTL 30일) / `:used`(TTL 30일)
+  - 추적 단위 = `subjectOf(inv, email) = {inv}:{email}` → 링크별 독립
+- `ever`가 있으면 (그 링크에서) 만료 후 재활성 불가 → **링크별 무한 체험 방지**
 - 비용: `generate 1 / image 5 / bg-remove 5 / regen 1 / gift 1`, 총 `TRIAL_CREDITS=500`
 - 차감은 `aiGate`에서, 실패 시 `refundIfTrial`로 환불 (풀세트는 부분 실패 부분 환불)
 - 관리자(`ADMIN_EMAILS`)는 무제한
@@ -108,9 +109,9 @@ AI 요청 → aiGate.authorizeAi(req, creditType, multiplier)
 | `invite:{id}` | String(JSON) | — | 초대 레코드 |
 | `invites:index` | Set | — | 전체 초대 id (목록 조회) |
 | `invite:events` | List | — | 활동 로그 (LPUSH+LTRIM 최근 300) |
-| `trial:{email}:ever` | String | 영구 | 체험 시작 이력 (재리필 차단) |
-| `trial:{email}:start` | ts | 30일 | 활성 마커 (TTL로 자동 만료) |
-| `trial:{email}:used` | 정수 | 30일 | 사용 크레딧 (INCRBY) |
+| `trial:{inv}:{email}:ever` | String | 영구 | 체험 시작 이력 (링크별 재리필 차단) |
+| `trial:{inv}:{email}:start` | ts | 30일 | 활성 마커 (TTL로 자동 만료) |
+| `trial:{inv}:{email}:used` | 정수 | 30일 | 사용 크레딧 (INCRBY) |
 
 - **TTL로 "1회 30일 체험"** 구현 (크론 불필요). `ever`만 영구라 만료 후 재로그인해도 새 크레딧 안 줌.
 - `lib/invites.ts`·`lib/trial.ts`의 `kv()`/`rGet`등 헬퍼가 **Redis ↔ 메모리 폴백을 같은 인터페이스로** 추상화 (로컬은 `KV_REDIS_URL` 없이도 동작, 운영은 키만 넣으면 됨).

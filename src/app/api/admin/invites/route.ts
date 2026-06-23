@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/adminAuth'
 import { listInvites, createInvite, inviteLink, getEvents } from '@/lib/invites'
-import { getTrialStatus } from '@/lib/trial'
 
-/** 초대 목록 + 각자 체험 상태 + 링크 + 최근 활동 로그 */
+/** 초대 목록 + 링크 + 최근 활동 로그
+ *  (크레딧은 (링크 × 계정) 단위라 초대당 단일 잔여를 표시하지 않음 — 입장 현황은 활동 로그 참고) */
 export async function GET(req: Request) {
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: '관리자 권한 필요' }, { status: 403 })
@@ -14,7 +14,6 @@ export async function GET(req: Request) {
     invites.map(async (inv) => ({
       ...inv,
       link: await inviteLink(origin, inv),
-      trial: await getTrialStatus(inv.id),
     })),
   )
   const events = await getEvents(300)

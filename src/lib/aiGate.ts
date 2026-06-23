@@ -14,7 +14,7 @@ import { consumeTrialCredits, refundTrialCredits, type CreditType } from './tria
  */
 export type AiAuth =
   | { mode: 'byok'; key: string }
-  | { mode: 'trial'; key: string; subject: string; creditType: CreditType; multiplier: number }
+  | { mode: 'trial'; key: string; invite: string; subject: string; creditType: CreditType; multiplier: number }
 
 export async function authorizeAi(
   req: Request,
@@ -57,9 +57,10 @@ export async function authorizeAi(
   }
   // 무제한(직원용) 초대 → 크레딧 차감 없이 통과
   if (inv.unlimited) {
-    return { auth: { mode: 'trial', key: serverKey, subject: session.sub, creditType, multiplier } }
+    return { auth: { mode: 'trial', key: serverKey, invite: inv.id, subject: session.sub, creditType, multiplier } }
   }
-  const r = await consumeTrialCredits(session.sub, creditType, multiplier)
+  // 크레딧은 (초대 링크 × 계정) 단위 — 같은 계정도 링크마다 별도 500
+  const r = await consumeTrialCredits(inv.id, session.sub, creditType, multiplier)
   if (!r.allowed) {
     if (r.reason === 'unavailable') {
       return {
@@ -75,11 +76,11 @@ export async function authorizeAi(
         : `크레딧이 부족합니다 (필요 ${r.cost}개). 본인 API 키를 입력하면 무제한으로 사용할 수 있어요.`
     return { error: NextResponse.json({ error: msg }, { status: 402 }) }
   }
-  return { auth: { mode: 'trial', key: serverKey, subject: session.sub, creditType, multiplier } }
+  return { auth: { mode: 'trial', key: serverKey, invite: inv.id, subject: session.sub, creditType, multiplier } }
 }
 
 /** 처리 실패 시 환불 (trial 모드만, byok는 무차감이라 무시) */
 export async function refundIfTrial(auth: AiAuth, multiplierOverride?: number): Promise<void> {
   if (auth.mode !== 'trial') return
-  await refundTrialCredits(auth.subject, auth.creditType, multiplierOverride ?? auth.multiplier)
+  await refundTrialCredits(auth.invite, auth.subject, auth.creditType, multiplierOverride ?? auth.multiplier)
 }

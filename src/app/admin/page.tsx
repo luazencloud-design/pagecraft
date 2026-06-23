@@ -3,10 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 
-interface Trial { active: boolean; everStarted: boolean; used: number; remaining: number; limit: number; daysLeft: number }
 interface InviteRow {
   id: string; name: string; version: number; createdAt: number
-  startsAt?: number; expiresAt?: number; unlimited?: boolean; link: string; trial: Trial
+  startsAt?: number; expiresAt?: number; unlimited?: boolean; link: string
 }
 interface EventRow { ts: number; action: 'created' | 'regenerated' | 'deleted' | 'redeemed'; invite: string; detail?: string }
 
@@ -28,12 +27,7 @@ function statusOf(inv: InviteRow): { label: string; color: string } {
   const now = Date.now()
   if (inv.startsAt && now < inv.startsAt) return { label: '시작 전', color: 'var(--text3)' }
   if (inv.expiresAt && now > inv.expiresAt) return { label: '만료', color: 'var(--red)' }
-  if (inv.trial.everStarted) {
-    return inv.trial.active
-      ? { label: `사용중 ${inv.trial.remaining}/${inv.trial.limit}`, color: 'var(--green)' }
-      : { label: '체험 종료', color: 'var(--text3)' }
-  }
-  return { label: '대기', color: 'var(--accent)' }
+  return { label: '활성', color: 'var(--green)' }
 }
 function relTime(ts: number): string {
   const diff = Date.now() - ts
