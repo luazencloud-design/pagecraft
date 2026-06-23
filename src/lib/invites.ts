@@ -221,7 +221,7 @@ export interface InviteEvent {
 }
 
 const LOG_KEY = 'invite:events'
-const LOG_MAX = 100
+const LOG_MAX = 300
 
 export async function logEvent(action: InviteEvent['action'], invite: string, detail?: string): Promise<void> {
   const store = await kv()

@@ -34,10 +34,13 @@ export async function GET(req: Request) {
   }
 
   // ── 초대 사용자 ──
-  // 구글 라운드트립 후 초대가 여전히 유효한지 재확인 (삭제/만료/시작전 차단)
+  // 구글 라운드트립 후 초대가 여전히 유효한지 재확인 (삭제/만료/시작전 차단) — 사유별 안내
   const inv = state.inv ? await getInvite(state.inv) : null
-  if (!inv || inviteUsableReason(inv) !== 'ok') {
-    return NextResponse.redirect(`${origin}/?invite=revoked`)
+  if (!inv) return NextResponse.redirect(`${origin}/invite-error?reason=gone`)
+  const reason = inviteUsableReason(inv)
+  if (reason !== 'ok') {
+    const r = reason === 'expired' ? 'expired' : reason === 'not_started' ? 'not_started' : 'gone'
+    return NextResponse.redirect(`${origin}/invite-error?reason=${r}`)
   }
 
   // 구글 이메일 정규화(별칭 우회 차단) 후 체험 활성화 (이미 시작했으면 그대로)

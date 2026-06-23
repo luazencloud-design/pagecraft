@@ -54,6 +54,8 @@ export default function AdminPage() {
   const [invites, setInvites] = useState<InviteRow[]>([])
   const [events, setEvents] = useState<EventRow[]>([])
   const [busy, setBusy] = useState(false)
+  const [tab, setTab] = useState<'invites' | 'logs'>('invites')
+  const [logFilter, setLogFilter] = useState<'all' | EventRow['action']>('all')
 
   // 생성 폼
   const [newName, setNewName] = useState('')
@@ -141,6 +143,13 @@ export default function AdminPage() {
           <button onClick={async () => { await api.post('/api/admin/logout', {}); location.reload() }} style={ghostBtn}>로그아웃</button>
         </div>
 
+        {/* 탭 */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
+          <TabBtn active={tab === 'invites'} onClick={() => setTab('invites')}>초대 링크 ({invites.length})</TabBtn>
+          <TabBtn active={tab === 'logs'} onClick={() => setTab('logs')}>활동 로그 ({events.length})</TabBtn>
+        </div>
+
+        {tab === 'invites' && (<>
         {/* 생성 */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 14, marginBottom: 8 }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -228,22 +237,10 @@ export default function AdminPage() {
             })}
           </div>
         )}
+        </>)}
 
-        {/* 활동 로그 */}
-        {events.length > 0 && (
-          <div style={{ marginTop: 32 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 10px' }}>최근 활동</p>
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-              {events.map((ev, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderTop: i ? '1px solid var(--border)' : 'none', fontSize: 12 }}>
-                  <span style={{ width: 64, color: 'var(--text3)', flexShrink: 0 }}>{relTime(ev.ts)}</span>
-                  <span style={{ width: 80, fontWeight: 600, color: ev.action === 'redeemed' ? 'var(--green)' : ev.action === 'deleted' ? 'var(--red)' : 'var(--text2)', flexShrink: 0 }}>{EVENT_LABEL[ev.action]}</span>
-                  <span style={{ color: 'var(--text)', fontWeight: 600 }}>{ev.invite}</span>
-                  {ev.detail && <span style={{ color: 'var(--text3)' }}>· {ev.detail}</span>}
-                </div>
-              ))}
-            </div>
-          </div>
+        {tab === 'logs' && (
+          <LogsTab events={events} filter={logFilter} setFilter={setLogFilter} />
         )}
       </div>
     </div>
@@ -251,6 +248,85 @@ export default function AdminPage() {
 }
 
 // ── 작은 컴포넌트/스타일 ──
+function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+        background: 'none', border: 'none', color: active ? 'var(--text)' : 'var(--text3)',
+        borderBottom: `2px solid ${active ? 'var(--accent)' : 'transparent'}`, marginBottom: -1,
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+const LOG_FILTERS: { key: 'all' | EventRow['action']; label: string }[] = [
+  { key: 'all', label: '전체' },
+  { key: 'redeemed', label: '입장' },
+  { key: 'created', label: '생성' },
+  { key: 'regenerated', label: '재생성' },
+  { key: 'deleted', label: '삭제' },
+]
+
+function LogsTab({
+  events, filter, setFilter,
+}: {
+  events: EventRow[]
+  filter: 'all' | EventRow['action']
+  setFilter: (f: 'all' | EventRow['action']) => void
+}) {
+  const counts = events.reduce<Record<string, number>>((a, e) => { a[e.action] = (a[e.action] || 0) + 1; return a }, {})
+  const shown = filter === 'all' ? events : events.filter((e) => e.action === filter)
+
+  return (
+    <div>
+      {/* 필터 칩 */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+        {LOG_FILTERS.map((f) => {
+          const n = f.key === 'all' ? events.length : (counts[f.key] || 0)
+          const active = filter === f.key
+          return (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              style={{
+                padding: '5px 11px', borderRadius: 999, fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
+                background: active ? 'var(--accent)' : 'var(--surface2)',
+                color: active ? '#0c0c10' : 'var(--text2)',
+                border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+              }}
+            >
+              {f.label} {n}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* 스크롤 로그 */}
+      {shown.length === 0 ? (
+        <p style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 13, padding: '40px 0' }}>표시할 활동이 없어요.</p>
+      ) : (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, maxHeight: 460, overflowY: 'auto' }}>
+          {shown.map((ev, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderTop: i ? '1px solid var(--border)' : 'none', fontSize: 12 }}>
+              <span style={{ width: 60, color: 'var(--text3)', flexShrink: 0 }} title={new Date(ev.ts).toLocaleString('ko-KR')}>{relTime(ev.ts)}</span>
+              <span style={{ width: 72, fontWeight: 600, flexShrink: 0, color: ev.action === 'redeemed' ? 'var(--green)' : ev.action === 'deleted' ? 'var(--red)' : 'var(--text2)' }}>{EVENT_LABEL[ev.action]}</span>
+              <span style={{ color: 'var(--text)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.invite}</span>
+              {ev.detail && <span style={{ color: 'var(--text3)', flexShrink: 0 }}>· {ev.detail}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+      <p style={{ fontSize: 10.5, color: 'var(--text3)', margin: '10px 0 0', textAlign: 'center' }}>
+        최근 {events.length}건 표시 (최대 300건 보관)
+      </p>
+    </div>
+  )
+}
+
 function Center({ children }: { children: React.ReactNode }) {
   return <div className="min-h-screen flex items-center justify-center bg-bg" style={{ padding: 24 }}><div className="text-text3" style={{ fontSize: 13 }}>{children}</div></div>
 }
