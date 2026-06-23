@@ -44,7 +44,8 @@ pagecraft/
 |---|---|
 | `app/page.tsx` | 랜딩 — `/product/new`로 리다이렉트 |
 | `app/product/new/page.tsx` | **메인 작업 화면** (좌:입력 / 중:미리보기·다운로드 / 우:결과탭) |
-| `app/admin/page.tsx` | **관리자** — 구글 로그인 + 초대 CRUD UI |
+| `app/admin/page.tsx` | **관리자** — 구글 로그인 + 초대 CRUD UI (`초대 링크`/`활동 로그` 탭) |
+| `app/invite-error/page.tsx` | 만료/무효 초대 진입 안내 (`?reason=expired\|gone\|not_started\|invalid`) |
 | `app/layout.tsx` | 루트 레이아웃 (폰트·테마·Toast·Analytics) |
 | `app/sentry-test/` | Sentry 동작 테스트용 (운영 무관) |
 
@@ -61,12 +62,12 @@ pagecraft/
 | `translate` | 한↔일/영 재작성 | aiGate(generate) |
 | `market/suggest` | 쿠팡 인기검색어 (AI 아님, 키 불필요) | 없음 |
 | `auth/invite` | 초대 링크 클릭 → 구글 OAuth로 | — |
-| `auth/me` | 현재 체험 로그인 상태 + 크레딧 | — |
+| `auth/me` | 체험 로그인 상태 + 크레딧/무제한 | — |
 | `auth/logout` | 체험 로그아웃 | — |
 | `oauth/google/start` | 구글 로그인 시작 (관리자) | — |
 | `oauth/google/callback` | 구글 OAuth 콜백 (관리자/사용자 분기) | — |
-| `admin/invites` | 초대 목록(GET)/생성(POST) | requireAdmin |
-| `admin/invites/[id]` | 수정(PATCH:rename/regenerate/expiry)/삭제(DELETE) | requireAdmin |
+| `admin/invites` | 초대 목록+활동로그(GET)/생성(POST) | requireAdmin |
+| `admin/invites/[id]` | 수정(PATCH:rename/regenerate/schedule/unlimited)/삭제(DELETE) | requireAdmin |
 | `admin/logout` | 관리자 로그아웃 | — |
 
 ### `src/lib/` — 유틸·인프라
@@ -76,8 +77,9 @@ pagecraft/
 | `aiGate.ts` | **AI 인가 핵심** — BYOK vs 체험 판단 + 크레딧 차감/환불 |
 | `apiKeyContext.ts` | AsyncLocalStorage로 요청별 Gemini 키 주입 |
 | `session.ts` | jose JWT — 체험세션/관리자세션/초대토큰/OAuth state 서명·검증 |
-| `trial.ts` | 무료 체험 크레딧 (이메일당 1회 30일, Redis) |
-| `invites.ts` | 초대 CRUD (Redis) + 토큰 + 유효기간 만료 |
+| `trial.ts` | 무료 체험 크레딧 (이메일당 1회 30일, Redis, 원자적 차감) |
+| `credits.ts` | 크레딧 단가 단일 출처 (서버 차감 + 클라 표시 공용) |
+| `invites.ts` | 초대 CRUD + 토큰 + 기간(시작/종료) + 무제한 + 활동로그 (Redis) |
 | `adminAuth.ts` | `requireAdmin()` — 관리자 세션 + ADMIN_EMAILS 확인 |
 | `googleOAuth.ts` | 구글 OAuth 공용 (인증 URL 생성 + code→이메일 교환) |
 | `api.ts` | 클라이언트 fetch 래퍼 (x-gemini-key 헤더 자동) |
@@ -101,7 +103,11 @@ pagecraft/
 
 ### `src/stores/` — Zustand 상태 (자세히는 architecture.md 5번)
 
-`productStore` / `imageStore` / `editorStore` / `draftsStore` / `apiKeyStore` / `authStore`
+`productStore` / `imageStore` / `editorStore` / `draftsStore` / `apiKeyStore` / `authStore`(체험 로그인·크레딧·무제한)
+
+### `src/hooks/` — 클라이언트 훅
+
+`useAIGenerate` / `useFieldRegen` / `useTranslate` / `useCredits`(체험 모드일 때만 버튼에 크레딧 표시)
 
 ### `src/components/`
 
@@ -128,12 +134,15 @@ pagecraft/
 |---|---|
 | AI 프롬프트 톤·내용 수정 | `src/services/prompts/*.ts` |
 | 모델 이미지 컷(얼굴/전신 등) 규칙 | `src/services/ai.service.ts` → `getCameraFocus` |
-| 크레딧 비용·체험 기간·총량 | `src/lib/trial.ts` (`CREDIT_COST`, `TRIAL_CREDITS`, `TRIAL_DAYS`) |
+| 크레딧 작업별 단가 | `src/lib/credits.ts` (`CREDIT_COST`) — 서버·클라 공용 |
+| 체험 기간·총 크레딧 | `src/lib/trial.ts` (`TRIAL_CREDITS`, `TRIAL_DAYS`) |
+| 버튼에 크레딧 표시 여부 | `src/hooks/useCredits.ts` (체험 모드만 노출) |
 | 상세페이지 템플릿 디자인 | `src/components/editor/*Preview.tsx` |
 | 다운로드 용량 제한(쿠팡 10MB 등) | `src/app/product/new/page.tsx` → `handleDownload` |
 | 관리자 권한 이메일 | env `ADMIN_EMAILS` |
 | 인가 로직(BYOK/체험 판단) | `src/lib/aiGate.ts` |
-| 초대 만료/삭제 동작 | `src/lib/invites.ts` |
+| 초대 만료/삭제 판정 | `src/lib/invites.ts` (`inviteUsableReason`) |
+| 만료/무효 링크 안내 문구 | `src/app/invite-error/page.tsx` |
 | 새 플랫폼/카테고리 추가 | `src/types/product.ts` (`PLATFORM_META`, `CATEGORY_GROUPS`) |
 
 ---

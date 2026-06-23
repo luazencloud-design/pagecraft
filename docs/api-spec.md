@@ -58,9 +58,12 @@
 
 ### `GET /api/auth/invite?token=`
 초대 링크 진입점. 토큰 검증(서명+버전+유효기간) → 구글 OAuth로 리다이렉트.
+실패 시 사유별로 `/invite-error?reason=` 안내 페이지로:
+`invalid`(토큰 손상) · `gone`(삭제/재생성된 옛 링크 = 존재안함) · `expired`(만료) · `not_started`(시작 전).
 
 ### `GET /api/auth/me`
-현재 체험 로그인 상태. res: `{ loggedIn, name?, email?, trial? }` (초대 삭제/만료면 `loggedIn:false`)
+현재 체험 로그인 상태. res: `{ loggedIn, name?, email?, trial?, unlimited? }`
+(초대 삭제/만료/시작전이면 `loggedIn:false`. 무제한 초대면 `unlimited:true`, `trial` 생략)
 
 ### `POST /api/auth/logout`
 체험 세션 쿠키 제거.
@@ -72,22 +75,26 @@
 구글 콜백. `state.purpose`로 분기:
 - `admin` → ADMIN_EMAILS 확인 → 관리자 세션 → `/admin`
 - `invite` → 초대 재확인 → 체험 활성화 → 체험 세션 → `/product/new`
+  (재확인 실패 시 `/invite-error?reason=expired|gone|not_started`)
 
 ---
 
 ## 관리자 라우트 (전부 `requireAdmin`)
 
 ### `GET /api/admin/invites`
-초대 목록 + 각자 체험 상태 + 링크. res: `{ admin, invites[] }`
+초대 목록 + 각자 체험 상태 + 링크 + 활동 로그. res: `{ admin, invites[], events[] }`
+- `invites[]` 각 항목: `{ id, name, version, startsAt?, expiresAt?, unlimited?, link, trial }`
+- `events[]`: 최근 300건 `{ ts, action: 'created'|'regenerated'|'deleted'|'redeemed', invite, detail? }`
 
 ### `POST /api/admin/invites`
-초대 생성. req: `{ name, expiresAt?(ms) }` → res: `{ invite }`
+초대 생성. req: `{ name, startsAt?(ms), expiresAt?(ms), unlimited? }` → res: `{ invite }`
 
 ### `PATCH /api/admin/invites/[id]`
-수정. req: `{ action: 'rename'|'regenerate'|'expiry', name?, expiresAt? }`
+수정. req: `{ action, name?, startsAt?, expiresAt?, unlimited? }`
+- `rename` → 이름 / `schedule` → 시작·종료일 / `unlimited` → 무제한 토글 / `regenerate` → 링크 재생성(version++)
 
 ### `DELETE /api/admin/invites/[id]`
-삭제 (그 링크 사용자도 즉시 차단됨).
+삭제 (그 링크 사용자도 즉시 차단됨). 만료된 초대도 자동삭제 아님 → 관리자가 직접 삭제.
 
 ### `POST /api/admin/logout`
 관리자 세션 제거.
