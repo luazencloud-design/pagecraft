@@ -38,7 +38,8 @@ AI 요청 → aiGate.authorizeAi(req, creditType, multiplier)
   ├─ 헤더에 x-gemini-key 있음?  → BYOK 모드 (그 키 사용, 크레딧 차감 X)
   └─ 없음 → 체험 세션 쿠키 확인
        ├─ 세션 없음 → 401 (로그인 또는 키 필요)
-       ├─ 초대 삭제/만료됨 → 403 (호출마다 재확인)
+       ├─ 초대 삭제/만료/시작전 → 403 (호출마다 inviteUsableReason로 재확인)
+       ├─ 무제한(직원용) 초대 → 크레딧 차감 없이 통과
        ├─ 크레딧 부족/만료 → 402
        └─ OK → 서버 GEMINI_API_KEY + 크레딧 차감
 ```
@@ -48,21 +49,25 @@ AI 요청 → aiGate.authorizeAi(req, creditType, multiplier)
 ### 무료 체험 흐름 (초대 + 구글)
 
 ```
-관리자가 /admin 에서 초대 생성 (이름 + 유효기간)
-  → 초대 = { id, name, version, expiresAt } (Redis 저장)
+관리자가 /admin 에서 초대 생성 (이름 + 시작일/종료일 + 무제한 여부)
+  → 초대 = { id, name, version, startsAt?, expiresAt?, unlimited? } (Redis 저장)
   → 링크 = /api/auth/invite?token=<jose JWT: id+version>
 
 사용자가 링크 클릭
   → /api/auth/invite : 토큰 검증(서명+버전+유효기간)
+       └ 실패 → /invite-error?reason= (만료/존재안함/시작전/손상 안내)
   → 구글 OAuth (state에 invite id 서명해서 전달)
   → /api/oauth/google/callback : 구글 이메일 획득
        → 초대 재확인 → activateTrial(이메일) → 세션 쿠키 발급
   → /product/new
 
 세션 쿠키 pc_session = { sub: 구글이메일, inv: 초대id, name }
-  - 크레딧은 이메일별 추적 (1인 1체험, ever 마커)
-  - inv 로 매 호출마다 초대 유효성 재확인 → 삭제/만료 시 즉시 차단
+  - 크레딧은 이메일별 추적 (1인 1체험, ever 마커). 무제한 초대는 차감 X
+  - inv 로 매 호출마다 초대 유효성 재확인 → 삭제/만료/시작전 시 즉시 차단
 ```
+
+> 초대 유효성(`inviteUsableReason`): 만료·시작전이어도 레코드는 **삭제 안 함**(관리자 목록에 '만료' 표시) — 차단만. 실제 삭제는 관리자가 직접.
+> 활동 로그(`invite:events`, Redis List 최근 300): 생성/재생성/삭제/입장(마스킹 이메일)을 관리자 페이지 '활동 로그' 탭에서 필터·조회.
 
 ### 관리자 흐름
 
@@ -93,6 +98,22 @@ AI 요청 → aiGate.authorizeAi(req, creditType, multiplier)
 - 비용: `generate 1 / image 5 / bg-remove 5 / regen 1 / gift 1`, 총 `TRIAL_CREDITS=500`
 - 차감은 `aiGate`에서, 실패 시 `refundIfTrial`로 환불 (풀세트는 부분 실패 부분 환불)
 - 관리자(`ADMIN_EMAILS`)는 무제한
+- **원자적 차감**: `INCRBY used, cost` → `used > 500`이면 롤백+거부 (읽고-검사-쓰기 아닌 쓰고-검사-롤백 → 동시요청 레이스 없음)
+- **fail-closed**: Redis 장애 / (운영인데 Redis 미설정) → 차단 (메모리 폴백이 무한크레딧 되는 것 방지)
+
+### Redis 키 구조 (DB 없이 Redis 하나)
+
+| 키 | 자료형 | TTL | 용도 |
+|---|---|---|---|
+| `invite:{id}` | String(JSON) | — | 초대 레코드 |
+| `invites:index` | Set | — | 전체 초대 id (목록 조회) |
+| `invite:events` | List | — | 활동 로그 (LPUSH+LTRIM 최근 300) |
+| `trial:{email}:ever` | String | 영구 | 체험 시작 이력 (재리필 차단) |
+| `trial:{email}:start` | ts | 30일 | 활성 마커 (TTL로 자동 만료) |
+| `trial:{email}:used` | 정수 | 30일 | 사용 크레딧 (INCRBY) |
+
+- **TTL로 "1회 30일 체험"** 구현 (크론 불필요). `ever`만 영구라 만료 후 재로그인해도 새 크레딧 안 줌.
+- `lib/invites.ts`·`lib/trial.ts`의 `kv()`/`rGet`등 헬퍼가 **Redis ↔ 메모리 폴백을 같은 인터페이스로** 추상화 (로컬은 `KV_REDIS_URL` 없이도 동작, 운영은 키만 넣으면 됨).
 
 ---
 
