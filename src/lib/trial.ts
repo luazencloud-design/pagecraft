@@ -100,9 +100,16 @@ async function rIncrBy(k: string, n: number, ttl: number): Promise<number> {
   return cur
 }
 
-const kEver = (e: string) => `trial:${e}:ever`
-const kStart = (e: string) => `trial:${e}:start`
-const kUsed = (e: string) => `trial:${e}:used`
+const kEver = (sub: string) => `trial:${sub}:ever`
+const kStart = (sub: string) => `trial:${sub}:start`
+const kUsed = (sub: string) => `trial:${sub}:used`
+
+/**
+ * 크레딧 추적 단위 = (초대 링크 × 계정).
+ * 같은 구글 계정이라도 링크가 다르면 별도 500 크레딧을 따로 사용.
+ * 예) inv_aaa × foo@gmail.com / inv_bbb × foo@gmail.com → 독립
+ */
+const subjectOf = (inv: string, email: string) => `${inv}:${email}`
 
 export interface TrialStatus {
   active: boolean
@@ -114,14 +121,15 @@ export interface TrialStatus {
   daysLeft: number
 }
 
-/** 체험 상태 조회 (활성화하지 않음) */
-export async function getTrialStatus(email: string): Promise<TrialStatus> {
+/** 체험 상태 조회 (활성화하지 않음). 단위 = (초대 링크 × 계정) */
+export async function getTrialStatus(inv: string, email: string): Promise<TrialStatus> {
   if (isAdmin(email)) {
     return { active: true, everStarted: true, used: 0, remaining: 99999, limit: 99999, daysLeft: 9999 }
   }
-  const ever = await rGet(kEver(email))
-  const start = await rGet(kStart(email))
-  const used = parseInt((await rGet(kUsed(email))) || '0', 10)
+  const sub = subjectOf(inv, email)
+  const ever = await rGet(kEver(sub))
+  const start = await rGet(kStart(sub))
+  const used = parseInt((await rGet(kUsed(sub))) || '0', 10)
   const active = !!start
   let daysLeft = 0
   if (start) {
@@ -138,22 +146,24 @@ export async function getTrialStatus(email: string): Promise<TrialStatus> {
   }
 }
 
-/** 체험 활성화 — 처음이면 시작, 이미 시작했으면 현 상태 반환 */
-export async function activateTrial(email: string): Promise<TrialStatus> {
-  if (isAdmin(email)) return getTrialStatus(email)
-  const ever = await rGet(kEver(email))
+/** 체험 활성화 — 처음이면 시작, 이미 시작했으면 현 상태 반환. 단위 = (링크 × 계정) */
+export async function activateTrial(inv: string, email: string): Promise<TrialStatus> {
+  if (isAdmin(email)) return getTrialStatus(inv, email)
+  const sub = subjectOf(inv, email)
+  const ever = await rGet(kEver(sub))
   if (!ever) {
-    await rSet(kEver(email), '1') // 영구
-    await rSet(kStart(email), String(Date.now()), TTL_SECONDS)
-    await rSet(kUsed(email), '0', TTL_SECONDS)
+    await rSet(kEver(sub), '1') // 영구 (이 링크 한정 재리필 방지)
+    await rSet(kStart(sub), String(Date.now()), TTL_SECONDS)
+    await rSet(kUsed(sub), '0', TTL_SECONDS)
   }
-  return getTrialStatus(email)
+  return getTrialStatus(inv, email)
 }
 
 /**
  * 크레딧 소비 (원자적) — 체험 비활성/만료/소진 시 거부
  */
 export async function consumeTrialCredits(
+  inv: string,
   email: string,
   type: CreditType,
   multiplier = 1,
@@ -167,14 +177,15 @@ export async function consumeTrialCredits(
     return { allowed: false, reason: 'unavailable', remaining: 0, cost }
   }
 
+  const sub = subjectOf(inv, email)
   try {
-    const start = await rGet(kStart(email))
+    const start = await rGet(kStart(sub))
     if (!start) {
       return { allowed: false, reason: 'expired', remaining: 0, cost }
     }
-    const newUsed = await rIncrBy(kUsed(email), cost, TTL_SECONDS)
+    const newUsed = await rIncrBy(kUsed(sub), cost, TTL_SECONDS)
     if (newUsed > TRIAL_CREDITS) {
-      await rIncrBy(kUsed(email), -cost, TTL_SECONDS).catch(() => {}) // 롤백 (실패해도 무방)
+      await rIncrBy(kUsed(sub), -cost, TTL_SECONDS).catch(() => {}) // 롤백 (실패해도 무방)
       return { allowed: false, reason: 'insufficient', remaining: Math.max(0, TRIAL_CREDITS - (newUsed - cost)), cost }
     }
     return { allowed: true, remaining: TRIAL_CREDITS - newUsed, cost }
@@ -184,14 +195,15 @@ export async function consumeTrialCredits(
   }
 }
 
-/** 실패 시 환불 — used가 음수로 내려가지 않도록 클램프 */
-export async function refundTrialCredits(email: string, type: CreditType, multiplier = 1): Promise<void> {
+/** 실패 시 환불 — used가 음수로 내려가지 않도록 클램프. 단위 = (링크 × 계정) */
+export async function refundTrialCredits(inv: string, email: string, type: CreditType, multiplier = 1): Promise<void> {
   if (isAdmin(email)) return
   const cost = CREDIT_COST[type] * Math.max(1, Math.floor(multiplier))
+  const sub = subjectOf(inv, email)
   try {
-    const cur = parseInt((await rGet(kUsed(email))) || '0', 10)
+    const cur = parseInt((await rGet(kUsed(sub))) || '0', 10)
     const refund = Math.min(cost, Math.max(0, cur)) // 보유분 이상 환불 금지 (음수화 방지)
-    if (refund > 0) await rIncrBy(kUsed(email), -refund, TTL_SECONDS)
+    if (refund > 0) await rIncrBy(kUsed(sub), -refund, TTL_SECONDS)
   } catch {
     /* 환불 실패는 사용자에게 불리하지 않으므로 무시 */
   }

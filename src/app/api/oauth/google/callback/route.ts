@@ -44,8 +44,9 @@ export async function GET(req: Request) {
   }
 
   // 구글 이메일 정규화(별칭 우회 차단) 후 체험 활성화 (이미 시작했으면 그대로)
+  // 크레딧 단위 = (이 초대 링크 × 계정) — 같은 계정도 링크마다 별도 500
   const trialEmail = normalizeEmail(email)
-  await activateTrial(trialEmail)
+  await activateTrial(inv.id, trialEmail)
   // 활동 로그 — 누가(마스킹) 어떤 초대로 입장했는지
   const masked = trialEmail.replace(/^(.{2}).*(@.*)$/, '$1***$2')
   await logEvent('redeemed', inv.name, masked)

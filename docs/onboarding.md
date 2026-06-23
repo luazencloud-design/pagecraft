@@ -77,7 +77,7 @@ pagecraft/
 | `aiGate.ts` | **AI 인가 핵심** — BYOK vs 체험 판단 + 크레딧 차감/환불 |
 | `apiKeyContext.ts` | AsyncLocalStorage로 요청별 Gemini 키 주입 |
 | `session.ts` | jose JWT — 체험세션/관리자세션/초대토큰/OAuth state 서명·검증 |
-| `trial.ts` | 무료 체험 크레딧 (이메일당 1회 30일, Redis, 원자적 차감) |
+| `trial.ts` | 무료 체험 크레딧 ((초대 링크 × 계정)당 1회 30일, Redis, 원자적 차감) |
 | `credits.ts` | 크레딧 단가 단일 출처 (서버 차감 + 클라 표시 공용) |
 | `invites.ts` | 초대 CRUD + 토큰 + 기간(시작/종료) + 무제한 + 활동로그 (Redis) |
 | `adminAuth.ts` | `requireAdmin()` — 관리자 세션 + ADMIN_EMAILS 확인 |

@@ -513,3 +513,27 @@ const output = await replicate.run(
   | `invalid` | "잘못된 초대 링크예요" (토큰 손상) |
 - 만료는 '만료', 삭제·재생성은 '존재하지 않음'으로 구분 (요청대로)
 - 모달형 카드 + "본인 API 키로 시작하기" CTA
+
+---
+
+## #27. 크레딧 단위: 계정 → (초대 링크 × 계정)
+
+**요구**: 크레딧을 **링크마다 따로** 관리. 같은 구글 계정이라도 링크 1에서 500, 링크 2에서 또 별도 500.
+
+**변경**: 추적 키를 계정 단독 → 링크 네임스페이스로.
+- `trial:{email}:*` → **`trial:{inv}:{email}:*`** (`subjectOf(inv, email)`)
+- `trial.ts` 4개 함수 시그니처 `(email, …)` → `(inv, email, …)`:
+  `consumeTrialCredits` / `refundTrialCredits` / `getTrialStatus` / `activateTrial`
+- 호출부: aiGate(차감/환불에 `inv.id`), `/api/auth/me`(`session.inv`), OAuth 콜백(`activateTrial(inv.id, …)`)
+- `AiAuth` trial에 `invite` 추가 → 환불도 같은 (링크×계정)으로
+
+**효과**
+- 링크 1 소진(`trial:inv1:foo:ever`)해도 링크 2(`trial:inv2:foo`)는 새 500
+- 링크 내 30일 만료 후 재로그인 시 `ever`(링크별)로 재리필은 여전히 차단
+- gmail 정규화(별칭 우회 차단)는 email 부분에 그대로 적용
+
+**관리자 UI 영향**
+- 기존 초대 행의 `getTrialStatus(inv.id)`(사용중 N/500)는 **제거** — inv.id를 email 자리에 넘기던 무의미 호출이었고, (링크×계정)당 다수 사용자라 초대당 단일 잔여는 성립 안 함
+- 행 상태는 라이프사이클만(활성/시작전/만료/무제한). **입장 현황은 '활동 로그' 탭(입장 필터)**에서 확인
+
+**주의(마이그레이션)**: 키 네임스페이스가 바뀌어 기존 `trial:{email}:*` 사용량은 고아가 됨(전부 새 500). 런칭 전이라 무방. 고아 `start/used`는 TTL로 소멸, `ever`는 소량 잔존.
