@@ -17,7 +17,7 @@ export async function GET(req: Request) {
       trial: await getTrialStatus(inv.id),
     })),
   )
-  const events = await getEvents(30)
+  const events = await getEvents(300)
   return NextResponse.json({ admin, invites: rows, events })
 }
 
