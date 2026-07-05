@@ -2,10 +2,10 @@
 
 import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
+import CategorySelect from './CategorySelect'
 import {
   PLATFORM_META,
   TEMPLATE_META,
-  CATEGORY_GROUPS,
   CURRENCY_SYMBOL,
   modelAgeForCategory,
   type Platform,
@@ -58,19 +58,12 @@ export default function ProductForm() {
         <input className={inputCls} placeholder="예: 슬라이드 슬리퍼 남녀공용" value={product.name} onChange={(e) => setProduct({ name: e.target.value })} />
       </div>
 
-      {/* Category — optgroup 그룹화 */}
+      {/* Category — 2단 팝오버 (대분류 → 오른쪽으로 세부 펼침) */}
       <div className="field-group">
         <div className={labelCls}>
           <span className="w-[5px] h-[5px] rounded-full bg-accent opacity-70" />카테고리
         </div>
-        <select className={inputCls} value={product.category} onChange={(e) => onCategoryChange(e.target.value)}>
-          <option value="">카테고리 선택</option>
-          {Object.entries(CATEGORY_GROUPS).map(([groupName, items]) => (
-            <optgroup key={groupName} label={groupName}>
-              {items.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-            </optgroup>
-          ))}
-        </select>
+        <CategorySelect className={inputCls} value={product.category} onChange={onCategoryChange} />
       </div>
 
       {/* Platform */}

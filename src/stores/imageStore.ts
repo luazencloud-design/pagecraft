@@ -51,6 +51,8 @@ interface ImageState {
   aiModelGender: 'male' | 'female'
   /** AI 모델 연령대 — adult(성인)/child(아동)/baby(유아). 카테고리 선택 시 자동 제안됨 */
   aiModelAge: 'adult' | 'child' | 'baby'
+  /** 피사체 — model(사람 착용/사용) / product(제품만, 사람 없음) */
+  aiModelSubject: 'model' | 'product'
   /**
    * AI 전용 모드 — 활성 시 detail page 템플릿은 source === 'ai' 만 사용.
    * ImageGrid 도 시각 분리 (원본 / AI 섹션). 풀세트 생성 시 자동 활성화.
@@ -78,6 +80,7 @@ interface ImageState {
   setAiModelEnabled: (enabled: boolean) => void
   setAiModelGender: (gender: 'male' | 'female') => void
   setAiModelAge: (age: 'adult' | 'child' | 'baby') => void
+  setAiModelSubject: (subject: 'model' | 'product') => void
   /**
    * AI 전용 모드 토글.
    * 끄려는데 원본+AI 합산이 MAX_IMAGES 초과면 변경 거부 + false 반환.
@@ -113,6 +116,7 @@ export const useImageStore = create<ImageState>()((set, get) => ({
   aiModelEnabled: false,
   aiModelGender: 'female',
   aiModelAge: 'adult',
+  aiModelSubject: 'model',
   aiOnlyMode: false,
   _hydrated: false,
 
@@ -224,6 +228,7 @@ export const useImageStore = create<ImageState>()((set, get) => ({
   setAiModelEnabled: (enabled) => set({ aiModelEnabled: enabled }),
   setAiModelGender: (gender) => set({ aiModelGender: gender }),
   setAiModelAge: (age) => set({ aiModelAge: age }),
+  setAiModelSubject: (subject) => set({ aiModelSubject: subject }),
   setAiOnlyMode: (enabled) => {
     // 끄는 방향: 전체 합산이 한도 초과면 거부
     if (!enabled) {
@@ -257,6 +262,7 @@ export const useImageStore = create<ImageState>()((set, get) => ({
       aiModelEnabled: false,
       aiModelGender: 'female',
       aiModelAge: 'adult',
+      aiModelSubject: 'model',
       aiOnlyMode: false,
     })
     clearImagesFromDB(getCurrentDraftId()).catch(() => {})

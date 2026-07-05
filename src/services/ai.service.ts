@@ -325,6 +325,13 @@ function getCameraFocus(category: string, productName: string): CameraFocus {
     waistMid: 'a medium shot of the waist and torso area focused on the belt (NO face, NO legs visible)',
     fullBody: 'a full-body fashion shot from head to feet',
     midToKnee: 'a medium-long shot from head to knees (cropped at knees, lower legs not visible)',
+    // 비착용 제품군 (식품/생활/가전 등) — 사람은 보조, 제품이 주인공
+    handsProduct: 'a close-up of hands presenting the product on a clean styled surface (cropped at the chest, NO face visible)',
+    tableScene: 'a waist-up shot of a model at a bright styled table using the product (product clearly visible in front)',
+    kitchenScene: 'a waist-up shot of a model in a bright modern kitchen using the product',
+    lifestyleWide: 'a wide lifestyle shot of a styled room with the model full-body and the product in use',
+    neckCloseup: 'a medium close-up of the neck and collarbone area wearing the jewelry (chin to chest only, NO lower body)',
+    earCloseup: 'a close-up profile shot of the head focused on the ear area (NO body below the shoulders)',
   }
 
   const byExactCategory: Record<string, CameraFocus> = {
@@ -338,26 +345,267 @@ function getCameraFocus(category: string, productName: string): CameraFocus {
     '신발/부츠': { leadFraming: F.fullBody, part: '전신 (발 강조)', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '전신 풀샷이되 신발이 또렷이 보이는 스타일링.' },
     '슬리퍼/샌들': { leadFraming: F.fullBody, part: '전신 (발 강조)', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '전신 풀샷이되 슬리퍼/샌들이 또렷이 보이는 스타일링.' },
     '스카프/머플러': { leadFraming: F.chestUp, part: '목/어깨', shot: '미디엄 클로즈업', crop: '얼굴 하부~가슴', action: 'wearing around neck', extraInstruction: '스카프 두른 모습. 허리 아래 X.' },
-    '기타 의류/잡화': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing/using' },
+    '기타 의류/잡화': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing/using' }, // (구 카테고리명 — 저장된 드래프트 호환)
+
+    // 의류 (확장)
+    '셔츠/블라우스': { leadFraming: F.upperBody, part: '상반신', shot: '미디엄', crop: '머리~허리', action: 'wearing', extraInstruction: '허리 아래 보이지 않게. 셔츠 핏/카라 강조.' },
+    '니트/스웨터': { leadFraming: F.upperBody, part: '상반신', shot: '미디엄', crop: '머리~허리', action: 'wearing', extraInstruction: '니트 질감이 잘 보이게. 허리 아래 X.' },
+    '스커트/원피스': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '전신 풀샷 — 기장과 실루엣이 잘 보이게.' },
+    '스포츠웨어/애슬레저': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '가벼운 스트레칭/러닝 포즈. 활동적인 무드.' },
+    '속옷/양말': { leadFraming: F.ankle, part: '발목/발', shot: '클로즈업', crop: '종아리~발', action: 'wearing', extraInstruction: '양말은 발목 중심 클로즈업. 이너웨어는 라운지웨어 위에 겹쳐 건전하게.' },
+    '기타 의류': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing' },
+
+    // 패션잡화 (확장)
+    '여행가방/캐리어': { leadFraming: F.fullBody, part: '전신 + 캐리어', shot: '풀샷', crop: '전신', action: 'pulling', extraInstruction: '캐리어를 끌고 걷는 공항/여행 무드. 제품 전체가 또렷이.' },
+    '장갑/벨트': { leadFraming: F.waistMid, part: '허리/손', shot: '미디엄', crop: '허리 또는 손', action: 'wearing', extraInstruction: '벨트는 허리 중심, 장갑은 손 클로즈업.' },
+    '선글라스/안경테': { leadFraming: F.headShoulders, part: '얼굴', shot: '미디엄 클로즈업', crop: '머리~어깨', action: 'wearing', extraInstruction: '얼굴+안경 중심. 어깨 아래 X.' },
+    '기타 패션잡화': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing/using' },
+
+    // 보석·시계 — 착용 부위 클로즈업
+    '목걸이': { leadFraming: F.neckCloseup, part: '목/쇄골', shot: '클로즈업', crop: '턱~가슴', action: 'wearing', extraInstruction: '목걸이가 주인공. 쇄골 라인 강조, 하반신 X.' },
+    '귀걸이': { leadFraming: F.earCloseup, part: '귀/옆얼굴', shot: '클로즈업', crop: '머리~어깨', action: 'wearing', extraInstruction: '귀와 귀걸이 중심의 옆모습. 어깨 아래 X.' },
+    '반지': { leadFraming: F.finger, part: '손가락', shot: '마크로', crop: '손만', action: 'wearing on finger', extraInstruction: '손가락과 반지 정밀 클로즈업. 얼굴/몸 X.' },
+    '팔찌/뱅글': { leadFraming: F.wrist, part: '손목', shot: '클로즈업', crop: '손목만', action: 'wearing on wrist', extraInstruction: '손목과 팔찌 중심. 얼굴/몸 X.' },
+    '시계': { leadFraming: F.wrist, part: '손목', shot: '클로즈업', crop: '손목만', action: 'wearing on wrist', extraInstruction: '손목의 시계 정밀 클로즈업. 다이얼이 또렷이.' },
+    '패션주얼리/기타': { leadFraming: F.chestUp, part: '얼굴~가슴', shot: '미디엄 클로즈업', crop: '얼굴 하부~가슴', action: 'wearing', extraInstruction: '착용 부위가 잘 보이게.' },
 
     // 화장품·뷰티 — 얼굴 중심
-    '스킨케어 (토너/세럼/크림)': { leadFraming: F.faceOnly, part: '얼굴/볼', shot: '클로즈업', crop: '얼굴만', action: 'with smooth radiant skin', extraInstruction: '매끄러운 피부 강조. 얼굴만, 신체 X.' },
+    '스킨케어': { leadFraming: F.faceOnly, part: '얼굴/볼', shot: '클로즈업', crop: '얼굴만', action: 'with smooth radiant skin', extraInstruction: '매끄러운 피부 강조. 얼굴만, 신체 X.' },
     '클렌징': { leadFraming: F.faceOnly, part: '얼굴', shot: '클로즈업', crop: '얼굴만', action: 'with clean fresh skin', extraInstruction: '깨끗한 맨얼굴 클로즈업.' },
     '마스크팩/패드': { leadFraming: F.faceOnly, part: '얼굴', shot: '클로즈업', crop: '얼굴만', action: 'with the mask sheet on face', extraInstruction: '눈 감고 마스크팩 얹은 얼굴.' },
     '선케어': { leadFraming: F.headShoulders, part: '얼굴/어깨', shot: '미디엄 클로즈업', crop: '얼굴~어깨', action: 'with healthy glowing skin', extraInstruction: '야외 자연광, 윤기 피부.' },
-    '메이크업 베이스 (쿠션/파운데이션)': { leadFraming: F.faceOnly, part: '얼굴', shot: '클로즈업', crop: '얼굴만', action: 'with flawless base makeup' },
-    '메이크업 색조 (립/아이/치크)': { leadFraming: F.faceMacro, part: '얼굴 (적용 부위)', shot: '클로즈업', crop: '얼굴만', action: 'with the makeup visibly applied', extraInstruction: '적용 부위(입술/눈/볼) 정밀 강조.' },
+    '메이크업 베이스': { leadFraming: F.faceOnly, part: '얼굴', shot: '클로즈업', crop: '얼굴만', action: 'with flawless base makeup' },
+    '메이크업 색조': { leadFraming: F.faceMacro, part: '얼굴 (적용 부위)', shot: '클로즈업', crop: '얼굴만', action: 'with the makeup visibly applied', extraInstruction: '적용 부위(입술/눈/볼) 정밀 강조.' },
     '향수/바디': { leadFraming: F.wrist, part: '손목/목', shot: '클로즈업', crop: '손목 또는 목', action: 'spraying or applying', extraInstruction: '향수 분사 모션.' },
     '헤어케어': { leadFraming: F.headShoulders, part: '머리카락', shot: '미디엄 클로즈업', crop: '머리~어깨', action: 'with sleek glossy hair', extraInstruction: '윤기 머릿결 강조.' },
     '기타 뷰티': { leadFraming: F.headShoulders, part: '얼굴', shot: '미디엄 클로즈업', crop: '얼굴만', action: 'using the beauty product' },
 
     // 유아·아동 — 옷/신발은 전신(아이 핏 강조), 용품·완구는 사용 장면
-    '유아복 (0~3세)': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '아기 옷 핏이 잘 보이는 전신. 밝고 사랑스러운 분위기.' },
-    '아동복 (4~10세)': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '아동복 핏이 잘 보이는 전신. 밝은 카탈로그 분위기.' },
+    '유아복': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '아기 옷 핏이 잘 보이는 전신. 밝고 사랑스러운 분위기.' },
+    '아동복': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '아동복 핏이 잘 보이는 전신. 밝은 카탈로그 분위기.' },
     '아동 신발/잡화': { leadFraming: F.fullBody, part: '전신 (발 강조)', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '전신 풀샷이되 신발/잡화가 또렷이 보이게.' },
-    '유아용품 (침구/식기/위생)': { leadFraming: F.fullBody, part: '전신 + 제품', shot: '풀샷', crop: '전신', action: 'using', extraInstruction: '제품을 사용하는 자연스러운 장면. 제품이 또렷이 보이게.' },
+    '유아용품': { leadFraming: F.fullBody, part: '전신 + 제품', shot: '풀샷', crop: '전신', action: 'using', extraInstruction: '제품을 사용하는 자연스러운 장면. 제품이 또렷이 보이게.' },
     '장난감/완구': { leadFraming: F.fullBody, part: '전신 + 제품', shot: '풀샷', crop: '전신', action: 'playing with', extraInstruction: '장난감을 갖고 노는 밝은 장면. 제품이 주인공.' },
+    '기저귀/물티슈': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '제품 패키지가 주인공. 밝고 청결한 무드.' },
     '기타 유아·아동': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing/using' },
+
+    // 식품 — 얼굴 없이 손/테이블 중심, 제품·음식이 주인공
+    '신선식품': { leadFraming: F.handsProduct, part: '손 + 식재료', shot: '클로즈업', crop: '손~제품', action: 'presenting fresh', extraInstruction: '신선한 식재료가 주인공. 밝은 자연광, 나무 도마/식탁 스타일링.' },
+    '가공식품': { leadFraming: F.tableScene, part: '상반신 + 식탁', shot: '미디엄', crop: '허리 위 + 테이블', action: 'preparing a meal with', extraInstruction: '조리/차림 장면. 제품 패키지가 또렷이 보이게.' },
+    '과자/간식': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '제품과 내용물이 함께 보이게. 밝고 맛있어 보이는 스타일링.' },
+    '커피/차': { leadFraming: F.tableScene, part: '상반신 + 컵', shot: '미디엄', crop: '허리 위 + 테이블', action: 'enjoying a cup of', extraInstruction: '따뜻한 카페 무드. 김이 오르는 컵과 제품 패키지.' },
+    '음료/생수': { leadFraming: F.handsProduct, part: '손 + 병', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '시원한 느낌 — 물방울 맺힌 병/캔. 제품 라벨 또렷이.' },
+    '쌀/잡곡': { leadFraming: F.handsProduct, part: '손 + 곡물', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '곡물의 질감이 보이게. 패키지와 내용물 함께.' },
+    '소스/양념': { leadFraming: F.kitchenScene, part: '상반신 + 주방', shot: '미디엄', crop: '허리 위', action: 'cooking with', extraInstruction: '요리에 넣는 장면. 제품 병/패키지가 또렷이.' },
+    '냉장/냉동식품': { leadFraming: F.tableScene, part: '상반신 + 식탁', shot: '미디엄', crop: '허리 위 + 테이블', action: 'serving', extraInstruction: '조리 완성 접시와 제품 패키지 함께.' },
+    '건강기능식품/영양제': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '제품 용기가 주인공. 밝고 신뢰감 있는 클린 무드.' },
+    '기타 식품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting' },
+
+    // 주방·생활 — 사용 장면 중심
+    '조리용품': { leadFraming: F.kitchenScene, part: '상반신 + 주방', shot: '미디엄', crop: '허리 위', action: 'cooking with', extraInstruction: '조리 중인 장면. 제품(팬/냄비)이 화면 중심.' },
+    '식기/컵/테이블웨어': { leadFraming: F.tableScene, part: '손 + 식탁', shot: '미디엄', crop: '허리 위 + 테이블', action: 'setting the table with', extraInstruction: '차려진 식탁 스타일링. 그릇/컵이 주인공.' },
+    '주방잡화': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using', extraInstruction: '실사용 장면 클로즈업. 제품 기능이 보이게.' },
+    '욕실용품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using', extraInstruction: '밝고 청결한 욕실 배경. 제품이 주인공.' },
+    '세제/청소용품': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'cleaning with', extraInstruction: '밝은 집안 청소 장면. 제품 패키지 또렷이.' },
+    '화장지/위생용품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '제품 패키지가 주인공. 청결한 무드.' },
+    '수납/정리': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'organizing with', extraInstruction: '정리된 공간과 제품. 비포/애프터 느낌의 깔끔함.' },
+    '기타 생활용품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using' },
+
+    // 가전·디지털
+    '주방가전': { leadFraming: F.kitchenScene, part: '상반신 + 주방', shot: '미디엄', crop: '허리 위', action: 'using', extraInstruction: '주방 조리대 위 제품 사용 장면. 제품이 화면 중심.' },
+    '생활가전': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'using', extraInstruction: '거실에서 사용하는 장면. 제품 전체 형태가 또렷이.' },
+    '계절가전': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'relaxing near', extraInstruction: '계절감 있는 실내. 제품이 화면 중심.' },
+    '미용/건강가전': { leadFraming: F.upperBody, part: '상반신', shot: '미디엄', crop: '머리~허리', action: 'using', extraInstruction: '사용 장면 — 제품과 사용 부위가 함께 보이게.' },
+    '음향기기': { leadFraming: F.headShoulders, part: '머리/귀', shot: '미디엄 클로즈업', crop: '머리~어깨', action: 'wearing/listening to', extraInstruction: '헤드폰은 착용 컷, 스피커는 옆에 두고 감상하는 무드.' },
+    '모바일/PC 액세서리': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using', extraInstruction: '데스크 셋업 위 사용 클로즈업. 제품 디테일 강조.' },
+    '기타 가전/디지털': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using' },
+
+    // 가구·인테리어 — 공간 연출
+    '침구': { leadFraming: F.lifestyleWide, part: '전신 + 침실', shot: '와이드', crop: '전신', action: 'relaxing on', extraInstruction: '아늑한 침실. 침구 질감과 컬러가 주인공.' },
+    '커튼/러그/홈데코': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'in a room styled with', extraInstruction: '제품이 돋보이는 인테리어 연출.' },
+    '조명': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'in a cozy room lit by', extraInstruction: '저녁 무드, 따뜻한 조명 빛이 주인공.' },
+    '소형가구': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'using', extraInstruction: '실사용 배치 장면. 가구 형태와 비율이 또렷이.' },
+    '기타 가구/인테리어': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'in a room with' },
+
+    // 스포츠·레저 — 활동 장면
+    '헬스/운동용품': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'working out with', extraInstruction: '운동 동작 중. 활기찬 무드, 제품 사용이 명확히.' },
+    '캠핑용품': { leadFraming: F.lifestyleWide, part: '전신 + 야외', shot: '와이드', crop: '전신', action: 'camping with', extraInstruction: '캠핑장 셋업. 자연광, 제품이 화면 중심.' },
+    '등산/아웃도어': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'hiking with', extraInstruction: '산/트레일 배경. 장비 착용/사용이 또렷이.' },
+    '골프': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'playing golf with', extraInstruction: '골프장/연습장. 스윙 또는 어드레스 자세.' },
+    '자전거/보드': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'riding', extraInstruction: '야외 라이딩 장면. 안전장비 착용.' },
+    '수영/수상용품': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'at the pool with', extraInstruction: '수영장 사이드. 스포티하고 건전한 무드.' },
+    '기타 스포츠/레저': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'using' },
+
+    // 반려동물 — 반려동물 + 제품이 주인공
+    '강아지용품': { leadFraming: F.lifestyleWide, part: '사람 + 강아지', shot: '와이드', crop: '전신', action: 'playing with their dog using', extraInstruction: '귀여운 강아지와 제품이 주인공. 밝은 실내/공원.' },
+    '고양이용품': { leadFraming: F.lifestyleWide, part: '사람 + 고양이', shot: '와이드', crop: '전신', action: 'playing with their cat using', extraInstruction: '귀여운 고양이와 제품이 주인공. 아늑한 실내.' },
+    '사료/간식': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '사료 패키지가 주인공. 옆에 강아지/고양이가 기대하는 모습.' },
+    '기타 반려동물': { leadFraming: F.lifestyleWide, part: '사람 + 반려동물', shot: '와이드', crop: '전신', action: 'with their pet using' },
+
+    // 문구·공구·차량
+    '문구/사무용품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'writing/working with', extraInstruction: '깔끔한 데스크 위 사용 클로즈업.' },
+    '공구/작업용품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'working with', extraInstruction: '작업 장면 클로즈업. 장갑 낀 손, 제품 기능 강조.' },
+    '자동차용품': { leadFraming: F.handsProduct, part: '손 + 제품 + 차량', shot: '클로즈업', crop: '손~제품', action: 'using on the car', extraInstruction: '차량 옆/내부 사용 장면. 제품이 또렷이.' },
+    '기타': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using' },
+
+    // ── 코스트코 전면 정렬로 추가된 카테고리들 ──────────────────────
+    // 디지털·TV·컴퓨터
+    'TV': { leadFraming: F.lifestyleWide, part: '전신 + 거실', shot: '와이드', crop: '전신', action: 'watching', extraInstruction: '거실 TV 시청 장면. 화면과 베젤 디자인이 또렷이.' },
+    '노트북/태블릿': { leadFraming: F.tableScene, part: '상반신 + 데스크', shot: '미디엄', crop: '허리 위 + 책상', action: 'working on', extraInstruction: '카페/데스크 작업 장면. 화면과 제품 디자인 강조.' },
+    '모니터/프린터': { leadFraming: F.tableScene, part: '상반신 + 데스크', shot: '미디엄', crop: '허리 위 + 책상', action: 'using', extraInstruction: '깔끔한 데스크 셋업. 제품이 화면 중심.' },
+    '카메라': { leadFraming: F.upperBody, part: '상반신', shot: '미디엄', crop: '머리~허리', action: 'holding and shooting with', extraInstruction: '카메라를 든 촬영 장면. 제품 디테일 또렷이.' },
+    '모바일/충전 액세서리': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using', extraInstruction: '폰과 함께 사용하는 클로즈업.' },
+    '게임/게이밍': { leadFraming: F.tableScene, part: '상반신 + 데스크', shot: '미디엄', crop: '허리 위 + 책상', action: 'gaming with', extraInstruction: '게이밍 데스크 셋업, 은은한 RGB 무드.' },
+    '키보드/마우스/저장장치': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using', extraInstruction: '데스크 위 사용 클로즈업. 제품 디테일 강조.' },
+    '악기': { leadFraming: F.upperBody, part: '상반신 + 악기', shot: '미디엄', crop: '머리~허리', action: 'playing', extraInstruction: '연주 장면. 악기가 주인공.' },
+    '기타 디지털': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using' },
+
+    // 가전 (대형 포함)
+    '냉장고/김치냉장고': { leadFraming: F.lifestyleWide, part: '전신 + 주방', shot: '와이드', crop: '전신', action: 'in a kitchen with', extraInstruction: '주방 설치 모습. 제품 전면 디자인이 또렷이.' },
+    '세탁기/건조기/의류관리기': { leadFraming: F.lifestyleWide, part: '전신 + 세탁실', shot: '와이드', crop: '전신', action: 'doing laundry with', extraInstruction: '밝은 세탁실. 제품 전면이 화면 중심.' },
+    '공기청정기/제습기': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'relaxing near', extraInstruction: '깨끗하고 쾌적한 거실 무드.' },
+    '청소기/생활가전': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'cleaning with', extraInstruction: '거실 청소 장면. 제품 전체 형태 또렷이.' },
+    '기타 가전': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using' },
+
+    // 가구·침구·인테리어
+    '거실가구': { leadFraming: F.lifestyleWide, part: '전신 + 거실', shot: '와이드', crop: '전신', action: 'relaxing on', extraInstruction: '아늑한 거실 연출. 가구 형태와 소재가 또렷이.' },
+    '침실가구': { leadFraming: F.lifestyleWide, part: '전신 + 침실', shot: '와이드', crop: '전신', action: 'relaxing on', extraInstruction: '포근한 침실 연출.' },
+    '유아동 가구': { leadFraming: F.lifestyleWide, part: '전신 + 키즈룸', shot: '와이드', crop: '전신', action: 'using', extraInstruction: '밝은 키즈룸. 안전하고 사랑스러운 무드.' },
+    '식탁/책상/의자': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'using', extraInstruction: '실사용 배치. 가구 비율이 또렷이.' },
+    '커튼/블라인드/러그': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'in a room styled with', extraInstruction: '제품이 돋보이는 인테리어 연출.' },
+    '홈데코/거울/액자': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'in a room styled with', extraInstruction: '감각적인 인테리어 소품 연출.' },
+
+    // 홈·키친 (추가분)
+    '칼/도마': { leadFraming: F.kitchenScene, part: '상반신 + 주방', shot: '미디엄', crop: '허리 위', action: 'preparing ingredients with', extraInstruction: '재료 손질 장면. 안전하고 깔끔하게, 제품 중심.' },
+    '세탁용품': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'doing laundry with', extraInstruction: '밝은 실내 세탁/정리 장면.' },
+
+    // 유아동 (추가분)
+    '유아동 바디/구강케어': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '아이 케어 용품. 청결하고 부드러운 무드.' },
+
+    // 스포츠 (추가분)
+    '겨울 스포츠': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'skiing/snowboarding with', extraInstruction: '설원 배경. 장비 착용이 또렷이.' },
+
+    // 파티오·정원
+    '정원 가구': { leadFraming: F.lifestyleWide, part: '전신 + 야외', shot: '와이드', crop: '전신', action: 'relaxing on', extraInstruction: '테라스/정원 야외 연출. 자연광.' },
+    '파라솔/차양막': { leadFraming: F.lifestyleWide, part: '전신 + 야외', shot: '와이드', crop: '전신', action: 'relaxing under', extraInstruction: '햇살 좋은 야외. 제품이 화면 중심.' },
+    '그릴/바비큐': { leadFraming: F.lifestyleWide, part: '전신 + 야외', shot: '와이드', crop: '전신', action: 'grilling with', extraInstruction: '야외 바비큐 장면. 그릴과 음식이 또렷이.' },
+    '정원용품/장식': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'gardening with', extraInstruction: '정원 손질 장면. 자연광.' },
+    '꽃/식물/원예': { leadFraming: F.handsProduct, part: '손 + 화분', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '화분/꽃 클로즈업. 싱그러운 무드.' },
+    '창고/보관함': { leadFraming: F.lifestyleWide, part: '전신 + 야외', shot: '와이드', crop: '전신', action: 'organizing', extraInstruction: '마당/베란다 수납 장면. 제품 전체 형태.' },
+    '기타 정원': { leadFraming: F.lifestyleWide, part: '전신 + 야외', shot: '와이드', crop: '전신', action: 'using' },
+
+    // 보석 (추가분)
+    '순금/순은': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '골드바/실버바 정밀 클로즈업. 고급스러운 무드, 어두운 배경 광택 강조.' },
+
+    // 화장품·미용·위생 (추가분)
+    '화장지/키친타월': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '패키지가 주인공. 청결한 무드.' },
+    '생리대/위생용품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '패키지 중심. 깨끗하고 신뢰감 있는 무드.' },
+
+    // 건강·영양제 — 전부 제품 용기 중심
+    '비타민/미네랄': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '영양제 용기가 주인공. 밝고 클린한 무드.' },
+    '유산균': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '용기와 스틱/캡슐 함께. 클린 무드.' },
+    '오메가3/크릴오일': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '용기와 캡슐 함께. 신뢰감 있는 무드.' },
+    '홍삼': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '홍삼 패키지/스틱. 프리미엄 무드.' },
+    '어린이 영양제': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '알록달록 밝은 무드. 패키지가 주인공.' },
+    '다이어트/콜라겐': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '용기 중심. 가볍고 산뜻한 무드.' },
+    '프로틴/헬스 보충제': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '쉐이커/용기와 함께. 스포티한 무드.' },
+    '관절/기타 건강식품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '용기 중심. 신뢰감 있는 클린 무드.' },
+
+    // 공구·설비 (추가분)
+    '선반/수납': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'organizing with', extraInstruction: '창고/거실 수납 정리 장면.' },
+    '전구/건전지': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '제품 패키지/본체 클로즈업.' },
+    '보안': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using', extraInstruction: '현관/도어 사용 장면. 제품 조작부 또렷이.' },
+    '기타 공구/설비': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using' },
+
+    // 식품 (추가분)
+    '쌀/잡곡/시리얼': { leadFraming: F.handsProduct, part: '손 + 곡물', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '곡물의 질감이 보이게. 패키지와 내용물 함께.' },
+    '건식품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '내용물과 패키지 함께. 먹음직스러운 스타일링.' },
+    '유기농식품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting fresh', extraInstruction: '자연광, 신선하고 건강한 유기농 무드.' },
+
+    // 문구·사무 (세분화)
+    '문구': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'writing with', extraInstruction: '깔끔한 데스크 위 필기 클로즈업.' },
+    '사무용품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using', extraInstruction: '사무실 데스크 사용 장면.' },
+    '사무기기': { leadFraming: F.tableScene, part: '상반신 + 데스크', shot: '미디엄', crop: '허리 위 + 책상', action: 'using', extraInstruction: '사무실 데스크. 제품 조작 장면.' },
+    '기타 문구/사무': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using' },
+
+    // 커클랜드 시그니처 — 동종 카테고리와 같은 프레이밍 + KS 패키지 강조
+    'KS 식품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '커클랜드 패키지 라벨이 또렷이. 먹음직스러운 스타일링.' },
+    'KS 건강/영양제': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '커클랜드 용기 라벨 중심. 클린한 무드.' },
+    'KS 의류/잡화': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '핏이 잘 보이는 전신. 캐주얼 카탈로그 무드.' },
+    'KS 미용': { leadFraming: F.headShoulders, part: '얼굴', shot: '미디엄 클로즈업', crop: '얼굴~어깨', action: 'using the beauty product', extraInstruction: '제품 용기와 함께. 클린 뷰티 무드.' },
+    'KS 홈/생활용품/세제': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using', extraInstruction: '실사용 장면. 커클랜드 패키지 또렷이.' },
+    'KS 공구': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'working with', extraInstruction: '작업 장면 클로즈업. 제품 기능 강조.' },
+    'KS 골프용품': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'playing golf with', extraInstruction: '골프장/연습장. 스윙 또는 어드레스 자세.' },
+    'KS 반려동물용품': { leadFraming: F.lifestyleWide, part: '사람 + 반려동물', shot: '와이드', crop: '전신', action: 'with their pet using', extraInstruction: '반려동물과 제품이 주인공. 커클랜드 패키지 보이게.' },
+
+    // ── 코스트코 1:1 미러링으로 추가된 항목들 ──────────────────
+    'Apple': { leadFraming: F.handsProduct, part: '손 + 기기', shot: '클로즈업', crop: '손~제품', action: 'using', extraInstruction: '미니멀 데스크 위 애플 기기 사용 클로즈업.' },
+    '오디오/영상기기': { leadFraming: F.headShoulders, part: '머리/귀', shot: '미디엄 클로즈업', crop: '머리~어깨', action: 'wearing/listening to', extraInstruction: '헤드폰은 착용 컷, 스피커/사운드바는 거실 감상 무드.' },
+    '모바일': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using', extraInstruction: '폰과 함께 사용하는 클로즈업.' },
+    '보안 카메라': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'installing/checking', extraInstruction: '현관/실내 설치 장면. 제품과 앱 화면.' },
+    '노트북/데스크탑': { leadFraming: F.tableScene, part: '상반신 + 데스크', shot: '미디엄', crop: '허리 위 + 책상', action: 'working on', extraInstruction: '데스크 작업 장면. 화면과 제품 디자인 강조.' },
+    '태블릿': { leadFraming: F.tableScene, part: '상반신 + 데스크', shot: '미디엄', crop: '허리 위 + 책상', action: 'using', extraInstruction: '카페/소파 사용 장면. 화면 또렷이.' },
+    '게임': { leadFraming: F.tableScene, part: '상반신 + 데스크', shot: '미디엄', crop: '허리 위 + 책상', action: 'gaming with', extraInstruction: '게이밍 데스크 셋업, 은은한 RGB 무드.' },
+    '컴퓨터 액세서리': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using', extraInstruction: '데스크 위 사용 클로즈업. 제품 디테일 강조.' },
+    '냉장고': { leadFraming: F.lifestyleWide, part: '전신 + 주방', shot: '와이드', crop: '전신', action: 'in a kitchen with', extraInstruction: '주방 설치 모습. 제품 전면 디자인 또렷이.' },
+    '가전세트': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'in a home with', extraInstruction: '신혼집/새집 가전 셋업 연출.' },
+    '커머셜 가전': { leadFraming: F.kitchenScene, part: '상반신 + 주방', shot: '미디엄', crop: '허리 위', action: 'operating', extraInstruction: '업소용 주방. 스테인리스 장비 무드.' },
+    '공기청정가전': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'relaxing near', extraInstruction: '깨끗하고 쾌적한 거실 무드.' },
+    '주방가구': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'dining at', extraInstruction: '식탁 차림 연출. 가구 비율 또렷이.' },
+    '사무가구': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'working at', extraInstruction: '홈오피스 연출.' },
+    '홈인테리어': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'in a room styled with', extraInstruction: '제품이 돋보이는 인테리어 연출.' },
+    '식탁용품': { leadFraming: F.tableScene, part: '손 + 식탁', shot: '미디엄', crop: '허리 위 + 테이블', action: 'setting the table with', extraInstruction: '차려진 식탁 스타일링. 그릇/컵이 주인공.' },
+    '기저귀': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '제품 패키지가 주인공. 밝고 청결한 무드.' },
+    '유아동 의류/잡화': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '아이 옷 핏이 잘 보이는 전신. 밝은 카탈로그 무드.' },
+    '유아동용품': { leadFraming: F.fullBody, part: '전신 + 제품', shot: '풀샷', crop: '전신', action: 'using', extraInstruction: '제품을 사용하는 자연스러운 장면. 제품 또렷이.' },
+    '완구': { leadFraming: F.fullBody, part: '전신 + 제품', shot: '풀샷', crop: '전신', action: 'playing with', extraInstruction: '장난감을 갖고 노는 밝은 장면. 제품이 주인공.' },
+    '반려동물용품': { leadFraming: F.lifestyleWide, part: '사람 + 반려동물', shot: '와이드', crop: '전신', action: 'playing with their pet using', extraInstruction: '귀여운 강아지/고양이와 제품이 주인공.' },
+    '헬스/운동기구': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'working out with', extraInstruction: '운동 동작 중. 활기찬 무드.' },
+    '다이어트/헬스 식품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '쉐이커/용기와 함께. 스포티한 무드.' },
+    '캠핑': { leadFraming: F.lifestyleWide, part: '전신 + 야외', shot: '와이드', crop: '전신', action: 'camping with', extraInstruction: '캠핑장 셋업. 자연광, 제품이 화면 중심.' },
+    '등산': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'hiking with', extraInstruction: '산/트레일 배경. 장비 착용/사용 또렷이.' },
+    '아웃도어 스포츠': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'playing outdoor sports with', extraInstruction: '야외 활동 장면. 활기찬 무드.' },
+    '수상스포츠': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'at the water with', extraInstruction: '수영장/해변. 스포티하고 건전한 무드.' },
+    '가제보/스크린 하우스/그린 하우스': { leadFraming: F.lifestyleWide, part: '전신 + 야외', shot: '와이드', crop: '전신', action: 'relaxing in', extraInstruction: '마당/정원 설치 모습. 구조물 전체 형태.' },
+    '그릴/액세서리': { leadFraming: F.lifestyleWide, part: '전신 + 야외', shot: '와이드', crop: '전신', action: 'grilling with', extraInstruction: '야외 바비큐 장면. 그릴과 음식 또렷이.' },
+    '가든 전기용품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'working with', extraInstruction: '정원 작업 장면. 제품 기능 강조.' },
+    '꽃/식물': { leadFraming: F.handsProduct, part: '손 + 화분', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '화분/꽃 클로즈업. 싱그러운 무드.' },
+    '원예용품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'gardening with', extraInstruction: '정원 손질 장면. 자연광.' },
+    '여성의류': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '여성 의류 핏이 잘 보이는 전신 카탈로그 컷.' },
+    '남성의류': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '남성 의류 핏이 잘 보이는 전신 카탈로그 컷.' },
+    '여성 속옷/양말': { leadFraming: F.ankle, part: '발목/발', shot: '클로즈업', crop: '종아리~발', action: 'wearing', extraInstruction: '양말은 발목 클로즈업. 이너웨어는 라운지웨어 위 건전하게.' },
+    '남성 속옷/양말': { leadFraming: F.ankle, part: '발목/발', shot: '클로즈업', crop: '종아리~발', action: 'wearing', extraInstruction: '양말은 발목 클로즈업. 이너웨어는 라운지웨어 위 건전하게.' },
+    '유아동 의류/속옷': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '아이 옷 핏 전신. 밝고 사랑스러운 무드.' },
+    '여성신발': { leadFraming: F.fullBody, part: '전신 (발 강조)', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '전신 풀샷이되 신발이 또렷이 보이는 스타일링.' },
+    '남성신발': { leadFraming: F.fullBody, part: '전신 (발 강조)', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '전신 풀샷이되 신발이 또렷이 보이는 스타일링.' },
+    '아동신발': { leadFraming: F.fullBody, part: '전신 (발 강조)', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '아이 전신 풀샷, 신발 또렷이.' },
+    '가방': { leadFraming: F.bagShot, part: '어깨/손/등', shot: '미디엄', crop: '상반신 + 가방', action: 'carrying', extraInstruction: '가방 강조, 다리 아래 X.' },
+    '여행가방': { leadFraming: F.fullBody, part: '전신 + 캐리어', shot: '풀샷', crop: '전신', action: 'pulling', extraInstruction: '캐리어 끌고 걷는 공항/여행 무드.' },
+    '패션잡화': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing/using', extraInstruction: '착용 부위가 잘 보이게.' },
+    'One & Only 보석': { leadFraming: F.neckCloseup, part: '목/쇄골', shot: '클로즈업', crop: '턱~가슴', action: 'wearing', extraInstruction: '하이엔드 주얼리 클로즈업. 고급스러운 조명.' },
+    '팔찌': { leadFraming: F.wrist, part: '손목', shot: '클로즈업', crop: '손목만', action: 'wearing on wrist', extraInstruction: '손목과 팔찌 중심. 얼굴/몸 X.' },
+    '여성시계': { leadFraming: F.wrist, part: '손목', shot: '클로즈업', crop: '손목만', action: 'wearing on wrist', extraInstruction: '손목의 시계 정밀 클로즈업. 다이얼 또렷이.' },
+    '남성시계': { leadFraming: F.wrist, part: '손목', shot: '클로즈업', crop: '손목만', action: 'wearing on wrist', extraInstruction: '손목의 시계 정밀 클로즈업. 다이얼 또렷이.' },
+    '패션주얼리': { leadFraming: F.chestUp, part: '얼굴~가슴', shot: '미디엄 클로즈업', crop: '얼굴 하부~가슴', action: 'wearing', extraInstruction: '착용 부위가 잘 보이게.' },
+    '바디/구강케어': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'applying', extraInstruction: '로션/케어 제품 사용 클로즈업. 청결 무드.' },
+    '화장품/향수': { leadFraming: F.faceOnly, part: '얼굴', shot: '클로즈업', crop: '얼굴만', action: 'with flawless skin/makeup', extraInstruction: '제품 특성에 맞는 얼굴 클로즈업. 신체 X.' },
+    '화장지': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '패키지가 주인공. 청결한 무드.' },
+    '홍삼제품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '홍삼 패키지/스틱. 프리미엄 무드.' },
+    '다이어트/뷰티 식품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '용기 중심. 가볍고 산뜻한 무드.' },
+    '헬스 보충식품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '쉐이커/용기와 함께. 스포티한 무드.' },
+    '관절 보조식품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '용기 중심. 신뢰감 있는 클린 무드.' },
+    '홈케어/구급용품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '구급함/케어용품. 깨끗하고 안심되는 무드.' },
+    '기타 건강식품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '용기 중심. 클린 무드.' },
+    '작업용 공구/설비': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'working with', extraInstruction: '작업 장면 클로즈업. 장갑 낀 손, 제품 기능 강조.' },
+    '전구/야외조명': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'installing', extraInstruction: '전구 교체/설치 장면. 제품 또렷이.' },
+    '건전지': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '제품 패키지 클로즈업.' },
+    '생활/주거 설비': { leadFraming: F.lifestyleWide, part: '전신 + 실내', shot: '와이드', crop: '전신', action: 'installing', extraInstruction: '설치/시공 완성 공간 연출.' },
+    '음료': { leadFraming: F.handsProduct, part: '손 + 병', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '시원한 느낌 — 물방울 맺힌 병/캔. 라벨 또렷이.' },
+    '냉장식품': { leadFraming: F.tableScene, part: '상반신 + 식탁', shot: '미디엄', crop: '허리 위 + 테이블', action: 'serving', extraInstruction: '플레이팅과 패키지 함께.' },
+    '냉동식품': { leadFraming: F.tableScene, part: '상반신 + 식탁', shot: '미디엄', crop: '허리 위 + 테이블', action: 'serving', extraInstruction: '조리 완성 접시와 패키지 함께.' },
+    '사무정리용품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'organizing with', extraInstruction: '서류 정리 장면. 깔끔한 무드.' },
+    '오피스 종이용품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using', extraInstruction: '데스크 위 사용 클로즈업.' },
+    '선물세트': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '선물세트 패키지가 주인공. 고급스러운 무드.' },
   }
 
   if (byExactCategory[category]) return byExactCategory[category]
@@ -663,6 +911,11 @@ ${productLine}
 export async function generateModelImage(
   req: AIModelImageRequest,
 ): Promise<string> {
+  // 제품만 모드 — 사람 없이 정면 히어로 제품컷 (각도컷 파이프라인 재사용)
+  if (req.subject === 'product') {
+    return generateAngleShot({ productName: req.productName, images: req.images }, ANGLE_VARIANTS[0])
+  }
+
   const apiKey = getApiKey()
   let focus = getCameraFocus(req.category, req.productName)
 
@@ -947,18 +1200,22 @@ export async function generateImageSet(req: AIImageSetRequest): Promise<string[]
 
   // 1) 모델 시착 컷 + 각도 컷들 — 동시 발사하면 Gemini Image의 RPM 한도에 걸려서
   //    한 장씩 실패가 잦음. 살짝 stagger (250ms 간격) + 각 호출에 1회 재시도로 흡수.
-  const angleCount = count - 1
+  //    제품만(subject=product) 모드면 모델 컷 없이 각도 컷만 count장.
+  const productOnly = req.subject === 'product'
+  const angleCount = productOnly ? count : count - 1
   const anglesToUse = ANGLE_VARIANTS.slice(0, angleCount)
 
   // RPM 한도 회피용 stagger — 0.6s 간격이면 6장 풀세트도 ~3.6s 안에 발사 (10 RPM 안전)
   const STAGGER_MS = 600
   const promises: Array<Promise<string>> = []
-  // 모델 시착 컷 — 기존 generateModelImage 재사용 + 재시도
-  promises.push(withRetry(() => generateModelImage(req), 'model-shot'))
+  // 모델 시착 컷 — 제품만 모드에선 스킵
+  if (!productOnly) {
+    promises.push(withRetry(() => generateModelImage(req), 'model-shot'))
+  }
   // 각도 컷들 — stagger 두며 발사
   for (let i = 0; i < anglesToUse.length; i++) {
     const variant = anglesToUse[i]
-    const idx = i + 1
+    const idx = i + (productOnly ? 0 : 1)
     const delayed = (async () => {
       await new Promise((r) => setTimeout(r, idx * STAGGER_MS))
       return withRetry(
@@ -977,7 +1234,8 @@ export async function generateImageSet(req: AIImageSetRequest): Promise<string[]
     if (r.status === 'fulfilled') {
       images.push(r.value)
     } else {
-      const label = i === 0 ? '모델 시착 컷' : anglesToUse[i - 1].label
+      const angleIdx = productOnly ? i : i - 1
+      const label = !productOnly && i === 0 ? '모델 시착 컷' : anglesToUse[angleIdx].label
       errors.push(`${label}: ${r.reason?.message || r.reason}`)
     }
   })

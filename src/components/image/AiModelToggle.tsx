@@ -13,8 +13,8 @@ export default function AiModelToggle() {
   const { product } = useProductStore()
   const showCredits = useShowCredits()
   const {
-    images, aiModelEnabled, aiModelGender, aiModelAge, aiOnlyMode,
-    setAiModelEnabled, setAiModelGender, setAiModelAge, setAiOnlyMode, addImages,
+    images, aiModelEnabled, aiModelGender, aiModelAge, aiModelSubject, aiOnlyMode,
+    setAiModelEnabled, setAiModelGender, setAiModelAge, setAiModelSubject, setAiOnlyMode, addImages,
   } = useImageStore()
 
   const [generating, setGenerating] = useState(false)
@@ -58,6 +58,7 @@ export default function AiModelToggle() {
         category: product.category,
         gender: aiModelGender,
         age: aiModelAge,
+        subject: aiModelSubject,
         images: smallImages,
       })
       if (result.image) {
@@ -78,7 +79,7 @@ export default function AiModelToggle() {
     } finally {
       setGenerating(false)
     }
-  }, [product, images, aiModelGender, aiModelAge, addImages])
+  }, [product, images, aiModelGender, aiModelAge, aiModelSubject, addImages])
 
   const generateSet = useCallback(async () => {
     if (images.length < 2) {
@@ -102,6 +103,7 @@ export default function AiModelToggle() {
           category: product.category,
           gender: aiModelGender,
           age: aiModelAge,
+          subject: aiModelSubject,
           images: smallImages,
           count: effectiveCount,
         },
@@ -131,7 +133,7 @@ export default function AiModelToggle() {
     } finally {
       setGeneratingSet(false)
     }
-  }, [images, product, aiModelGender, aiModelAge, effectiveCount, addImages, setAiOnlyMode])
+  }, [images, product, aiModelGender, aiModelAge, aiModelSubject, effectiveCount, addImages, setAiOnlyMode])
 
   return (
     <div>
@@ -190,8 +192,33 @@ export default function AiModelToggle() {
 
       {aiModelEnabled && (
         <>
-          {/* Row 2: 성별 + 연령 (성별은 연령과 조합 — 예: 아동+남성 = 남자아이) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 18px 6px', flexWrap: 'wrap' }}>
+          {/* Row 2a: 피사체 — 사람(모델) vs 제품만 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 18px 4px' }}>
+            <div style={{ display: 'flex', border: '1px solid var(--border2)', borderRadius: '6px', overflow: 'hidden' }}>
+              {([['model', '👤 모델 착용'], ['product', '📦 제품만']] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => setAiModelSubject(value)}
+                  title={value === 'model' ? '사람이 착용/사용하는 컷' : '사람 없이 제품 단독 스튜디오 컷'}
+                  style={{
+                    padding: '4px 12px',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    background: aiModelSubject === value ? 'var(--accent)' : 'var(--surface2)',
+                    color: aiModelSubject === value ? '#0c0c10' : 'var(--text3)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Row 2b: 성별 + 연령 — 제품만 모드에선 비활성 (사람이 없으니) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 18px 6px', flexWrap: 'wrap', opacity: aiModelSubject === 'product' ? 0.35 : 1, pointerEvents: aiModelSubject === 'product' ? 'none' : 'auto', transition: 'opacity 0.15s' }}>
             <div style={{ display: 'flex', border: '1px solid var(--border2)', borderRadius: '6px', overflow: 'hidden' }}>
               {([['female', '여성'], ['male', '남성']] as const).map(([value, label]) => (
                 <button
@@ -269,7 +296,9 @@ export default function AiModelToggle() {
                 ✨ AI 이미지 풀세트
               </div>
               <p style={{ fontSize: 10, color: 'var(--text3)', lineHeight: 1.5, margin: '0 0 8px' }}>
-                모델 시착 1장 + 다양한 각도 제품 컷 N-1장.
+                {aiModelSubject === 'product'
+                  ? '다양한 각도 제품 컷 N장 (사람 없음).'
+                  : '모델 시착 1장 + 다양한 각도 제품 컷 N-1장.'}
                 <br />
                 <span style={{ color: 'var(--text2)' }}>원본 사진 2장 이상 필요</span>
               </p>
