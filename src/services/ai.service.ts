@@ -350,6 +350,14 @@ function getCameraFocus(category: string, productName: string): CameraFocus {
     '향수/바디': { leadFraming: F.wrist, part: '손목/목', shot: '클로즈업', crop: '손목 또는 목', action: 'spraying or applying', extraInstruction: '향수 분사 모션.' },
     '헤어케어': { leadFraming: F.headShoulders, part: '머리카락', shot: '미디엄 클로즈업', crop: '머리~어깨', action: 'with sleek glossy hair', extraInstruction: '윤기 머릿결 강조.' },
     '기타 뷰티': { leadFraming: F.headShoulders, part: '얼굴', shot: '미디엄 클로즈업', crop: '얼굴만', action: 'using the beauty product' },
+
+    // 유아·아동 — 옷/신발은 전신(아이 핏 강조), 용품·완구는 사용 장면
+    '유아복 (0~3세)': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '아기 옷 핏이 잘 보이는 전신. 밝고 사랑스러운 분위기.' },
+    '아동복 (4~10세)': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '아동복 핏이 잘 보이는 전신. 밝은 카탈로그 분위기.' },
+    '아동 신발/잡화': { leadFraming: F.fullBody, part: '전신 (발 강조)', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '전신 풀샷이되 신발/잡화가 또렷이 보이게.' },
+    '유아용품 (침구/식기/위생)': { leadFraming: F.fullBody, part: '전신 + 제품', shot: '풀샷', crop: '전신', action: 'using', extraInstruction: '제품을 사용하는 자연스러운 장면. 제품이 또렷이 보이게.' },
+    '장난감/완구': { leadFraming: F.fullBody, part: '전신 + 제품', shot: '풀샷', crop: '전신', action: 'playing with', extraInstruction: '장난감을 갖고 노는 밝은 장면. 제품이 주인공.' },
+    '기타 유아·아동': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing/using' },
   }
 
   if (byExactCategory[category]) return byExactCategory[category]
@@ -657,7 +665,27 @@ export async function generateModelImage(
 ): Promise<string> {
   const apiKey = getApiKey()
   let focus = getCameraFocus(req.category, req.productName)
+
+  // 연령대별 모델 묘사 — 아동/유아는 카탈로그풍 + 건전성 명시 (Gemini 안전필터 대응)
+  const age = req.age || 'adult'
   const genderKo = req.gender === 'male' ? '남성' : '여성'
+  const subjectDesc =
+    age === 'baby'
+      ? `Korean toddler (baby ${req.gender === 'male' ? 'boy' : 'girl'}, around 1-3 years old)`
+      : age === 'child'
+        ? `Korean ${req.gender === 'male' ? 'boy' : 'girl'} child model (elementary school age, around 6-9 years old)`
+        : `Korean ${req.gender} model`
+  const styleDesc =
+    age === 'baby'
+      ? `- Korean toddler, cute and natural (sitting or standing), cheerful expression
+- Fully clothed, wholesome family-friendly baby clothing catalog photo
+- Reference quality: department store baby/kids catalog photography`
+      : age === 'child'
+        ? `- Korean child (${genderKo === '남성' ? '남자아이' : '여자아이'}), bright cheerful natural pose facing the camera
+- Fully clothed, wholesome family-friendly kids clothing catalog photo
+- Reference quality: department store kids catalog photography`
+        : `- Korean ${genderKo}, natural confident pose facing the camera straight on
+- Reference quality: Olive Young / Musinsa / Zara product photography`
 
   // 디폴트 결과로 떨어졌으면 (= 카테고리 + 상품명 모두 단서 약함)
   // 이미지에서 직접 제품 타입 추론 → 더 정확한 framing 적용
@@ -674,7 +702,7 @@ export async function generateModelImage(
   // → 첫 문장 = 명시적 프레임 지시 + 영문 표준 촬영 용어
   const prompt = `Photograph: ${focus.leadFraming}.
 
-Subject: a Korean ${req.gender} model ${focus.action} "${req.productName}" (the product shown in the reference images).
+Subject: a ${subjectDesc} ${focus.action} "${req.productName}" (the product shown in the reference images).
 
 COMPOSITION (CRITICAL):
 - The model/subject MUST be perfectly centered in the frame, both horizontally and vertically.
@@ -688,10 +716,9 @@ CROP RULES (must obey):
 ${focus.extraInstruction ? `- Extra: ${focus.extraInstruction}` : ''}
 
 Style:
-- Korean ${genderKo}, natural confident pose facing the camera straight on
+${styleDesc}
 - Background: clean white or light gray studio sweep, uniform
 - Lighting: soft professional studio, gentle shadows
-- Reference quality: Olive Young / Musinsa / Zara product photography
 
 CRITICAL:
 - The product is the unmistakable focal point of the frame.

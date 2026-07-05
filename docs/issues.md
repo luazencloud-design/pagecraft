@@ -537,3 +537,21 @@ const output = await replicate.run(
 - 행 상태는 라이프사이클만(활성/시작전/만료/무제한). **입장 현황은 '활동 로그' 탭(입장 필터)**에서 확인
 
 **주의(마이그레이션)**: 키 네임스페이스가 바뀌어 기존 `trial:{email}:*` 사용량은 고아가 됨(전부 새 500). 런칭 전이라 무방. 고아 `start/used`는 TTL로 소멸, `ever`는 소량 잔존.
+
+---
+
+## #28. AI 모델 연령대 (성인/아동/유아) + 유아·아동 카테고리
+
+**요구**: 모델 생성이 남/여만 구분 → 아동 추가. 카테고리에 유아용품 추가. 유아 토글 필요성 검토.
+
+**설계 결정**: 토글 2개(아동/유아)를 쌓으면 모순 조합(둘 다 ON)이 생김 → **연령 3단계 세그먼트(성인/아동/유아)** 하나로 통합. 성별(남/여)은 그대로 조합 (예: 아동+남성 = 남자아이).
+
+**구현**
+- `ModelAge = 'adult' | 'child' | 'baby'` (`types/ai.ts`), `AIModelImageRequest.age?` (생략=adult, 기존 호환)
+- `imageStore.aiModelAge` + 세그먼트 UI (AiModelToggle, 성별 옆)
+- **카테고리 연동**: `CATEGORY_GROUPS`에 '유아·아동' 그룹 6종 추가. 카테고리 선택 시 `modelAgeForCategory()`로 연령 자동 제안 (유아→baby, 아동/키즈→child, 그 외→adult). 사용자가 언제든 수동 변경 가능
+- 프롬프트: 연령별 subject/style 분기 — 아동(6~9세)/유아(1~3세)는 "fully clothed, wholesome family-friendly kids catalog" 명시 (Gemini 안전필터 통과율 ↑)
+- `getCameraFocus`에 유아·아동 6종 프레이밍 추가 (옷/신발=전신, 용품/완구=사용 장면)
+- 풀세트: 모델 컷이 generateModelImage 재사용이라 age 자동 반영
+
+**주의**: Gemini는 아동/유아 인물 생성에 안전필터가 더 민감 — SAFETY 블록으로 간헐 실패 가능 (기존 실패사유 추출 + 부분 환불 로직이 처리). 실패 잦으면 프롬프트 완화 여지 있음.

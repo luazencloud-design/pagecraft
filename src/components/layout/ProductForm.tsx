@@ -1,11 +1,13 @@
 'use client'
 
 import { useProductStore } from '@/stores/productStore'
+import { useImageStore } from '@/stores/imageStore'
 import {
   PLATFORM_META,
   TEMPLATE_META,
   CATEGORY_GROUPS,
   CURRENCY_SYMBOL,
+  modelAgeForCategory,
   type Platform,
   type Template,
 } from '@/types/product'
@@ -14,6 +16,14 @@ const PLATFORM_OPTIONS: Platform[] = ['coupang', 'smartstore', 'multi-kr', 'qoo1
 
 export default function ProductForm() {
   const { product, setProduct } = useProductStore()
+  const setAiModelAge = useImageStore((s) => s.setAiModelAge)
+
+  // 카테고리 변경 시 AI 모델 연령 자동 제안 — 유아→유아, 아동→아동, 그 외→성인
+  // (사용자가 AI 이미지 패널에서 언제든 다시 바꿀 수 있음)
+  const onCategoryChange = (category: string) => {
+    setProduct({ category })
+    setAiModelAge(modelAgeForCategory(category))
+  }
   const platformMeta = PLATFORM_META[product.platform]
   const isJpMarket = platformMeta?.market === 'jp'
   const isUsMarket = platformMeta?.market === 'us'
@@ -53,7 +63,7 @@ export default function ProductForm() {
         <div className={labelCls}>
           <span className="w-[5px] h-[5px] rounded-full bg-accent opacity-70" />카테고리
         </div>
-        <select className={inputCls} value={product.category} onChange={(e) => setProduct({ category: e.target.value })}>
+        <select className={inputCls} value={product.category} onChange={(e) => onCategoryChange(e.target.value)}>
           <option value="">카테고리 선택</option>
           {Object.entries(CATEGORY_GROUPS).map(([groupName, items]) => (
             <optgroup key={groupName} label={groupName}>

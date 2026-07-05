@@ -49,7 +49,7 @@ export const TEMPLATE_META: Record<Template, { label: string; lang: Lang; descri
   'ebay-default':   { label: 'eBay (Default)',     lang: 'en', description: '텍스트 위주 정보 박스 스택 — Item Specifics + Shipping/Returns' },
 }
 
-/** 카테고리 그룹화 — 의류/잡화 + 화장품/뷰티 */
+/** 카테고리 그룹화 — 의류/잡화 + 화장품/뷰티 + 유아·아동 */
 export const CATEGORY_GROUPS: Record<string, string[]> = {
   '의류·잡화': [
     '패딩/점퍼', '집업/후리스', '티셔츠/맨투맨', '바지/하의', '가방/배낭',
@@ -66,6 +66,21 @@ export const CATEGORY_GROUPS: Record<string, string[]> = {
     '헤어케어',
     '기타 뷰티',
   ],
+  '유아·아동': [
+    '유아복 (0~3세)',
+    '아동복 (4~10세)',
+    '아동 신발/잡화',
+    '유아용품 (침구/식기/위생)',
+    '장난감/완구',
+    '기타 유아·아동',
+  ],
+}
+
+/** 카테고리 문자열 → 어울리는 AI 모델 연령대 (유아→baby, 아동→child, 그 외 adult) */
+export function modelAgeForCategory(category: string): 'adult' | 'child' | 'baby' {
+  if (/유아/.test(category)) return 'baby'
+  if (/아동|키즈|주니어/.test(category)) return 'child'
+  return 'adult'
 }
 
 export interface Product {
