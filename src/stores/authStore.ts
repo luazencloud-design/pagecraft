@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { api } from '@/lib/api'
+import { DEV_BYPASS } from '@/lib/devBypass'
 
 export interface TrialInfo {
   active: boolean
@@ -34,6 +35,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   unlimited: false,
 
   fetchMe: async () => {
+    // dev 우회 — 로그인 없이 무제한(직원) 상태로 취급 (운영 빌드에선 비활성)
+    if (DEV_BYPASS) {
+      set({ loaded: true, loggedIn: true, name: '개발자 (dev bypass)', trial: null, unlimited: true })
+      return
+    }
     try {
       const res = await api.get<{ loggedIn: boolean; name?: string; trial?: TrialInfo; unlimited?: boolean }>('/api/auth/me')
       set({
