@@ -845,6 +845,11 @@ ${productLine}
 export async function generateModelImage(
   req: AIModelImageRequest,
 ): Promise<string> {
+  // 제품만 모드 — 사람 없이 정면 히어로 제품컷 (각도컷 파이프라인 재사용)
+  if (req.subject === 'product') {
+    return generateAngleShot({ productName: req.productName, images: req.images }, ANGLE_VARIANTS[0])
+  }
+
   const apiKey = getApiKey()
   let focus = getCameraFocus(req.category, req.productName)
 
@@ -1129,18 +1134,22 @@ export async function generateImageSet(req: AIImageSetRequest): Promise<string[]
 
   // 1) 모델 시착 컷 + 각도 컷들 — 동시 발사하면 Gemini Image의 RPM 한도에 걸려서
   //    한 장씩 실패가 잦음. 살짝 stagger (250ms 간격) + 각 호출에 1회 재시도로 흡수.
-  const angleCount = count - 1
+  //    제품만(subject=product) 모드면 모델 컷 없이 각도 컷만 count장.
+  const productOnly = req.subject === 'product'
+  const angleCount = productOnly ? count : count - 1
   const anglesToUse = ANGLE_VARIANTS.slice(0, angleCount)
 
   // RPM 한도 회피용 stagger — 0.6s 간격이면 6장 풀세트도 ~3.6s 안에 발사 (10 RPM 안전)
   const STAGGER_MS = 600
   const promises: Array<Promise<string>> = []
-  // 모델 시착 컷 — 기존 generateModelImage 재사용 + 재시도
-  promises.push(withRetry(() => generateModelImage(req), 'model-shot'))
+  // 모델 시착 컷 — 제품만 모드에선 스킵
+  if (!productOnly) {
+    promises.push(withRetry(() => generateModelImage(req), 'model-shot'))
+  }
   // 각도 컷들 — stagger 두며 발사
   for (let i = 0; i < anglesToUse.length; i++) {
     const variant = anglesToUse[i]
-    const idx = i + 1
+    const idx = i + (productOnly ? 0 : 1)
     const delayed = (async () => {
       await new Promise((r) => setTimeout(r, idx * STAGGER_MS))
       return withRetry(
@@ -1159,7 +1168,8 @@ export async function generateImageSet(req: AIImageSetRequest): Promise<string[]
     if (r.status === 'fulfilled') {
       images.push(r.value)
     } else {
-      const label = i === 0 ? '모델 시착 컷' : anglesToUse[i - 1].label
+      const angleIdx = productOnly ? i : i - 1
+      const label = !productOnly && i === 0 ? '모델 시착 컷' : anglesToUse[angleIdx].label
       errors.push(`${label}: ${r.reason?.message || r.reason}`)
     }
   })

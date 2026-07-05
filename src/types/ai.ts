@@ -98,6 +98,8 @@ export interface AIModelImageRequest {
   gender: 'male' | 'female'
   /** 생략 시 adult (기존 동작 유지) */
   age?: ModelAge
+  /** 피사체 — model(사람 착용/사용) | product(제품만, 사람 없음). 생략 시 model */
+  subject?: 'model' | 'product'
   images: string[]
 }
 
