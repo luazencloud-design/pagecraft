@@ -530,6 +530,16 @@ function getCameraFocus(category: string, productName: string): CameraFocus {
     '사무용품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using', extraInstruction: '사무실 데스크 사용 장면.' },
     '사무기기 (계산기/코팅기)': { leadFraming: F.tableScene, part: '상반신 + 데스크', shot: '미디엄', crop: '허리 위 + 책상', action: 'using', extraInstruction: '사무실 데스크. 제품 조작 장면.' },
     '기타 문구/사무': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using' },
+
+    // 커클랜드 시그니처 — 동종 카테고리와 같은 프레이밍 + KS 패키지 강조
+    'KS 식품': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'presenting', extraInstruction: '커클랜드 패키지 라벨이 또렷이. 먹음직스러운 스타일링.' },
+    'KS 건강/영양제': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'holding', extraInstruction: '커클랜드 용기 라벨 중심. 클린한 무드.' },
+    'KS 의류/잡화': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'wearing', extraInstruction: '핏이 잘 보이는 전신. 캐주얼 카탈로그 무드.' },
+    'KS 미용': { leadFraming: F.headShoulders, part: '얼굴', shot: '미디엄 클로즈업', crop: '얼굴~어깨', action: 'using the beauty product', extraInstruction: '제품 용기와 함께. 클린 뷰티 무드.' },
+    'KS 홈/생활용품/세제': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'using', extraInstruction: '실사용 장면. 커클랜드 패키지 또렷이.' },
+    'KS 공구': { leadFraming: F.handsProduct, part: '손 + 제품', shot: '클로즈업', crop: '손~제품', action: 'working with', extraInstruction: '작업 장면 클로즈업. 제품 기능 강조.' },
+    'KS 골프용품': { leadFraming: F.fullBody, part: '전신', shot: '풀샷', crop: '전신', action: 'playing golf with', extraInstruction: '골프장/연습장. 스윙 또는 어드레스 자세.' },
+    'KS 반려동물용품': { leadFraming: F.lifestyleWide, part: '사람 + 반려동물', shot: '와이드', crop: '전신', action: 'with their pet using', extraInstruction: '반려동물과 제품이 주인공. 커클랜드 패키지 보이게.' },
   }
 
   if (byExactCategory[category]) return byExactCategory[category]
