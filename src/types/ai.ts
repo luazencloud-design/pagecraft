@@ -89,10 +89,15 @@ export interface AITagRequest {
   coupangSuggestions: string[]
 }
 
+/** AI 모델 연령대 — adult(성인) / child(아동, 6~9세) / baby(유아, 1~3세) */
+export type ModelAge = 'adult' | 'child' | 'baby'
+
 export interface AIModelImageRequest {
   productName: string
   category: string
   gender: 'male' | 'female'
+  /** 생략 시 adult (기존 동작 유지) */
+  age?: ModelAge
   images: string[]
 }
 

@@ -13,8 +13,8 @@ export default function AiModelToggle() {
   const { product } = useProductStore()
   const showCredits = useShowCredits()
   const {
-    images, aiModelEnabled, aiModelGender, aiOnlyMode,
-    setAiModelEnabled, setAiModelGender, setAiOnlyMode, addImages,
+    images, aiModelEnabled, aiModelGender, aiModelAge, aiOnlyMode,
+    setAiModelEnabled, setAiModelGender, setAiModelAge, setAiOnlyMode, addImages,
   } = useImageStore()
 
   const [generating, setGenerating] = useState(false)
@@ -57,6 +57,7 @@ export default function AiModelToggle() {
         productName: product.name,
         category: product.category,
         gender: aiModelGender,
+        age: aiModelAge,
         images: smallImages,
       })
       if (result.image) {
@@ -77,7 +78,7 @@ export default function AiModelToggle() {
     } finally {
       setGenerating(false)
     }
-  }, [product, images, aiModelGender, addImages])
+  }, [product, images, aiModelGender, aiModelAge, addImages])
 
   const generateSet = useCallback(async () => {
     if (images.length < 2) {
@@ -100,6 +101,7 @@ export default function AiModelToggle() {
           productName: product.name,
           category: product.category,
           gender: aiModelGender,
+          age: aiModelAge,
           images: smallImages,
           count: effectiveCount,
         },
@@ -129,7 +131,7 @@ export default function AiModelToggle() {
     } finally {
       setGeneratingSet(false)
     }
-  }, [images, product, aiModelGender, effectiveCount, addImages, setAiOnlyMode])
+  }, [images, product, aiModelGender, aiModelAge, effectiveCount, addImages, setAiOnlyMode])
 
   return (
     <div>
@@ -188,46 +190,48 @@ export default function AiModelToggle() {
 
       {aiModelEnabled && (
         <>
-          {/* Row 2: gender row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 18px 6px' }}>
-            <div
-              style={{
-                display: 'flex',
-                border: '1px solid var(--border2)',
-                borderRadius: '6px',
-                overflow: 'hidden',
-              }}
-            >
-              <button
-                onClick={() => setAiModelGender('female')}
-                style={{
-                  padding: '4px 12px',
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  background: aiModelGender === 'female' ? 'var(--accent)' : 'var(--surface2)',
-                  color: aiModelGender === 'female' ? '#0c0c10' : 'var(--text3)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
-              >
-                여성
-              </button>
-              <button
-                onClick={() => setAiModelGender('male')}
-                style={{
-                  padding: '4px 12px',
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  background: aiModelGender === 'male' ? 'var(--accent)' : 'var(--surface2)',
-                  color: aiModelGender === 'male' ? '#0c0c10' : 'var(--text3)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
-              >
-                남성
-              </button>
+          {/* Row 2: 성별 + 연령 (성별은 연령과 조합 — 예: 아동+남성 = 남자아이) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 18px 6px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', border: '1px solid var(--border2)', borderRadius: '6px', overflow: 'hidden' }}>
+              {([['female', '여성'], ['male', '남성']] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => setAiModelGender(value)}
+                  style={{
+                    padding: '4px 12px',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    background: aiModelGender === value ? 'var(--accent)' : 'var(--surface2)',
+                    color: aiModelGender === value ? '#0c0c10' : 'var(--text3)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', border: '1px solid var(--border2)', borderRadius: '6px', overflow: 'hidden' }}>
+              {([['adult', '성인'], ['child', '아동'], ['baby', '유아']] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => setAiModelAge(value)}
+                  title={value === 'child' ? '아동 (6~9세)' : value === 'baby' ? '유아 (1~3세)' : '성인'}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    background: aiModelAge === value ? 'var(--accent)' : 'var(--surface2)',
+                    color: aiModelAge === value ? '#0c0c10' : 'var(--text3)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
