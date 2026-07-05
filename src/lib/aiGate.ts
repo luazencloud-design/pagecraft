@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { verifyTrialSession, TRIAL_SESSION_COOKIE } from './session'
 import { getInvite, inviteUsableReason } from './invites'
 import { consumeTrialCredits, refundTrialCredits, type CreditType } from './trial'
+import { DEV_BYPASS } from './devBypass'
 
 /**
  * AI 요청 인가 — 두 경로:
@@ -21,6 +22,15 @@ export async function authorizeAi(
   creditType: CreditType,
   multiplier = 1,
 ): Promise<{ auth: AiAuth } | { error: NextResponse }> {
+  // 0) dev 전용 우회 — 로그인/키 없이 직원(무제한) 모드로 통과. 운영 빌드에선 항상 비활성.
+  if (DEV_BYPASS) {
+    const serverKey = process.env.GEMINI_API_KEY
+    if (serverKey) {
+      return { auth: { mode: 'trial', key: serverKey, invite: 'dev-bypass', subject: 'dev-bypass', creditType, multiplier } }
+    }
+    // 서버 키가 없으면 그냥 정상 흐름으로 (키 입력/로그인 유도)
+  }
+
   // 1) BYOK — 본인 키
   const headerKey = req.headers.get('x-gemini-key')?.trim()
   if (headerKey) return { auth: { mode: 'byok', key: headerKey } }
