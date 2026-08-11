@@ -53,9 +53,10 @@ export function reportError(err: unknown, ctx: ReportContext): ErrorInfo {
   if (!Sentry.getClient()) {
     // DSN 유무를 함께 남긴다. 초기화 실패의 원인이 "설정 부재"인지 "계측 파일 미로딩"인지
     // 이 한 줄로 갈린다 — 콜드스타트 로그는 서버리스에서 안 잡힐 수 있어 요청 시점에 찍는다.
+    const reg = (globalThis as { __sentryRegister?: string }).__sentryRegister ?? '미실행'
     console.warn(
       `[sentry] 클라이언트 미초기화 — ${ctx.route} 오류가 Sentry에 남지 않는다 ` +
-        `(DSN ${process.env.SENTRY_DSN ? '있음' : '없음'})`,
+        `(DSN ${process.env.SENTRY_DSN ? '있음' : '없음'} / register ${reg})`,
     )
   }
 

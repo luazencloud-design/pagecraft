@@ -1,11 +1,17 @@
 import * as Sentry from '@sentry/nextjs'
 
 export async function register() {
+  // 실행 흔적을 전역에 남긴다. 콜드스타트 로그는 서버리스에서 안 잡힐 수 있어,
+  // 요청 시점에 이 값을 읽어야 "계측이 아예 안 돌았다"와 "돌았는데 초기화가 안 붙었다"가 갈린다.
+  const g = globalThis as { __sentryRegister?: string }
+  g.__sentryRegister = `runtime=${process.env.NEXT_RUNTIME ?? '?'}`
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     await import('./sentry.server.config')
+    g.__sentryRegister += ' server-config-imported'
   }
   if (process.env.NEXT_RUNTIME === 'edge') {
     await import('./sentry.edge.config')
+    g.__sentryRegister += ' edge-config-imported'
   }
 }
 
