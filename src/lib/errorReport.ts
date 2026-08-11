@@ -51,7 +51,12 @@ export function reportError(err: unknown, ctx: ReportContext): ErrorInfo {
   // 초기화가 안 된 채로 캡처하면 조용히 버려진다. 그 상태를 로그로 드러낸다 —
   // "Sentry에 아무것도 안 남는다"는 증상의 원인이 코드인지 설정인지 즉시 갈린다.
   if (!Sentry.getClient()) {
-    console.warn(`[sentry] 클라이언트 미초기화 — ${ctx.route} 오류가 Sentry에 남지 않는다`)
+    // DSN 유무를 함께 남긴다. 초기화 실패의 원인이 "설정 부재"인지 "계측 파일 미로딩"인지
+    // 이 한 줄로 갈린다 — 콜드스타트 로그는 서버리스에서 안 잡힐 수 있어 요청 시점에 찍는다.
+    console.warn(
+      `[sentry] 클라이언트 미초기화 — ${ctx.route} 오류가 Sentry에 남지 않는다 ` +
+        `(DSN ${process.env.SENTRY_DSN ? '있음' : '없음'})`,
+    )
   }
 
   Sentry.captureException(err, {
