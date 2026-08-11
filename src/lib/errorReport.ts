@@ -10,7 +10,28 @@
  */
 
 import * as Sentry from '@sentry/nextjs'
+import { after } from 'next/server'
 import { classifyError, type AuthMode, type ErrorInfo } from './errorCode'
+
+/**
+ * 이벤트 전송을 응답 뒤로 미뤄 끝까지 보낸다.
+ *
+ * 서버리스에서는 응답을 반환한 순간 함수가 얼어붙을 수 있다. `captureException`은 큐에 넣고
+ * 바로 반환하므로, 그대로 두면 전송이 끝나기 전에 실행이 멈춰 이벤트가 사라진다 — 프리뷰에서
+ * 실제로 그랬다(로컬은 프로세스가 살아 있어 전송이 완료됐다) [실측 2026-08-11].
+ *
+ * `after`는 응답을 지연시키지 않으면서 함수를 살려 둔다. 요청 수명주기 밖에서 호출되면
+ * 던지므로, 그때는 전송만 시도하고 넘어간다.
+ */
+function flushAfterResponse(): void {
+  try {
+    after(async () => {
+      await Sentry.flush(2000)
+    })
+  } catch {
+    void Sentry.flush(2000)
+  }
+}
 
 export interface ReportContext {
   /** 짧은 라우트 식별자 — Sentry에서 이걸로 묶어 본다 (예: 'ai/copy') */
@@ -26,6 +47,12 @@ export interface ReportContext {
  */
 export function reportError(err: unknown, ctx: ReportContext): ErrorInfo {
   const info = classifyError(err, ctx.mode ?? 'unknown')
+
+  // 초기화가 안 된 채로 캡처하면 조용히 버려진다. 그 상태를 로그로 드러낸다 —
+  // "Sentry에 아무것도 안 남는다"는 증상의 원인이 코드인지 설정인지 즉시 갈린다.
+  if (!Sentry.getClient()) {
+    console.warn(`[sentry] 클라이언트 미초기화 — ${ctx.route} 오류가 Sentry에 남지 않는다`)
+  }
 
   Sentry.captureException(err, {
     tags: {
@@ -47,6 +74,7 @@ export function reportError(err: unknown, ctx: ReportContext): ErrorInfo {
 
   // Vercel 로그에도 코드를 남긴다 — 실시간 관찰에는 이쪽이 빠르다
   console.error(`[${ctx.route}] ${info.code}`, err)
+  flushAfterResponse()
   return info
 }
 
@@ -65,5 +93,6 @@ export function reportGateRejection(reason: string, status: number, detail?: Rec
       tags: { gate_reason: reason, gate_status: String(status) },
       extra: detail,
     })
+    flushAfterResponse()
   }
 }
