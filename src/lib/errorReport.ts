@@ -40,7 +40,8 @@ export function reportError(err: unknown, ctx: ReportContext): ErrorInfo {
       // 어느 모델로 돌다 실패했는지 — 미설정이면 코드 폴백이 쓰인다는 사실 자체가 단서다
       textModel: process.env.GEMINI_TEXT_MODEL ?? '(하드코딩 폴백)',
       imageModel: process.env.GEMINI_IMAGE_MODEL ?? '(하드코딩 폴백)',
-      rawMessage: err instanceof Error ? err.message : String(err),
+      // 원문 메시지는 넣지 않는다 — 예외 본문에 이미 전문이 실리고, 키 관련 문구가 섞이면
+      // Sentry 서버 스크러버가 "[Filtered]"로 지워 버려 중복이자 무용이다 [실측 2026-08-11].
     },
   })
 
