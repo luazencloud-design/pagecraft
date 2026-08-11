@@ -12,6 +12,16 @@ export function friendlyErrorMessage(err: unknown): string {
     return '네트워크 연결이 불안정합니다. 잠시 후 다시 시도해주세요.'
   }
 
+  // 모델 부재·지원 종료(404 NOT_FOUND) / 모델명 형식 오류(400 INVALID_ARGUMENT)
+  // 아래 Gemini 캐치올보다 먼저 본다 — 영구 장애가 "일시적 문제"로 안내되면 사용자가 무한 재시도한다.
+  // "unexpected" 파싱 분기보다도 앞이어야 한다(모델명 형식 오류 문구에 그 단어가 들어간다).
+  if (
+    /not_found/.test(lower) ||
+    /no longer available|is not found for api version|unexpected model name format/.test(lower)
+  ) {
+    return '현재 AI 모델을 사용할 수 없습니다. 재시도로는 해결되지 않으니 관리자에게 문의해주세요.'
+  }
+
   // Gemini API 과부하 / 일시 오류
   if (/503|unavailable|high demand|overloaded/.test(lower)) {
     return 'AI 서버가 일시적으로 바쁩니다. 30초 후 다시 시도해주세요.'

@@ -774,6 +774,8 @@ Final result: exact same product(s) in same position, floating on pure solid whi
         { inlineData: { mimeType: 'image/jpeg', data: base64 } },
       ],
     }],
+    // imageConfig를 두지 않는다 — 배경제거는 입력 비율을 따라가야 하는데 고정값을 주면
+    // 비정사각 입력이 왜곡된다. 실측상 모델이 입력 비율을 그대로 낸다(768x1024 → 896x1195).
     generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
   }
 
@@ -992,6 +994,10 @@ CRITICAL:
     contents: [{ role: 'user', parts }],
     generationConfig: {
       responseModalities: ['IMAGE', 'TEXT'],
+      // 해상도만 고정한다. aspectRatio는 일부러 비운다 — 프레임은 위 CROP RULES가 정하고,
+      // 카테고리마다(얼굴 매크로~전신) 적정 비율이 달라 한 값으로 못 묶는다.
+      // imageSize만 줘도 호출별 비율 흔들림은 잡힌다(실측: 미지정 3회 중 1회 이탈 → 1K 지정 3/3 동일).
+      imageConfig: { imageSize: '1K' },
     },
   }
 
@@ -1107,9 +1113,10 @@ async function withRetry<T>(
       return await fn()
     } catch (err) {
       lastErr = err
-      // safety 차단 같은 deterministic 에러는 재시도 무의미
+      // safety 차단 / 모델 부재 같은 deterministic 에러는 재시도 무의미
+      // (NOT_FOUND = 모델이 사라졌거나 이 키로 접근 불가 → 재시도해도 같은 404)
       const msg = err instanceof Error ? err.message : String(err)
-      if (/SAFETY|PROHIBITED|RECITATION|BLOCKLIST|IMAGE_SAFETY/i.test(msg)) {
+      if (/SAFETY|PROHIBITED|RECITATION|BLOCKLIST|IMAGE_SAFETY|NOT_FOUND/i.test(msg)) {
         console.warn(`[${label}] deterministic 차단, 재시도 스킵:`, msg)
         break
       }
@@ -1157,7 +1164,11 @@ RULES:
 
   const body = {
     contents: [{ role: 'user', parts }],
-    generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
+    generationConfig: {
+      responseModalities: ['IMAGE', 'TEXT'],
+      // 제품 단독 컷은 정사각이 정답이고 현행 출력도 1024x1024다 — 명시해 고정한다.
+      imageConfig: { aspectRatio: '1:1', imageSize: '1K' },
+    },
   }
 
   const res = await geminiRequest(
