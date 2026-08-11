@@ -119,6 +119,21 @@ function getImageModel(): string {
 }
 
 /**
+ * thinking 파라미터는 모델 세대마다 형태가 다르다 — 두 세대를 한 바디로 만족시킬 수 없다.
+ *   2.5  `thinkingBudget: 0`이 유효. 빼면 thinking이 예산을 먹어 본문이 잘린다(MAX_TOKENS).
+ *   3.x  `thinkingBudget` 자체를 400으로 거부. 기본이 minimal이라 필드를 빼는 쪽이 맞다.
+ *
+ * 세대를 못 읽는 이름(gemini-flash-latest 등 별칭)은 "빼는" 쪽에 붙인다 — 잘림은 품질 저하로
+ * 끝나지만 400은 기능 정지라, 실패했을 때 비용이 낮은 쪽을 기본값으로 둔다.
+ * 단 별칭은 실측상 사은품 문구가 사고 흔적("**Analyze the Image:**...")으로 나온다.
+ * → GEMINI_TEXT_MODEL에는 버전이 박힌 정식 모델명을 넣는다. 별칭은 이 경로를 망가뜨린다.
+ */
+function thinkingConfigFor(model: string) {
+  const major = Number(/^gemini-(\d+)/.exec(model)?.[1])
+  return major <= 2 ? { thinkingConfig: { thinkingBudget: 0 } } : {}
+}
+
+/**
  * 플랫폼별 시스템 프롬프트 디스패처
  * - 한국 마켓 (coupang/smartstore/multi-kr/other) → 쿠팡 SEO 톤 (KO만)
  * - 일본 마켓 (qoo10-jp) → 큐텐 감성/무드 톤 (JA + KO 동시)
@@ -860,6 +875,7 @@ Respond with ONLY the category name, nothing else.`
  *
  * 주의: gemini-2.5-flash는 thinking 토큰을 기본 사용 → maxOutputTokens가 작으면
  *      추론에 다 쓰이고 본문이 잘림. thinkingBudget: 0 으로 끄고 토큰도 넉넉히.
+ *      3.x는 이 필드를 400으로 거부하므로 세대별로 갈린다 — thinkingConfigFor 참조.
  */
 export async function describeGiftImage(image: string, productName?: string): Promise<string> {
   const apiKey = getApiKey()
@@ -891,7 +907,8 @@ ${productLine}
       temperature: 0.6,
       maxOutputTokens: 400,
       // thinking 끄기 — 짧은 카피라 추론 불필요. 안 끄면 토큰이 추론에 소진돼 본문 잘림.
-      thinkingConfig: { thinkingBudget: 0 },
+      // 끄는 방법이 세대마다 달라 분기한다(3.x는 기본이 minimal이라 필드를 빼는 것이 곧 끄기다).
+      ...thinkingConfigFor(getTextModel()),
     },
   }
   const res = await geminiRequest(
