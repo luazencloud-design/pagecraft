@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { describeGiftImage } from '@/services/ai.service'
 import { runWithKey } from '@/lib/apiKeyContext'
 import { authorizeAi, refundIfTrial } from '@/lib/aiGate'
-import { friendlyErrorMessage } from '@/lib/errorMessage'
+import { reportError } from '@/lib/errorReport'
 
 export async function POST(req: Request) {
   let body: { image?: string; productName?: string }
@@ -19,9 +19,9 @@ export async function POST(req: Request) {
       const description = await describeGiftImage(body.image!, body.productName)
       return NextResponse.json({ description })
     } catch (err) {
-      console.error('사은품 설명 생성 오류:', err)
+      const info = reportError(err, { route: 'ai/gift-describe', mode: gate.auth.mode })
       await refundIfTrial(gate.auth)
-      return NextResponse.json({ error: friendlyErrorMessage(err) }, { status: 500 })
+      return NextResponse.json({ error: info.message, code: info.code }, { status: 500 })
     }
   })
 }

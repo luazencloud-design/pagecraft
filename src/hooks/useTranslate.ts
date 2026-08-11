@@ -4,7 +4,7 @@ import { useCallback } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
 import { useProductStore } from '@/stores/productStore'
 import { useDraftsStore } from '@/stores/draftsStore'
-import { api } from '@/lib/api'
+import { api, parseApiError } from '@/lib/api'
 import { showToast } from '@/components/ui/Toast'
 import type { GeneratedAll, TranslateRequest } from '@/types/ai'
 import type { Lang } from '@/types/product'
@@ -74,7 +74,7 @@ export function useTranslate() {
       showToast(`${langLabel} 버전이 생성되었습니다`)
       return true
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '번역에 실패했습니다.'
+      const msg = err instanceof Error ? parseApiError(err.message, '번역에 실패했습니다.') : '번역에 실패했습니다.'
       showToast(msg, 'error')
       console.error('번역 실패:', err)
       return false
@@ -141,7 +141,7 @@ export function useTranslate() {
       showToast(`${targetLabel} 동기화 완료`)
       return true
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '동기화에 실패했습니다.'
+      const msg = err instanceof Error ? parseApiError(err.message, '동기화에 실패했습니다.') : '동기화에 실패했습니다.'
       showToast(msg, 'error')
       console.error('동기화 실패:', err)
       return false

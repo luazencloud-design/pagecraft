@@ -1,0 +1,68 @@
+/**
+ * 오류 보고 — 실패를 오래 남는 채널(Sentry)로 보낸다.
+ *
+ * 왜 명시 호출인가: `instrumentation.ts`의 `onRequestError`는 **Next.js가 못 잡은 에러**에만
+ * 발동한다. AI 라우트는 전부 `catch`해서 500 JSON으로 정상 반환하므로 Next.js 입장에선 에러가
+ * 없고, Sentry도 아무것도 못 본다. 실패 기록이 `console.error` → Vercel 로그에만 남는데 Hobby
+ * 플랜은 보존이 짧아 사후 추적이 끊긴다. 그래서 catch 지점에서 직접 보낸다.
+ *
+ * 태그에 분류 코드를 실어, 사용자가 보내온 화면 문구의 코드와 서버 기록이 곧바로 이어지게 한다.
+ */
+
+import * as Sentry from '@sentry/nextjs'
+import { classifyError, type AuthMode, type ErrorInfo } from './errorCode'
+
+export interface ReportContext {
+  /** 짧은 라우트 식별자 — Sentry에서 이걸로 묶어 본다 (예: 'ai/copy') */
+  route: string
+  mode?: AuthMode
+  /** 라우트가 아는 부가 정보 (플랫폼·요청 매수 등) */
+  extra?: Record<string, unknown>
+}
+
+/**
+ * 에러를 분류해 Sentry로 보내고, 응답에 쓸 정보를 돌려준다.
+ * 호출부는 반환값의 `message`·`code`를 그대로 응답 본문에 실으면 된다.
+ */
+export function reportError(err: unknown, ctx: ReportContext): ErrorInfo {
+  const info = classifyError(err, ctx.mode ?? 'unknown')
+
+  Sentry.captureException(err, {
+    tags: {
+      error_code: info.code,
+      route: ctx.route,
+      auth_mode: ctx.mode ?? 'unknown',
+      actor: info.actor,
+      retryable: String(info.retryable),
+    },
+    extra: {
+      ...ctx.extra,
+      // 어느 모델로 돌다 실패했는지 — 미설정이면 코드 폴백이 쓰인다는 사실 자체가 단서다
+      textModel: process.env.GEMINI_TEXT_MODEL ?? '(하드코딩 폴백)',
+      imageModel: process.env.GEMINI_IMAGE_MODEL ?? '(하드코딩 폴백)',
+      rawMessage: err instanceof Error ? err.message : String(err),
+    },
+  })
+
+  // Vercel 로그에도 코드를 남긴다 — 실시간 관찰에는 이쪽이 빠르다
+  console.error(`[${ctx.route}] ${info.code}`, err)
+  return info
+}
+
+/**
+ * 인가 게이트의 거부를 기록한다. 게이트는 예외를 던지지 않고 응답만 반환해 왔기 때문에
+ * 지금까지 어떤 흔적도 남지 않았다(4XX 건수만 보였다).
+ *
+ * 쿼터 보호: 로그인 안 한 접근(401)은 정상 트래픽이라 Sentry로 올리지 않는다.
+ * 운영자가 손대야 하는 것(Redis 장애·서버 키 부재)만 이벤트로 남긴다.
+ */
+export function reportGateRejection(reason: string, status: number, detail?: Record<string, unknown>): void {
+  console.warn(`[gate] ${status} ${reason}`, detail ?? '')
+  if (status >= 500) {
+    Sentry.captureMessage(`gate: ${reason}`, {
+      level: 'error',
+      tags: { gate_reason: reason, gate_status: String(status) },
+      extra: detail,
+    })
+  }
+}

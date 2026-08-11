@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { generateAll } from '@/services/ai.service'
 import { runWithKey } from '@/lib/apiKeyContext'
 import { authorizeAi, refundIfTrial } from '@/lib/aiGate'
-import { friendlyErrorMessage } from '@/lib/errorMessage'
+import { reportError } from '@/lib/errorReport'
 import type { AIGenerateRequest } from '@/types/ai'
 
 /** 통합 AI 생성 — BYOK 또는 무료 체험 크레딧 */
@@ -21,9 +21,9 @@ export async function POST(req: Request) {
       const result = await generateAll(body, body.coupangSuggestions || [])
       return NextResponse.json(result)
     } catch (err) {
-      console.error('AI 통합 생성 오류:', err)
+      const info = reportError(err, { route: 'ai/copy', mode: gate.auth.mode, extra: { platform: body.platform } })
       await refundIfTrial(gate.auth)
-      return NextResponse.json({ error: friendlyErrorMessage(err) }, { status: 500 })
+      return NextResponse.json({ error: info.message, code: info.code }, { status: 500 })
     }
   })
 }

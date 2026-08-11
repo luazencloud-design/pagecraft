@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { translateContent } from '@/services/translate.service'
 import { runWithKey } from '@/lib/apiKeyContext'
 import { authorizeAi, refundIfTrial } from '@/lib/aiGate'
-import { friendlyErrorMessage } from '@/lib/errorMessage'
+import { reportError } from '@/lib/errorReport'
 import type { TranslateRequest } from '@/types/ai'
 
 /** 한↔일/영 양방향 재작성. BYOK 또는 무료 체험(generate 크레딧) */
@@ -23,9 +23,9 @@ export async function POST(req: Request) {
     try {
       return NextResponse.json(await translateContent(body))
     } catch (err) {
-      console.error('AI 번역 오류:', err)
+      const info = reportError(err, { route: 'translate', mode: gate.auth.mode, extra: { fromLang: body.fromLang, toLang: body.toLang } })
       await refundIfTrial(gate.auth)
-      return NextResponse.json({ error: friendlyErrorMessage(err) }, { status: 500 })
+      return NextResponse.json({ error: info.message, code: info.code }, { status: 500 })
     }
   })
 }

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { generateTags } from '@/services/ai.service'
 import { runWithKey } from '@/lib/apiKeyContext'
 import { authorizeAi, refundIfTrial } from '@/lib/aiGate'
-import { friendlyErrorMessage } from '@/lib/errorMessage'
+import { reportError } from '@/lib/errorReport'
 import type { AITagRequest } from '@/types/ai'
 
 export async function POST(req: Request) {
@@ -17,9 +17,9 @@ export async function POST(req: Request) {
     try {
       return NextResponse.json(await generateTags(body))
     } catch (err) {
-      console.error('태그 생성 오류:', err)
+      const info = reportError(err, { route: 'ai/tags', mode: gate.auth.mode })
       await refundIfTrial(gate.auth)
-      return NextResponse.json({ error: friendlyErrorMessage(err) }, { status: 500 })
+      return NextResponse.json({ error: info.message, code: info.code }, { status: 500 })
     }
   })
 }

@@ -2,15 +2,18 @@
 
 import { useState, useCallback } from 'react'
 import { useImageStore } from '@/stores/imageStore'
-import { api } from '@/lib/api'
+import { api, parseApiError } from '@/lib/api'
 import { compressForBgRemoval } from '@/lib/image'
 import { showToast } from '@/components/ui/Toast'
 
 /**
  * 내부 배경 제거 로직 — 상태 관리 없음 (순수 API 호출)
  * 단일/배치 공용. 호출자가 isProcessing/progress 관리.
+ *
+ * 실패 사유를 호출자에게 넘긴다 — 예전에는 여기서 삼켜져 화면에 아무것도 안 뜨고
+ * 원본만 조용히 유지됐다. 사용자가 "왜 안 되는지" 알 수 없던 유일한 경로였다.
  */
-async function bgRemoveOne(dataUrl: string): Promise<string | null> {
+async function bgRemoveOne(dataUrl: string): Promise<{ image: string } | { reason: string }> {
   try {
     // Recraft는 해상도 보존형 — 2048px/0.92로 고품질 입력
     const compressed = await compressForBgRemoval(dataUrl)
@@ -19,10 +22,11 @@ async function bgRemoveOne(dataUrl: string): Promise<string | null> {
     })
     // Recraft는 진짜 픽셀 마스크 기반 투명 PNG 반환 → whitenNearWhite 불필요
     // (반투명 엣지 픽셀을 순수 흰색으로 바꾸면 헤일로 생김)
-    return res.image
+    return { image: res.image }
   } catch (err) {
+    const reason = err instanceof Error ? parseApiError(err.message, '배경 제거에 실패했습니다.') : '배경 제거에 실패했습니다.'
     console.error('배경 제거 실패:', err)
-    return null
+    return { reason }
   }
 }
 
@@ -38,8 +42,12 @@ export function useBgRemoval() {
     setProgress('배경 제거 중...')
     try {
       const result = await bgRemoveOne(dataUrl)
+      if ('reason' in result) {
+        showToast(result.reason, 'error')
+        return null
+      }
       // 크레딧 소비 후 UI 즉시 반영
-      return result
+      return result.image
     } finally {
       setIsProcessing(false)
       setProgress('')
@@ -67,6 +75,7 @@ export function useBgRemoval() {
     let completed = 0
 
     const queue = [...targets]
+    let firstReason = ''
     setProgress(`배경 제거 중... (0/${targets.length})`)
 
     async function worker() {
@@ -74,9 +83,11 @@ export function useBgRemoval() {
         const img = queue.shift()
         if (!img) break
         const result = await bgRemoveOne(img.dataUrl)
-        if (result) {
-          updateImage(img.id, { dataUrl: result, bgRemoved: true })
+        if ('image' in result) {
+          updateImage(img.id, { dataUrl: result.image, bgRemoved: true })
           successCount++
+        } else if (!firstReason) {
+          firstReason = result.reason
         }
         completed++
         setProgress(`배경 제거 중... (${completed}/${targets.length})`)
@@ -93,7 +104,8 @@ export function useBgRemoval() {
     if (successCount === targets.length) {
       showToast(`배경 제거 완료 (${successCount}장)`)
     } else {
-      showToast(`${successCount}/${targets.length}장 처리 · 일부 실패`, 'error')
+      // 사유를 함께 보여준다 — "일부 실패"만으로는 사용자가 다음 행동을 못 정한다
+      showToast(`${successCount}/${targets.length}장 처리 · ${firstReason || '일부 실패'}`, 'error')
     }
     return successCount
   }, [images, updateImage])

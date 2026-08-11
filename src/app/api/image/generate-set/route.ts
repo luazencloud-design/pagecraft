@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { generateImageSet } from '@/services/ai.service'
 import { runWithKey } from '@/lib/apiKeyContext'
 import { authorizeAi, refundIfTrial } from '@/lib/aiGate'
-import { friendlyErrorMessage } from '@/lib/errorMessage'
+import { reportError } from '@/lib/errorReport'
 import type { AIModelImageRequest } from '@/types/ai'
 
 export const maxDuration = 60
@@ -27,9 +27,9 @@ export async function POST(req: Request) {
       if (failed > 0) await refundIfTrial(gate.auth, failed)
       return NextResponse.json({ images, generated: images.length, requested: count })
     } catch (err) {
-      console.error('AI 이미지 풀세트 오류:', err)
+      const info = reportError(err, { route: 'image/generate-set', mode: gate.auth.mode, extra: { requested: count } })
       await refundIfTrial(gate.auth) // 전액 환불
-      return NextResponse.json({ error: friendlyErrorMessage(err) }, { status: 500 })
+      return NextResponse.json({ error: info.message, code: info.code }, { status: 500 })
     }
   })
 }

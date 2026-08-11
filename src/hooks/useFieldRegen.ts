@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
 import { useProductStore } from '@/stores/productStore'
-import { api, ApiError } from '@/lib/api'
+import { api, ApiError, parseApiError } from '@/lib/api'
 import { showToast } from '@/components/ui/Toast'
 import type { GeneratedContent, RegenField } from '@/types/ai'
 
@@ -76,14 +76,5 @@ function labelOf(field: RegenField): string {
     case 'keywords': return '키워드'
     case 'caution': return '주의사항'
     default: return field
-  }
-}
-
-function parseApiError(msg: string): string {
-  try {
-    const body = JSON.parse(msg)
-    return body.error || msg
-  } catch {
-    return msg
   }
 }

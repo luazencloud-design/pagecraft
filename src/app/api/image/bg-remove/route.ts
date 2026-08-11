@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { removeBackground, removeBackgroundRecraft } from '@/services/ai.service'
 import { runWithKey } from '@/lib/apiKeyContext'
 import { authorizeAi, refundIfTrial } from '@/lib/aiGate'
-import { friendlyErrorMessage } from '@/lib/errorMessage'
+import { reportError } from '@/lib/errorReport'
 
 export const maxDuration = 60
 
@@ -30,8 +30,9 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ image: result })
   } catch (err) {
-    console.error('배경 제거 오류:', err)
+    // 체험=Recraft / BYOK=Gemini 로 갈리므로 어느 엔진에서 났는지 함께 남긴다
+    const info = reportError(err, { route: 'image/bg-remove', mode: gate.auth.mode, extra: { engine: gate.auth.mode === 'byok' ? 'gemini' : 'recraft' } })
     await refundIfTrial(gate.auth)
-    return NextResponse.json({ error: friendlyErrorMessage(err) }, { status: 500 })
+    return NextResponse.json({ error: info.message, code: info.code }, { status: 500 })
   }
 }
