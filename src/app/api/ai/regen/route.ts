@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { regenerateField } from '@/services/ai.service'
 import { runWithKey } from '@/lib/apiKeyContext'
 import { authorizeAi, refundIfTrial } from '@/lib/aiGate'
-import { friendlyErrorMessage } from '@/lib/errorMessage'
+import { reportError } from '@/lib/errorReport'
 import type { AIRegenRequest, RegenField } from '@/types/ai'
 
 const ALLOWED_FIELDS: RegenField[] = [
@@ -26,9 +26,9 @@ export async function POST(req: Request) {
     try {
       return NextResponse.json(await regenerateField(body))
     } catch (err) {
-      console.error('AI 부분 재생성 오류:', err)
+      const info = reportError(err, { route: 'ai/regen', mode: gate.auth.mode, extra: { field: body.field } })
       await refundIfTrial(gate.auth)
-      return NextResponse.json({ error: friendlyErrorMessage(err) }, { status: 500 })
+      return NextResponse.json({ error: info.message, code: info.code }, { status: 500 })
     }
   })
 }

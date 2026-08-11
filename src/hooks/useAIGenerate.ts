@@ -5,7 +5,7 @@ import { useProductStore } from '@/stores/productStore'
 import { useImageStore } from '@/stores/imageStore'
 import { useEditorStore } from '@/stores/editorStore'
 import { useDraftsStore } from '@/stores/draftsStore'
-import { api } from '@/lib/api'
+import { api, parseApiError } from '@/lib/api'
 import { compressForAI } from '@/lib/image'
 import { PLATFORM_META } from '@/types/product'
 import { showToast } from '@/components/ui/Toast'
@@ -151,7 +151,8 @@ export function useAIGenerate() {
 
       setActiveTab('copy')
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'AI 생성에 실패했습니다.'
+      // 서버가 보낸 {error, code} 껍데기를 벗긴다 — 그대로 두면 화면에 JSON이 노출된다
+      const msg = err instanceof Error ? parseApiError(err.message, 'AI 생성에 실패했습니다.') : 'AI 생성에 실패했습니다.'
       setGenerateError(msg)
       console.error('AI 생성 실패:', err)
     } finally {
