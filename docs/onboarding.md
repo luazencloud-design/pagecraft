@@ -47,7 +47,6 @@ pagecraft/
 | `app/admin/page.tsx` | **관리자** — 구글 로그인 + 초대 CRUD UI (`초대 링크`/`활동 로그` 탭) |
 | `app/invite-error/page.tsx` | 만료/무효 초대 진입 안내 (`?reason=expired\|gone\|not_started\|invalid`) |
 | `app/layout.tsx` | 루트 레이아웃 (폰트·테마·Toast·Analytics) |
-| `app/sentry-test/` | Sentry 동작 테스트용 (운영 무관) |
 
 **API 라우트** (`app/api/*/route.ts`)
 | 경로 | 용도 | 인가 |
