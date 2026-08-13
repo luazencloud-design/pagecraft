@@ -235,3 +235,58 @@ export async function getEvents(limit = 30): Promise<InviteEvent[]> {
   const raw = await store.lrange(LOG_KEY, 0, limit - 1)
   return raw.map((r) => { try { return JSON.parse(r) as InviteEvent } catch { return null } }).filter(Boolean) as InviteEvent[]
 }
+
+/**
+ * 이메일 마스킹 — 앞 2글자 + 도메인. 관리자 화면 대조용이며 원문은 저장하지 않는다.
+ *
+ * 자르는 위치를 직접 계산한다. 정규식 치환은 매칭에 실패하면 입력을 그대로 돌려주므로,
+ * 실패가 눈에 띄지 않는 이런 자리에는 쓰지 않는다.
+ */
+export function maskEmail(email: string): string {
+  const at = email.indexOf('@')
+  if (at < 0) return '***'
+  return `${email.slice(0, Math.min(2, at))}***${email.slice(at)}`
+}
+
+/* ── 차단 로그 ─────────────────────────────────────────
+ *
+ * 활동 로그와 **키를 분리한다**. 두 기록은 발생 빈도와 필요한 보존 기간이 다르다 — 한 자리에
+ * 두면 잦은 쪽이 드문 쪽을 밀어낸다. 차단은 건수가 적고 오래 남아야 하는 쪽이다.
+ *
+ * 이걸 남기는 이유: 이용자가 막히는 경우(초대 만료·크레딧 소진·링크 무효)는 예외가 아니라
+ * 정상 응답이라 오류 보고에 잡히지 않는다. 관리자가 "안 된다"는 이야기를 되짚을 자리를 만든다.
+ */
+export interface BlockEvent {
+  ts: number
+  /** entry = 링크 진입 단계(로그인 전) / gate = 인가 단계(로그인 후) */
+  stage: 'entry' | 'gate'
+  /** expired · gone · not_started · invalid · credit_exhausted 등 */
+  reason: string
+  /** 초대 이름(알 때) 또는 id */
+  invite?: string
+  /** 마스킹된 이메일 — gate 단계에서만 알 수 있다 */
+  subject?: string
+}
+
+const BLOCK_KEY = 'invite:blocks'
+const BLOCK_MAX = 300
+
+/**
+ * 차단 기록. 저장 실패를 스스로 삼킨다 — 기록은 부수 효과이지 응답 경로가 아니다.
+ * 저장소가 죽었을 때 로그를 남기려다 사용자 응답까지 무너뜨리면 본말이 뒤집힌다.
+ */
+export async function logBlock(ev: Omit<BlockEvent, 'ts'>): Promise<void> {
+  try {
+    const store = await kv()
+    await store.lpush(BLOCK_KEY, JSON.stringify({ ts: Date.now(), ...ev } satisfies BlockEvent))
+    await store.ltrim(BLOCK_KEY, 0, BLOCK_MAX - 1)
+  } catch (err) {
+    console.warn('[blocks] 차단 기록 실패', err)
+  }
+}
+
+export async function getBlocks(limit = 100): Promise<BlockEvent[]> {
+  const store = await kv()
+  const raw = await store.lrange(BLOCK_KEY, 0, limit - 1)
+  return raw.map((r) => { try { return JSON.parse(r) as BlockEvent } catch { return null } }).filter(Boolean) as BlockEvent[]
+}

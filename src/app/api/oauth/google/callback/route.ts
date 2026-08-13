@@ -6,7 +6,7 @@ import {
   signTrialSession, TRIAL_SESSION_COOKIE,
 } from '@/lib/session'
 import { isAdmin, activateTrial, normalizeEmail } from '@/lib/trial'
-import { getInvite, inviteUsableReason, logEvent } from '@/lib/invites'
+import { getInvite, inviteUsableReason, logEvent, maskEmail } from '@/lib/invites'
 
 /** 구글 OAuth 콜백 — 관리자 / 초대 사용자 둘 다 처리 (state.purpose 로 분기) */
 export async function GET(req: Request) {
@@ -48,8 +48,7 @@ export async function GET(req: Request) {
   const trialEmail = normalizeEmail(email)
   await activateTrial(inv.id, trialEmail)
   // 활동 로그 — 누가(마스킹) 어떤 초대로 입장했는지
-  const masked = trialEmail.replace(/^(.{2}).*(@.*)$/, '$1***$2')
-  await logEvent('redeemed', inv.name, masked)
+  await logEvent('redeemed', inv.name, maskEmail(trialEmail))
 
   const session = await signTrialSession(trialEmail, inv.id, inv.name)
   const res = NextResponse.redirect(`${origin}/product/new`)

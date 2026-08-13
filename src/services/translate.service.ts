@@ -1,5 +1,6 @@
 import type { GeneratedAll, TranslateRequest } from '@/types/ai'
 import { currentRequestKey } from '@/lib/apiKeyContext'
+import { textModels } from '@/lib/models'
 import { buildCoupangRewritePrompt } from './prompts/coupang'
 import { buildQoo10RewritePrompt } from './prompts/qoo10'
 import { buildEbayRewriteToEnPrompt, buildEbayRewriteToKoPrompt } from './prompts/ebay'
@@ -13,8 +14,21 @@ function getApiKey(): string {
   return key
 }
 
-function getTextModel(): string {
-  return process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash'
+/** 후보 목록·판단 근거는 `@/lib/models`가 정본이다 — 생성 경로와 같은 순서로 답해야 한다. */
+async function textRequest(apiKey: string, body: object): Promise<Response> {
+  const models = textModels()
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i]
+    const res = await geminiRequest(`${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`, body)
+    // 404만 "이 키로는 그 모델이 없다"는 뜻이다. 나머지는 모델을 바꿔도 결과가 같다.
+    if (res.status === 404 && i < models.length - 1) {
+      console.warn(`[gemini] ${model} 접근 불가(404) — 다음 후보 ${models[i + 1]}로 전환`)
+      await res.body?.cancel() // 버리는 응답도 본문을 닫는다
+      continue
+    }
+    return res
+  }
+  throw new Error('텍스트 모델 후보를 모두 소진했습니다.')
 }
 
 /**
@@ -111,10 +125,7 @@ export async function translateContent(req: TranslateRequest): Promise<Generated
     },
   }
 
-  const res = await geminiRequest(
-    `${GEMINI_BASE}/${getTextModel()}:generateContent?key=${apiKey}`,
-    body,
-  )
+  const res = await textRequest(apiKey, body)
 
   if (!res.ok) {
     const err = await res.text()

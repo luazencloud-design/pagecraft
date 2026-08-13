@@ -70,9 +70,11 @@ export function reportError(err: unknown, ctx: ReportContext): ErrorInfo {
     },
     extra: {
       ...ctx.extra,
-      // 어느 모델로 돌다 실패했는지 — 미설정이면 코드 폴백이 쓰인다는 사실 자체가 단서다
-      textModel: process.env.GEMINI_TEXT_MODEL ?? '(하드코딩 폴백)',
-      imageModel: process.env.GEMINI_IMAGE_MODEL ?? '(하드코딩 폴백)',
+      // 어느 모델로 돌다 실패했는지 — 미설정이면 코드 기본값이 쓰인다는 사실 자체가 단서다.
+      // 텍스트는 1순위 실패 시 2순위로 넘어가므로 두 자리를 함께 싣는다(ai.service.ts textModels).
+      textModel: process.env.GEMINI_TEXT_MODEL ?? '(코드 기본값)',
+      textModelFallback: process.env.GEMINI_TEXT_MODEL_FALLBACK ?? '(코드 기본값)',
+      imageModel: process.env.GEMINI_IMAGE_MODEL ?? '(코드 기본값)',
       // 원문 메시지는 넣지 않는다 — 예외 본문에 이미 전문이 실리고, 키 관련 문구가 섞이면
       // Sentry 서버 스크러버가 "[Filtered]"로 지워 버려 중복이자 무용이다 [실측 2026-08-11].
     },

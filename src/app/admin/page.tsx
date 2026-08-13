@@ -8,6 +8,7 @@ interface InviteRow {
   startsAt?: number; expiresAt?: number; unlimited?: boolean; link: string
 }
 interface EventRow { ts: number; action: 'created' | 'regenerated' | 'deleted' | 'redeemed'; invite: string; detail?: string }
+interface BlockRow { ts: number; stage: 'entry' | 'gate'; reason: string; invite?: string; subject?: string }
 
 // ── 유틸 ──
 const tsToDate = (ts?: number) => (ts ? new Date(ts).toISOString().slice(0, 10) : '')
@@ -41,14 +42,22 @@ function relTime(ts: number): string {
 const EVENT_LABEL: Record<EventRow['action'], string> = {
   created: '생성', regenerated: '링크 재생성', deleted: '삭제', redeemed: '입장',
 }
+const BLOCK_LABEL: Record<string, string> = {
+  invalid: '잘못된 링크', gone: '존재하지 않음', expired: '기간 만료', not_started: '시작 전',
+  error: '로그인 시작 실패', invite_missing: '초대 없음', invite_expired: '기간 만료',
+  invite_not_started: '시작 전', credit_unavailable: '저장소 장애', credit_expired: '체험 종료',
+}
+// 사유 문자열이 늘어나도 화면이 깨지지 않게 원문을 폴백으로 남긴다
+const blockLabel = (r: string) => BLOCK_LABEL[r] ?? (r.startsWith('credit_') ? '크레딧 부족' : r)
 
 export default function AdminPage() {
   const [state, setState] = useState<'loading' | 'unauth' | 'ready'>('loading')
   const [admin, setAdmin] = useState('')
   const [invites, setInvites] = useState<InviteRow[]>([])
   const [events, setEvents] = useState<EventRow[]>([])
+  const [blocks, setBlocks] = useState<BlockRow[]>([])
   const [busy, setBusy] = useState(false)
-  const [tab, setTab] = useState<'invites' | 'logs'>('invites')
+  const [tab, setTab] = useState<'invites' | 'logs' | 'blocks'>('invites')
   const [logFilter, setLogFilter] = useState<'all' | EventRow['action']>('all')
 
   // 생성 폼
@@ -64,8 +73,8 @@ export default function AdminPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await api.get<{ admin: string; invites: InviteRow[]; events: EventRow[] }>('/api/admin/invites')
-      setAdmin(res.admin); setInvites(res.invites); setEvents(res.events || []); setState('ready')
+      const res = await api.get<{ admin: string; invites: InviteRow[]; events: EventRow[]; blocks: BlockRow[] }>('/api/admin/invites')
+      setAdmin(res.admin); setInvites(res.invites); setEvents(res.events || []); setBlocks(res.blocks || []); setState('ready')
     } catch {
       setState('unauth')
     }
@@ -141,6 +150,7 @@ export default function AdminPage() {
         <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
           <TabBtn active={tab === 'invites'} onClick={() => setTab('invites')}>초대 링크 ({invites.length})</TabBtn>
           <TabBtn active={tab === 'logs'} onClick={() => setTab('logs')}>활동 로그 ({events.length})</TabBtn>
+          <TabBtn active={tab === 'blocks'} onClick={() => setTab('blocks')}>차단 ({blocks.length})</TabBtn>
         </div>
 
         {tab === 'invites' && (<>
@@ -236,6 +246,8 @@ export default function AdminPage() {
         {tab === 'logs' && (
           <LogsTab events={events} filter={logFilter} setFilter={setLogFilter} />
         )}
+
+        {tab === 'blocks' && <BlocksTab blocks={blocks} />}
       </div>
     </div>
   )
@@ -254,6 +266,47 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
     >
       {children}
     </button>
+  )
+}
+
+/**
+ * 차단 탭 — "안 된다"는 신고를 되짚는 자리.
+ *
+ * 사용자가 막히는 대부분(링크 만료·삭제·크레딧 소진)은 4xx라 예외가 아니고, 그래서 지금까지
+ * 활동 로그에도 오류 보고에도 남지 않았다. 입장 기록과 나란히 놓고 보면 "들어왔는데 그 뒤 막힘"과
+ * "아예 못 들어옴"이 한 화면에서 갈린다.
+ */
+function BlocksTab({ blocks }: { blocks: BlockRow[] }) {
+  if (blocks.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px 0' }}>
+        <p style={{ color: 'var(--text3)', fontSize: 13, margin: 0 }}>차단된 접근이 없어요.</p>
+        <p style={{ color: 'var(--text3)', fontSize: 11.5, margin: '8px 0 0', lineHeight: 1.6 }}>
+          링크가 만료·삭제됐거나 크레딧이 떨어져 막힌 경우가 여기 쌓입니다.<br />
+          이용자가 &quot;안 된다&quot;고 할 때 먼저 볼 곳이에요.
+        </p>
+      </div>
+    )
+  }
+  return (
+    <div>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, maxHeight: 460, overflowY: 'auto' }}>
+        {blocks.map((b, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderTop: i ? '1px solid var(--border)' : 'none', fontSize: 12 }}>
+            <span style={{ width: 60, color: 'var(--text3)', flexShrink: 0 }} title={new Date(b.ts).toLocaleString('ko-KR')}>{relTime(b.ts)}</span>
+            <span style={{ width: 48, fontSize: 10.5, fontWeight: 700, flexShrink: 0, color: b.stage === 'entry' ? 'var(--text3)' : 'var(--red)' }}>
+              {b.stage === 'entry' ? '진입' : '사용중'}
+            </span>
+            <span style={{ width: 92, fontWeight: 600, flexShrink: 0, color: 'var(--red)' }}>{blockLabel(b.reason)}</span>
+            <span style={{ color: 'var(--text)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.invite || '—'}</span>
+            {b.subject && <span style={{ color: 'var(--text3)', flexShrink: 0 }}>· {b.subject}</span>}
+          </div>
+        ))}
+      </div>
+      <p style={{ fontSize: 10.5, color: 'var(--text3)', margin: '10px 0 0', textAlign: 'center' }}>
+        최근 {blocks.length}건 표시 (최대 300건 보관) · <b>진입</b> = 로그인 전 링크 차단 / <b>사용중</b> = 로그인 후 인가 차단
+      </p>
+    </div>
   )
 }
 
