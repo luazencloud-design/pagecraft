@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verifyTrialSession, TRIAL_SESSION_COOKIE } from './session'
-import { getInvite, inviteUsableReason } from './invites'
+import { getInvite, inviteUsableReason, logBlock, maskEmail } from './invites'
 import { consumeTrialCredits, refundTrialCredits, type CreditType } from './trial'
 import { DEV_BYPASS } from './devBypass'
 import { reportGateRejection } from './errorReport'
@@ -49,9 +49,25 @@ export async function authorizeAi(
     }
   }
   // 초대가 삭제/만료/시작전이면 즉시 차단 (호출마다 재확인). 레코드는 남아도 inviteUsableReason로 판단
-  const inv = session.inv ? await getInvite(session.inv) : null
+  // 저장소 장애는 예외로 던지지 않는다 — 미처리 예외가 되면 요청 컨텍스트가 통째로 오류 보고에
+  // 실린다. 여기서 닫고 기록은 reportGateRejection이 맡는다(503이라 보고 대상에 든다).
+  let inv: Awaited<ReturnType<typeof getInvite>> = null
+  try {
+    inv = session.inv ? await getInvite(session.inv) : null
+  } catch {
+    reportGateRejection('invite_lookup_failed', 503, { invite: session.inv })
+    return {
+      error: NextResponse.json(
+        { error: '무료 체험이 일시적으로 불가합니다. 잠시 후 다시 시도하거나 본인 Gemini API 키를 입력해주세요.' },
+        { status: 503 },
+      ),
+    }
+  }
   if (!inv || inviteUsableReason(inv) !== 'ok') {
-    reportGateRejection('invite_unusable', 403, { invite: session.inv, reason: inv ? inviteUsableReason(inv) : 'missing' })
+    const why = inv ? inviteUsableReason(inv) : 'missing'
+    reportGateRejection('invite_unusable', 403, { invite: session.inv, reason: why })
+    // 관리자 화면에서 "누가 왜 막혔나"를 보려면 여기 남아야 한다. 4xx라 오류 보고에는 안 간다.
+    await logBlock({ stage: 'gate', reason: `invite_${why}`, invite: inv?.name ?? session.inv, subject: maskEmail(session.sub) })
     return {
       error: NextResponse.json(
         { error: '초대가 만료되었거나 삭제되었어요. 본인 Gemini API 키를 입력하면 계속 사용할 수 있어요.' },
@@ -77,6 +93,7 @@ export async function authorizeAi(
   const r = await consumeTrialCredits(inv.id, session.sub, creditType, multiplier)
   if (!r.allowed) {
     reportGateRejection(`credit_${r.reason}`, r.reason === 'unavailable' ? 503 : 402, { invite: inv.id, creditType, cost: r.cost })
+    await logBlock({ stage: 'gate', reason: `credit_${r.reason}`, invite: inv.name, subject: maskEmail(session.sub) })
     if (r.reason === 'unavailable') {
       return {
         error: NextResponse.json(

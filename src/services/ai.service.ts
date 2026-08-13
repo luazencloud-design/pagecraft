@@ -14,6 +14,7 @@ import Replicate from 'replicate'
 import type { Platform } from '@/types/product'
 import { PLATFORM_META } from '@/types/product'
 import { currentRequestKey } from '@/lib/apiKeyContext'
+import { textModels } from '@/lib/models'
 import { buildCoupangSystemPrompt, buildCoupangTitlePrompt, buildCoupangTagPrompt } from './prompts/coupang'
 import { buildQoo10SystemPrompt } from './prompts/qoo10'
 import { buildEbaySystemPrompt } from './prompts/ebay'
@@ -110,8 +111,38 @@ function getApiKey(): string {
   return key
 }
 
-function getTextModel(): string {
-  return process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash'
+/**
+ * 텍스트 생성 요청 — 후보 모델을 순서대로 시도한다.
+ *
+ * **404(NOT_FOUND)에서만** 다음 후보로 넘어간다. 그 응답만이 "이 키로는 그 모델이 없다"는
+ * 뜻이고, 안전필터·쿼터·키 오류는 모델을 바꿔도 결과가 같아 그대로 올린다. 마지막 후보의
+ * 404는 그대로 반환해 분류가 E_MODEL_GONE으로 잡게 둔다.
+ *
+ * 404는 토큰을 소비하지 않고 빨리 떨어져, 폴백 비용은 지연 수백 ms에 그친다.
+ *
+ * body를 함수로 주면 시도할 모델명을 받는다 — 세대마다 형태가 갈리는 파라미터
+ * (thinkingConfigFor)를 시도마다 다시 계산해야 하기 때문이다.
+ */
+async function textRequest(
+  apiKey: string,
+  body: object | ((model: string) => object),
+): Promise<Response> {
+  const models = textModels()
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i]
+    const res = await geminiRequest(
+      `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`,
+      typeof body === 'function' ? body(model) : body,
+    )
+    if (res.status === 404 && i < models.length - 1) {
+      console.warn(`[gemini] ${model} 접근 불가(404) — 다음 후보 ${models[i + 1]}로 전환`)
+      // 버리는 응답도 본문을 닫는다 — 안 닫으면 연결이 GC까지 잡혀 있다.
+      await res.body?.cancel()
+      continue
+    }
+    return res
+  }
+  throw new Error('텍스트 모델 후보를 모두 소진했습니다.')
 }
 
 function getImageModel(): string {
@@ -197,10 +228,7 @@ export async function generateAll(
     },
   }
 
-  const res = await geminiRequest(
-    `${GEMINI_BASE}/${getTextModel()}:generateContent?key=${apiKey}`,
-    body,
-  )
+  const res = await textRequest(apiKey, body)
 
   if (!res.ok) {
     const err = await res.text()
@@ -243,10 +271,7 @@ export async function generateTitles(
     },
   }
 
-  const res = await geminiRequest(
-    `${GEMINI_BASE}/${getTextModel()}:generateContent?key=${apiKey}`,
-    body,
-  )
+  const res = await textRequest(apiKey, body)
 
   if (!res.ok) {
     const err = await res.text()
@@ -272,10 +297,7 @@ export async function generateTags(req: AITagRequest): Promise<string[]> {
     },
   }
 
-  const res = await geminiRequest(
-    `${GEMINI_BASE}/${getTextModel()}:generateContent?key=${apiKey}`,
-    body,
-  )
+  const res = await textRequest(apiKey, body)
 
   if (!res.ok) {
     const err = await res.text()
@@ -851,10 +873,7 @@ Respond with ONLY the category name, nothing else.`
       contents: [{ role: 'user', parts }],
       generationConfig: { temperature: 0.1, maxOutputTokens: 50 },
     }
-    const res = await geminiRequest(
-      `${GEMINI_BASE}/${getTextModel()}:generateContent?key=${apiKey}`,
-      body,
-    )
+    const res = await textRequest(apiKey, body)
     if (!res.ok) return ''
     const data = await res.json()
     const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
@@ -896,7 +915,9 @@ ${productLine}
 - JSON·따옴표·머리말 없이 안내 문구 텍스트만 출력.`
 
   const base64 = image.replace(/^data:image\/\w+;base64,/, '')
-  const body = {
+  // 시도할 모델명을 받아 body를 만든다 — thinking 파라미터가 세대마다 갈리므로, 폴백으로
+  // 넘어가면 바디 형태도 함께 바뀌어야 한다.
+  const buildBody = (model: string) => ({
     contents: [
       {
         role: 'user',
@@ -908,13 +929,10 @@ ${productLine}
       maxOutputTokens: 400,
       // thinking 끄기 — 짧은 카피라 추론 불필요. 안 끄면 토큰이 추론에 소진돼 본문 잘림.
       // 끄는 방법이 세대마다 달라 분기한다(3.x는 기본이 minimal이라 필드를 빼는 것이 곧 끄기다).
-      ...thinkingConfigFor(getTextModel()),
+      ...thinkingConfigFor(model),
     },
-  }
-  const res = await geminiRequest(
-    `${GEMINI_BASE}/${getTextModel()}:generateContent?key=${apiKey}`,
-    body,
-  )
+  })
+  const res = await textRequest(apiKey, buildBody)
   if (!res.ok) {
     const err = await res.text()
     throw new Error(`사은품 설명 생성 오류: ${res.status} ${err}`)
@@ -1377,10 +1395,7 @@ export async function regenerateField(req: AIRegenRequest): Promise<Partial<Gene
     },
   }
 
-  const res = await geminiRequest(
-    `${GEMINI_BASE}/${getTextModel()}:generateContent?key=${apiKey}`,
-    body,
-  )
+  const res = await textRequest(apiKey, body)
   if (!res.ok) {
     const err = await res.text()
     throw new Error(`AI 재생성 오류: ${res.status} ${err}`)
